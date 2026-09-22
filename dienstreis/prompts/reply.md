@@ -25,6 +25,7 @@ De echte risico's voor een reiziger zonder zorgcontact zijn vaak operationeel: k
 ## Valkuilen
 
 - De go/no-go-beslissing valt vóór vertrek uit België (standaard een week ervoor), ook voor luiken die pas later in de reis komen: eenmaal ter plaatse kan UGent enkel nog adviseren. Een extra controle ter plaatse mag, maar vervangt die beslissing niet. Formuleer expliciete criteria per luik (bv. 42 dagen zonder nieuw geval in de zone en de aangrenzende zones).
+- `dagen_sinds_laatste` en `nieuw14d` tellen vanaf de datum van de laatste INSP-rapportage (`asof` in `epi`/`qa`), niet vanaf vandaag. Nul dagen betekent dus "op de laatste rapportagedatum", niet "vandaag": schrijf "het laatste geval dateert van de laatste rapportage (19/09)" en nooit "van vandaag". Tussen die rapportagedatum en `vandaag` zitten vaak enkele dagen waarover nog niets geweten is; benoem dat als het oordeel erop steunt.
 - Noem een zone niet "stijgend" op basis van één 14-dagenaantal; een trend vraagt een vergelijking over volle weken.
 - Vermeld nooit andere reizigers of dossiers uit `geschiedenis` of `context` in de mail; gebruik ze enkel voor consistentie.
 

@@ -90,5 +90,16 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 - **Commits:** ce4253a
 - **Bron:** gereconstrueerd uit git-geschiedenis
 
+## Uitgevoerde proefdraai (2026-09-22)
+
+Een volledige run met de echte Claude Code-backend op een verzonnen aanvraag (`tests/fixtures/aanvraag_testpersoon.eml`), met log, context en archief in een tijdelijke map. Duur ongeveer zes minuten: 25 s reisschema, 202 s webstap, 138 s mail. De mailcontroles slaagden in de eerste poging, dus geen herstelronde.
+
+Wat goed ging: de Belgische datums (28/11/2026) kwamen correct als ISO terug; alle cijfers in de mail waren terug te voeren op de berekende gegevens (20 gevallen, 9 overlijdens, 10 in 14 dagen, nationaal 7 672 / 3 699, CFR 48 procent, volle weken 569-586-586-572 kloppen alle met `summary.json`); de webstap vond echte, bruikbare zaken (het project Fleuve Congo sans Ebola op de as Kisangani-Kinshasa, de dronepogingen op Bangoka die de formele FOD-afrading voor Tshopo verklaren, de Amerikaanse en Canadese inreismaatregelen); en het model weigerde uitdrukkelijk de zone "stijgend" te noemen op basis van een enkele 14-dagentelling, precies zoals de valkuilen in `prompts/reply.md` vragen.
+
+Een fout gevonden en hersteld: de mail schreef "het laatste geval dateert van vandaag" terwijl `dagen_sinds_laatste` telt vanaf de laatste INSP-rapportage (19/09) en de run op 22/09 liep, drie dagen ernaast. Het getal klopte, de formulering niet, en geen enkele controle kan dat vangen. `prompts/reply.md` heeft er nu een valkuil voor.
+
+Aandachtspunt, geen fout: de mail telde 1 642 woorden. De cijfercontrole bewijst dat een getal ergens uit de invoer komt, niet dat het waar is; cijfers die uit de webstap komen (het aantal gehospitaliseerden, de cholera-aantallen, de WHO-cijfers van DON617) zijn zo betrouwbaar als de webpagina die het model gelezen heeft. Het veld `checked_how` in `web.json` zegt of de pagina zelf gelezen is of enkel een zoekresultaat.
+
 ## Voorstellen (nog niet gevraagd)
+- De mail is lang (1 642 woorden in de proefdraai, negen voorwaarden). Te bekijken of `prompts/reply.md` naar een kortere brief moet sturen, met de details in de notities voor Steven in plaats van in de mail aan An. Dat is een redactionele keuze, geen technische.
 - Een echte `.msg` als testfixture. De OLE-parser in `msg.py` wordt nu enkel handmatig getest; `.eml` en `.txt` zitten wel in de tests. Een `.msg` maken vraagt Outlook, en een bestaande aanvraag committen vraagt eerst een beslissing over anonimisering.
