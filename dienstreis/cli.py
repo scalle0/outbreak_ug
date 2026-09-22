@@ -25,11 +25,17 @@ def cmd_msg(a):
 
 def cmd_data(a):
     from . import data
+    if a.reset_cache:
+        was = data.reset_cache()
+        print(f"Cache verwijderd ({was:.0f} MB); de volgende run haalt enkel de bestanden "
+              f"die de analyse gebruikt.")
+        return
     ob = data.load(refresh=a.refresh, asof=a.asof)
     ecdc = data.ecdc_snapshot()
     z = ob.zones
     prov = z[z.cases > 0].groupby("PROVINCE")[["cases", "deaths", "new14"]].sum().sort_values("cases", ascending=False)
     print(f"Data tot {ob.asof:%Y-%m-%d} | checks: {ob.checks} | unmatched: {ob.unmatched}")
+    print(f"Cache: {data.cache_size_mb():.0f} MB in {data.CACHE}")
     print(f"ECDC: {ecdc}")
     print(prov.to_string())
     if a.zone:
@@ -126,7 +132,10 @@ def main(argv=None):
     x = s.add_parser("context", help="context.md openen (eerdere adviezen, open toezeggingen)")
     x.add_argument("--show", action="store_true"); x.set_defaults(f=cmd_context)
     m = s.add_parser("msg", help="Outlook .msg naar JSON"); m.add_argument("file"); m.add_argument("--attach-dir"); m.add_argument("--full", action="store_true"); m.set_defaults(f=cmd_msg)
-    d = s.add_parser("data", help="actuele cijfers en controles"); d.add_argument("--refresh", action="store_true"); d.add_argument("--asof"); d.add_argument("--zone"); d.set_defaults(f=cmd_data)
+    d = s.add_parser("data", help="actuele cijfers en controles"); d.add_argument("--refresh", action="store_true"); d.add_argument("--asof"); d.add_argument("--zone")
+    d.add_argument("--reset-cache", action="store_true",
+                   help="datacache wissen; de volgende run haalt enkel wat de analyse gebruikt")
+    d.set_defaults(f=cmd_data)
     r = s.add_parser("run", help="volledige analyse voor stops.yaml"); r.add_argument("stops"); r.add_argument("--out"); r.add_argument("--refresh", action="store_true"); r.add_argument("--asof"); r.add_argument("--log", action="store_true"); r.set_defaults(f=cmd_run)
     c = s.add_parser("check", help="controle van een mailtekst of widget"); c.add_argument("file"); c.set_defaults(f=cmd_check)
     w = s.add_parser("widget", help="HTML-widget uit afgewerkte mailtekst"); w.add_argument("text"); w.add_argument("--suggestions"); w.add_argument("--out", required=True); w.add_argument("--title", default="Reply Team Actueel"); w.set_defaults(f=cmd_widget)

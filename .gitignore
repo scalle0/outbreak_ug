@@ -5,3 +5,4 @@ out_*/
 *.msg
 stops*.yaml
 !examples/*.yaml
+!tests/fixtures/*.eml

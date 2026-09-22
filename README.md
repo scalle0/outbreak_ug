@@ -73,8 +73,8 @@ goes into `context.md`; it is the richest personal data in the system and it goe
 
 Local files (never in the repo): `%USERPROFILE%\.config\dienstreis\context.md`, `advice_log.csv`,
 optional `advisories.yaml` (used when verified more recently than the packaged table), and the
-`out_<traveller>/` folders. Data cache: `%USERPROFILE%\.cache\dienstreis`. Git is used when present;
-without git the needed INRB files are downloaded directly.
+`out_<traveller>/` folders. Data cache: `%USERPROFILE%\.cache\dienstreis` (`dienstreis data` shows
+its size, `dienstreis data --reset-cache` empties it).
 
 Useful options: `--yes` (no confirmation of a clean itinerary; still stops on an unusable one),
 `--web`, `--apply-web` (take over advisory changes found online without asking), `--no-open`,
@@ -96,7 +96,23 @@ uv sync --extra test ; uv run pytest -q
 
 Data are fetched on first use into `~/.cache/dienstreis` (override with `DIENSTREIS_CACHE`):
 INRB-UMIE GitHub repository (INSP situation reports per health zone + health-zone shapefile),
-Natural Earth country borders, and the ECDC landing page for a cross-check. Cached 6 hours.
+Natural Earth country borders, and the ECDC landing page for a cross-check.
+
+Only what is stale is fetched, because the two halves age very differently:
+
+| | refreshed | why |
+|---|---|---|
+| INSP figures per zone, aliases | every 6 hours | new situation report most days |
+| health-zone shapefile (66 MB) | every 30 days | zone boundaries almost never move |
+| Natural Earth country borders (3 MB) | once | national borders do not move |
+
+With git, the clone is sparse (`--filter=blob:none --sparse`, checkout limited to the ten files the
+analysis reads): 113 MB instead of the 330 MB a plain `--depth 1` clone of that repository costs.
+Without git the files are downloaded directly, with the ETag of the previous copy, so an unchanged
+shapefile comes back as `304 Not Modified` with no body. `--refresh` ignores both clocks.
+
+If you already have a full clone in the cache from an earlier version, `dienstreis data --reset-cache`
+drops it; the next run makes the lean one.
 
 ## Step by step (what `advies` does, for manual use)
 

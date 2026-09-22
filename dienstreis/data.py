@@ -5,6 +5,7 @@ the date it refers to. Nothing in this module makes judgements.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -25,60 +26,138 @@ NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
 CONFIG = Path(__file__).parent / "config"
 
-NEEDED = [
+# What the analysis reads, split by how often it actually changes. The INSP figures are new every
+# day; the health-zone boundaries are not, and the shapefile is 66 MB. Refreshing both on the same
+# six-hour clock meant re-fetching the geometry several times a day for nothing.
+DAILY = [
     "data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_cases__daily.csv",
     "data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_deaths__daily.csv",
     "data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_cases__daily.csv",
     "data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_deaths__daily.csv",
     "data/aliases.csv",
-] + [f"data/shapefiles/DRC_Health_zones.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
+]
+SHAPES = [f"data/shapefiles/DRC_Health_zones.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
+NEEDED = DAILY + SHAPES
 
+DAILY_MAX_AGE_H = 6.0
+SHAPES_MAX_AGE_H = 30 * 24.0
 
 INRB_RAW = "https://raw.githubusercontent.com/INRB-UMIE/Ebola_DRC_2026/main/"
+HTTP_CACHE = "http_cache.json"
 
 
-def _download_needed(repo: Path) -> None:
-    for f in NEEDED:
-        r = requests.get(INRB_RAW + f, timeout=120)
+def _http_cache() -> dict:
+    p = CACHE / HTTP_CACHE
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _download_needed(repo: Path, files: list[str]) -> None:
+    """Fetch the given files, asking the server whether they changed since last time.
+
+    Without git this is the only way in, so a 66 MB shapefile would otherwise come down again on
+    every refresh. GitHub answers 304 for an unchanged file and sends no body.
+    """
+    meta = _http_cache()
+    for f in files:
+        p = repo / f
+        head = {}
+        m = meta.get(f) or {}
+        if p.exists():
+            if m.get("etag"):
+                head["If-None-Match"] = m["etag"]
+            if m.get("last_modified"):
+                head["If-Modified-Since"] = m["last_modified"]
+        r = requests.get(INRB_RAW + f, timeout=300, headers=head)
+        if r.status_code == 304 and p.exists():
+            continue
         r.raise_for_status()
         if r.content.startswith(b"version https://git-lfs"):
             raise RuntimeError(f"{f} is a Git LFS pointer; install git to fetch the INRB data")
-        p = repo / f
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(r.content)
+        meta[f] = {"etag": r.headers.get("ETag"), "last_modified": r.headers.get("Last-Modified")}
+    CACHE.mkdir(parents=True, exist_ok=True)
+    (CACHE / HTTP_CACHE).write_text(json.dumps(meta, indent=1), encoding="utf-8")
+
+
+def _git(*args, cwd: Path | None = None):
+    env = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}   # raw sitrep PDFs live in LFS; we do not need them
+    return subprocess.run(list(args), check=True, env=env, capture_output=True, text=True, cwd=cwd)
+
+
+def _sparse_clone(repo: Path) -> None:
+    """Clone only the files the analysis reads.
+
+    A plain --depth 1 clone of this repository is about 330 MB: mobility matrices, situation-report
+    PDFs, health-site shapefiles, an archived copy of the zone shapefile. The analysis uses roughly
+    70 MB of that, so blobs are fetched on demand and the checkout is limited to NEEDED.
+    """
+    if repo.exists():
+        shutil.rmtree(repo)
+    _git("git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "-q", INRB_REPO, str(repo))
+    _git("git", "-C", str(repo), "sparse-checkout", "set", "--no-cone", *NEEDED)
+
+
+def _stale(stamp: Path, max_age_h: float) -> bool:
+    return not stamp.exists() or (time.time() - stamp.stat().st_mtime) >= max_age_h * 3600
 
 
 # ---------------------------------------------------------------- fetching
-def fetch_inrb(refresh: bool = False, max_age_h: float = 6.0) -> Path:
-    """Clone or update the INRB repo into the cache and make sure the needed files exist."""
+def fetch_inrb(refresh: bool = False, max_age_h: float = DAILY_MAX_AGE_H,
+               shapes_max_age_h: float = SHAPES_MAX_AGE_H) -> Path:
+    """Make sure the cache holds the files the analysis reads, and that they are recent enough.
+
+    The daily figures and the zone geometry age on separate clocks; only what is stale is fetched.
+    """
     repo = CACHE / "inrb"
-    stamp = repo / ".dienstreis_fetched"
-    fresh = stamp.exists() and (time.time() - stamp.stat().st_mtime) < max_age_h * 3600
-    if repo.exists() and fresh and not refresh and all((repo / f).exists() for f in NEEDED):
+    stamps = {"daily": repo / ".dienstreis_fetched", "shapes": repo / ".dienstreis_shapes"}
+    want = []
+    if refresh or _stale(stamps["daily"], max_age_h) or not all((repo / f).exists() for f in DAILY):
+        want += DAILY
+    if refresh or _stale(stamps["shapes"], shapes_max_age_h) or not all((repo / f).exists() for f in SHAPES):
+        want += SHAPES
+    if not want:
         return repo
+
     CACHE.mkdir(parents=True, exist_ok=True)
     if shutil.which("git"):
-        env = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}   # raw sitrep PDFs live in LFS; we do not need them
-        run = lambda *a: subprocess.run(list(a), check=True, env=env, capture_output=True, text=True)
         if not (repo / ".git").exists():
-            if repo.exists():
-                shutil.rmtree(repo)   # left over from a download without git
-            run("git", "clone", "--depth", "1", "-q", INRB_REPO, str(repo))
+            _sparse_clone(repo)                       # includes a download without git left behind
         else:
-            run("git", "-C", str(repo), "fetch", "--depth", "1", "-q", "origin", "main")
-            run("git", "-C", str(repo), "reset", "--hard", "-q", "origin/main")
+            _git("git", "-C", str(repo), "fetch", "--depth", "1", "-q", "origin", "main")
+            _git("git", "-C", str(repo), "reset", "--hard", "-q", "origin/main")
         # a shallow clone sometimes leaves tracked files unmaterialised: check them out explicitly
-        run("git", "-C", str(repo), "checkout", "--", *NEEDED)
+        _git("git", "-C", str(repo), "checkout", "--", *NEEDED)
     else:
-        _download_needed(repo)   # no git (typical Windows PC): fetch only the files we use
+        _download_needed(repo, want)   # no git (typical Windows PC): only the stale files
+
     missing = [f for f in NEEDED if not (repo / f).exists()]
     if missing:
         raise RuntimeError(f"INRB files missing after fetch: {missing}")
-    stamp.touch()
+    for key, group in (("daily", DAILY), ("shapes", SHAPES)):
+        if any(f in want for f in group):
+            stamps[key].touch()
     return repo
 
 
+def cache_size_mb(path: Path | None = None) -> float:
+    p = path or CACHE
+    return sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) / 1e6 if p.exists() else 0.0
+
+
+def reset_cache() -> float:
+    """Delete the data cache. The next run makes a lean sparse clone (see `dienstreis data --reset-cache`)."""
+    size = cache_size_mb()
+    if CACHE.exists():
+        shutil.rmtree(CACHE)
+    return size
+
+
 def fetch_countries() -> gpd.GeoDataFrame:
+    """Country borders for the map background. Downloaded once; national borders do not move."""
     p = CACHE / "ne_50m_admin_0_countries.geojson"
     if not p.exists():
         CACHE.mkdir(parents=True, exist_ok=True)
