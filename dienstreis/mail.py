@@ -85,17 +85,77 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bo
     return "\n".join(lines)
 
 
+BANNED = ["cruciaal", "essentieel", "significant", "belangrijk", "substantieel", "aanzienlijk"]
+
+
 def check_text(txt: str) -> list[str]:
     issues = []
     if "\u2014" in txt:
         issues.append("em-dash aanwezig")
     if "[[CLAUDE" in txt:
         issues.append(f"{txt.count('[[CLAUDE')} open [[CLAUDE]]-plaatshouder(s)")
-    banned = ["cruciaal", "essentieel", "significant", "belangrijk", "substantieel", "aanzienlijk"]
-    hits = [w for w in banned if re.search(rf"\b{w}\b", txt, re.I)]
+    hits = [w for w in BANNED if re.search(rf"\b{w}\b", txt, re.I)]
     if hits:
         issues.append("verboden versterkers: " + ", ".join(hits))
     return issues
+
+
+# numbers written out in the reply: "7 672" and "7.672" are the same number as "7672"
+_NUMBER = re.compile(r"\d+(?:[ \u00a0.,]\d{3})*(?:,\d+)?")
+# day numbers, the rule windows (14/21/42 days) and percentages are always allowed
+_ALWAYS_OK = {str(n) for n in range(0, 32)} | {"42", "100"}
+
+
+def _numbers(txt: str) -> set[str]:
+    out = set()
+    for m in _NUMBER.finditer(txt):
+        s = re.sub(r"[ \u00a0.]", "", m.group(0)).split(",")[0]
+        if s:
+            out.add(s.lstrip("0") or "0")
+    return out
+
+
+def unknown_numbers(txt: str, sources: list[str]) -> list[str]:
+    """Numbers in the reply that appear in none of the facts it was written from.
+
+    The model rewrites the whole letter, so every case count, death count and interval passes
+    through it. check_text catches style, not arithmetic: this is what stops an invented figure
+    from going out in a signed medical advice. Reported, never silently corrected.
+    """
+    allowed = set(_ALWAYS_OK)
+    for s in sources:
+        allowed |= _numbers(s)
+    bad = sorted(_numbers(txt) - allowed, key=lambda x: (-len(x), x))
+    return [f"onbekend getal '{b}': komt niet voor in de berekende gegevens" for b in bad]
+
+
+def check_reply(txt: str, sources: list[str], numbers: bool = True) -> list[str]:
+    """Blocking checks: style, and every number traceable to the calculated facts."""
+    return check_text(txt) + (unknown_numbers(txt, sources) if numbers else [])
+
+
+# the same verdict written the way a letter writes it: "af te raden", "raad ik momenteel af"
+_VERDICT = {
+    "afraden": r"\bafrad|\baf\s+te\s+raden\b|\bafgeraden\b|\braad\b[^.]{0,40}\baf\b|niet\s+goed\s*(?:te\s+)?keuren",
+    "voorwaardelijk": r"\bvoorwaardelijk\b|\bvoorwaarden?\b",
+    "geen bezwaar": r"\bgeen\b[^.]{0,30}\bbezwaar\b",
+}
+
+
+def verdict_note(txt: str, overall: str | None) -> str | None:
+    """Warn when the rule verdict does not come back in the letter at all.
+
+    The model may argue against the rules, but not quietly drop them. Phrasing in Dutch varies too
+    much to make this blocking: it is raised in the repair round and then carried into the notes,
+    so a wrongly flagged wording never stops a correct reply from being sent.
+    """
+    if not overall:
+        return None
+    want = ("afraden" if "niet goedkeuren" in overall else
+            "voorwaardelijk" if "voorwaardelijk" in overall else "geen bezwaar")
+    if re.search(_VERDICT[want], txt, re.I):
+        return None
+    return f"regeloordeel '{want}' komt niet terug in de mail (regels: {overall}); bedoeld of niet?"
 
 
 def widget(mail_text: str, suggestions: list[str], title: str) -> str:

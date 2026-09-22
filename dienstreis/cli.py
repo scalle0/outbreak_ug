@@ -6,14 +6,11 @@ import json
 import os
 import re
 import sys
-from datetime import date
 from pathlib import Path
 
 import yaml
 
-
-def _slug(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:40]
+from .pipeline import _slug, analyse, log_row
 
 
 def cmd_msg(a):
@@ -40,67 +37,15 @@ def cmd_data(a):
         print(z[z.Nom.str.contains(a.zone, case=False)][cols].to_string(index=False))
 
 
-def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False) -> dict:
-    """Deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA. Returns summary."""
-    from . import data, figures, log, mail, risk
-    out = Path(out)
-    out.mkdir(parents=True, exist_ok=True)
-    ob = data.load(refresh=refresh, asof=asof)
-    ecdc = data.ecdc_snapshot() if not asof else {"ok": False, "reason": "asof run"}
-    rs = risk.assess(trip, ob)
-    tab = risk.table(rs)
-    tab.to_csv(out / "risk.csv", index=False, encoding="utf-8")
-    (out / "risk.md").write_text(tab.to_markdown(index=False) if hasattr(tab, "to_markdown") else tab.to_string(),
-                                 encoding="utf-8")
-
-    tag = _slug(trip.get("traveller", "trip"))
-    epi = figures.epicurve(ob, str(out / f"epicurve_{ob.asof:%Y%m%d}.png"), ecdc)
-    first = min((r.start for r in rs if r.start), default=None)
-    last = max((r.end for r in rs if r.end), default=None)
-    sub = (f"{trip.get('traveller', '')}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
-           f"{last.year if last else ''}. Nationaal: {mail.n(epi['last_total'])} gevallen, "
-           f"{mail.n(epi['last_deaths'])} overlijdens (data tot {ob.asof:%d-%m-%Y})")
-    mp = figures.itinerary_map(rs, ob, "Ebola (Bundibugyo-virus), DRC: situatie per gezondheidszone langs het reisschema",
-                               sub, str(out / f"kaart_{tag}.png"))
-
-    redirect = bool(trip.get("sent_to_ugent_address", False))
-    skel = mail.skeleton(trip, rs, epi, ecdc, redirect)
-    (out / "reply_skeleton.txt").write_text(skel, encoding="utf-8")
-    (out / "sources.txt").write_text(mail.sources_block(), encoding="utf-8")
-
-    adv = risk.advisories()
-    age = (date.today() - adv["verified"]).days if isinstance(adv["verified"], date) else None
-    qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"],
-          "ecdc_matches": (ecdc.get("cases") == epi["last_total"]) if ecdc.get("ok") else None,
-          "ecdc": ecdc, "unmatched_zone_names": ob.unmatched,
-          "advisories_verified_days_ago": age, "advisories_stale": age is None or age > 14,
-          "advisories_source": adv.get("_source", "package"),
-          "map_label_overlaps": mp["label_overlaps"], "map_labels_clipped": mp.get("labels_clipped", 0),
-          "far_stops_in_inset": mp["far_stops_in_inset"],
-          "skeleton_issues": mail.check_text(skel)}
-    summary = {"asof": str(ob.asof.date()), "overall": risk.overall(rs), "epi": epi,
-               "stops": [{**{k: v for k, v in r.__dict__.items() if k not in ("lat", "lon")},
-                          "verdict": r.verdict, "label": risk.LABEL[r.category]} for r in rs],
-               "qa": qa, "files": sorted(str(p) for p in out.iterdir()),
-               "map": mp["path"], "epicurve": str(out / f"epicurve_{ob.asof:%Y%m%d}.png"),
-               "departure": str(first or ""), "table": tab.drop(columns=["signalen"]).to_string(index=False)}
-    (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    if log_it:
-        log_row(trip, summary)
-    return summary
-
-
-def log_row(trip: dict, summary: dict, review_on: str | None = None) -> None:
-    from . import log
-    log.append({"advised_on": date.today().isoformat(), "traveller": trip.get("traveller", ""),
-                "departure": summary.get("departure", ""),
-                "stops": "; ".join(f"{s['place']}/{s.get('zone') or s.get('country')}" for s in summary["stops"]),
-                "categories": "".join(s["category"] for s in summary["stops"]), "overall": summary["overall"],
-                "review_on": str(review_on or trip.get("review_on") or ""), "note": trip.get("note", "")})
-
-
 def cmd_run(a):
-    trip = yaml.safe_load(open(a.stops, encoding="utf-8"))
+    from . import trip as trip_mod
+    trip = trip_mod.coerce(yaml.safe_load(open(a.stops, encoding="utf-8")))
+    issues = trip_mod.validate(trip, known_places=trip_mod.known_places())
+    if issues:
+        print(f"{a.stops} is niet bruikbaar:")
+        for x in issues:
+            print(f"  - {x}")
+        sys.exit(1)
     out = Path(a.out or f"out_{_slug(trip.get('traveller', 'trip'))}")
     s = analyse(trip, out, refresh=a.refresh, asof=a.asof, log_it=a.log)
     print(s["table"])
@@ -113,7 +58,8 @@ def cmd_run(a):
 def cmd_advies(a):
     from .advies import run_advies
     run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, web=a.web, outlook=a.outlook,
-               asof=a.asof, refresh=a.refresh, open_browser=not a.no_open)
+               asof=a.asof, refresh=a.refresh, open_browser=not a.no_open, apply_web=a.apply_web,
+               numbers=not a.no_number_check)
 
 
 def cmd_context(a):
@@ -168,7 +114,11 @@ def main(argv=None):
                    choices=["claude-code", "api", "manual"], help="LLM-backend (standaard: claude-code)")
     v.add_argument("--model", default=os.environ.get("DIENSTREIS_MODEL"))
     v.add_argument("--web", action="store_true", help="laat de LLM FOD/CDC en recent nieuws nakijken")
-    v.add_argument("--yes", action="store_true", help="reisschema niet laten bevestigen")
+    v.add_argument("--yes", action="store_true", help="reisschema niet laten bevestigen (stopt wel bij fouten)")
+    v.add_argument("--apply-web", action="store_true",
+                   help="wijzigingen uit --web zonder vragen overnemen in de lokale advisories.yaml")
+    v.add_argument("--no-number-check", action="store_true",
+                   help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")
     v.add_argument("--no-open", action="store_true", help="widget niet in de browser openen")
     v.add_argument("--out"); v.add_argument("--asof"); v.add_argument("--refresh", action="store_true")

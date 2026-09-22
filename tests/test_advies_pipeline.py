@@ -71,6 +71,59 @@ def test_pipeline_with_repair(env, monkeypatch):
     assert "Reiziger T" in (tmp / "log.csv").read_text(encoding="utf-8")
 
 
+INVENTED = GOOD.replace("2. Kisangani: af te raden.",
+                        "2. Kisangani: af te raden, met 8 421 bevestigde gevallen.")
+
+
+def test_invented_number_triggers_a_repair_round(env):
+    """A case count that is in no calculated figure must not reach the widget."""
+    tmp, req = env
+    replies = iter([{"reply": INVENTED, "suggestions": []},
+                    {"reply": GOOD, "suggestions": []}])
+    fake = llm.Fake({"stops": STOPS, "reply": lambda p: json.dumps(next(replies), ensure_ascii=False)})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    assert len(fake.prompts["reply"]) == 2 and "8421" in fake.prompts["reply"][1]
+    assert res["issues"] == [] and "8 421" not in (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
+
+
+def test_widget_is_not_built_when_checks_still_fail(env):
+    """The widget is the copy-to-Outlook page: never built around text that failed the checks."""
+    tmp, req = env
+    fake = llm.Fake({"stops": STOPS, "reply": {"reply": INVENTED, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    out = Path(res["out"])
+    assert res["widget"] is None and not list(out.glob("reply_*.html"))
+    assert any("8421" in i for i in res["issues"])
+    assert (out / "reply.txt").exists()            # the text is kept so it can be corrected by hand
+    assert "8421" in (out / "sugg.txt").read_text(encoding="utf-8")
+
+
+def test_bad_itinerary_stops_before_the_analysis(env):
+    """An unusable itinerary must not be analysed: it would give a wrong table, not an error."""
+    tmp, req = env
+    broken = {**STOPS, "stops": [{"place": "Doruma", "from": "2026-11-28", "to": "2026-12-05"}]}
+    fake = llm.Fake({"stops": broken})
+    with pytest.raises(SystemExit) as e:
+        advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                          open_browser=False, llm_backend=fake)
+    assert "niet bruikbaar" in str(e.value)
+    assert "reply" not in fake.prompts
+
+
+def test_non_iso_dates_from_the_model_are_accepted(env):
+    """The model returned 28/11/2026 in a live test; that must not crash or drop the nights flag."""
+    tmp, req = env
+    belgian = {**STOPS, "stops": [{"place": "Kinshasa", "from": "28/11/2026", "to": "05/12/2026"},
+                                  {"place": "Kisangani", "from": "06/12/2026", "to": "13/12/2026"}]}
+    fake = llm.Fake({"stops": belgian, "reply": {"reply": GOOD, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    assert [s["nights"] for s in res["summary"]["stops"]] == [7, 7]
+    assert "".join(s["category"] for s in res["summary"]["stops"]) == "FA"
+
+
 def test_extract_json_variants():
     assert llm.extract_json('tekst ```json\n{"a": 1}\n``` meer') == {"a": 1}
     assert llm.extract_json('voor {"a": "x}y", "b": {"c": 2}} na') == {"a": "x}y", "b": {"c": 2}}

@@ -19,6 +19,8 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -80,8 +82,20 @@ class Backend:
 
 
 class ClaudeCode(Backend):
-    """Headless Claude Code. The prompt goes in via stdin (no Windows command-line length limit)."""
+    """Headless Claude Code. The prompt goes in via stdin (no Windows command-line length limit).
+
+    The call runs in an empty temporary folder and with the flags below, so that nothing but the
+    prompt reaches the model: no CLAUDE.md from the repo or the home folder, no user settings, no
+    MCP servers, no skills. Without this the advice would depend on the folder the command was run
+    from, and an unrelated edit to a CLAUDE.md would silently change the wording of a medical advice.
+    `--bare` would isolate too, but forces ANTHROPIC_API_KEY authentication and never reads the
+    subscription login, so it cannot be used here.
+    """
     name = "claude-code"
+
+    # nothing from the machine, only the prompt
+    ISOLATION = ["--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
+                 "--permission-prompts", "none", "--no-session-persistence"]
 
     def __init__(self, model: str | None = None, workdir: Path | None = None, timeout: int = 900):
         self.bin = os.environ.get("DIENSTREIS_CLAUDE") or shutil.which("claude") or shutil.which("claude.exe")
@@ -92,15 +106,16 @@ class ClaudeCode(Backend):
 
     def complete(self, prompt: str, *, step: str, web: bool = False) -> str:
         cmd = [self.bin, "-p", "Volg de instructies in de invoer. Antwoord uitsluitend met het gevraagde JSON-object.",
-               "--output-format", "json"]
+               "--output-format", "json", *self.ISOLATION]
         if web:   # only web tools, pre-approved so that print mode never waits for a permission prompt
             cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch", "--max-turns", "25"]
         else:     # pure text step: no tools at all
             cmd += ["--tools", "", "--max-turns", "2"]
         if self.model:
             cmd += ["--model", self.model]
-        r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                           timeout=self.timeout, cwd=self.workdir)
+        with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
+            r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+                               timeout=self.timeout, cwd=neutral)
         if r.returncode != 0:
             raise LLMError(f"claude -p faalde ({r.returncode}): {r.stderr.strip()[:500]}")
         try:
@@ -177,11 +192,25 @@ def get_backend(name: str, model: str | None = None, workdir: Path | None = None
     raise LLMError(f"onbekende backend {name}")
 
 
+def trace_of(backend: Backend) -> list[dict]:
+    """Every prompt and answer of this run, in order. Written to llm_trace.json by `advies`.
+
+    A wrong sentence in a sent advice has to be traceable to what the model was actually given;
+    without this only the `manual` backend leaves a record behind.
+    """
+    return backend.__dict__.setdefault("trace", [])
+
+
 def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web: bool = False) -> dict:
     prompt = build_prompt(step, inputs)
     last = None
     for attempt in range(2):
+        t0 = time.time()
         text = backend.complete(prompt, step=step, web=web)
+        entry = {"step": step, "attempt": attempt + 1, "web": web, "backend": backend.name,
+                 "model": getattr(backend, "model", None), "seconds": round(time.time() - t0, 1),
+                 "prompt": prompt, "answer": text}
+        trace_of(backend).append(entry)
         try:
             d = extract_json(text)
             miss = [k for k in required if k not in d]
@@ -190,6 +219,7 @@ def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web
             last = f"ontbrekende velden: {miss}"
         except (LLMError, json.JSONDecodeError) as e:
             last = str(e)
+        entry["geweigerd"] = last
         prompt = build_prompt(step, inputs) + f"\n\nJe vorige antwoord was onbruikbaar ({last}). " \
                                                 "Geef enkel het JSON-object met alle gevraagde velden."
     raise LLMError(f"stap {step}: {last}")

@@ -23,11 +23,11 @@ from pathlib import Path
 import yaml
 
 from . import llm, log, mail, risk
-from .cli import _slug, analyse, log_row
+from . import trip as trip_mod
+from .pipeline import _slug, analyse, log_row
 from .msg import parse_request
 
 CONTEXT = Path(os.environ.get("DIENSTREIS_CONTEXT", Path.home() / ".config" / "dienstreis" / "context.md"))
-PLACES = Path(__file__).parent / "config" / "places.csv"
 
 
 def edit_file(path: Path) -> None:
@@ -36,8 +36,7 @@ def edit_file(path: Path) -> None:
     subprocess.run([ed, str(path)])
 
 
-def _known_places() -> list[str]:
-    return [l.split(",")[0] for l in PLACES.read_text(encoding="utf-8").splitlines()[1:] if l.strip()]
+_known_places = trip_mod.known_places
 
 
 def _say(msg: str) -> None:
@@ -46,44 +45,59 @@ def _say(msg: str) -> None:
 
 def _trip_from_llm(d: dict, req: dict) -> dict:
     keep = ("traveller", "note", "profile", "sent_to_ugent_address", "review_on", "stops")
-    trip = {k: d[k] for k in keep if k in d}
-    trip["sent_to_ugent_address"] = bool(req.get("sent_to_ugent_address")) or bool(trip.get("sent_to_ugent_address"))
-    for s in trip.get("stops", []):
-        for k in ("from", "to"):
-            if isinstance(s.get(k), str):
-                s[k] = date.fromisoformat(s[k])
-    if isinstance(trip.get("review_on"), str) and trip["review_on"]:
-        trip["review_on"] = date.fromisoformat(trip["review_on"])
-    return trip
+    t = {k: d[k] for k in keep if k in d}
+    # whether the thread used the ugent.be address is read from the mail itself, never from the model
+    t["sent_to_ugent_address"] = bool(req.get("sent_to_ugent_address")) or bool(t.get("sent_to_ugent_address"))
+    return trip_mod.coerce(t)
 
 
-def _print_trip(trip: dict, d: dict) -> None:
+def _print_trip(trip: dict, d: dict, issues: list[str]) -> None:
     print(f"Reiziger: {trip.get('traveller')}  |  {trip.get('note', '')}  |  profiel: {trip.get('profile')}")
-    for s in trip["stops"]:
+    for s in trip.get("stops") or []:
         extra = " (transit)" if s.get("transit_only") else ""
         extra += f" [{s['lodging']}]" if s.get("lodging") else ""
         extra += f" lat/lon {s['lat']}, {s['lon']}" if "lat" in s else ""
-        print(f"  {s['from']} tot {s['to']}  {s['place']}{extra}")
+        print(f"  {s.get('from')} tot {s.get('to')}  {s.get('place')}{extra}")
     print(f"Go/no-go: {trip.get('review_on')}")
     for k, t in (("contradictions", "Tegenstrijdig"), ("missing_info", "Ontbreekt"), ("questions_from_an", "Vragen An")):
         for x in d.get(k, []):
             print(f"  {t}: {x}")
+    for x in issues:
+        print(f"  FOUT: {x}")
+
+
+def _check_trip(trip: dict) -> list[str]:
+    return trip_mod.validate(trip, known_places=_known_places())
 
 
 def confirm_trip(trip: dict, d: dict, out: Path, yes: bool) -> dict:
+    """Show the itinerary with its problems and let the user confirm, edit or stop.
+
+    An itinerary with problems is never analysed: the places and dates are the input to every
+    calculation that follows, so a wrong one produces a wrong risk table rather than an error.
+    """
     path = out / "stops.yaml"
     path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    _print_trip(trip, d)
+    issues = _check_trip(trip)
+    _print_trip(trip, d, issues)
     if yes:
+        if issues:
+            raise SystemExit(f"Reisschema niet bruikbaar ({len(issues)} fout(en), zie hierboven). "
+                             f"Corrigeer {path} en draai `dienstreis run` of `dienstreis advies` opnieuw.")
         return trip
     while True:
-        a = input("\nKlopt dit reisschema? [j]a / [b]ewerken / [s]toppen: ").strip().lower() or "j"
+        opts = "[b]ewerken / [s]toppen" if issues else "[j]a / [b]ewerken / [s]toppen"
+        a = input(f"\nKlopt dit reisschema? {opts}: ").strip().lower() or ("b" if issues else "j")
+        if (a.startswith("j") or a.startswith("y")) and not issues:
+            return trip_mod.coerce(yaml.safe_load(path.read_text(encoding="utf-8")))
         if a.startswith("j") or a.startswith("y"):
-            return yaml.safe_load(path.read_text(encoding="utf-8"))
-        if a.startswith("b") or a.startswith("e"):
+            print("  Eerst de fouten hierboven oplossen; kies [b]ewerken.")
+        elif a.startswith("b") or a.startswith("e"):
             edit_file(path)
-            trip = yaml.safe_load(path.read_text(encoding="utf-8"))
-            _print_trip(trip, d)
+            trip = trip_mod.coerce(yaml.safe_load(path.read_text(encoding="utf-8")))
+            path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
+            issues = _check_trip(trip)
+            _print_trip(trip, d, issues)
         elif a.startswith("s") or a.startswith("n"):
             raise SystemExit("Gestopt; stops.yaml blijft staan in " + str(out))
 
@@ -103,8 +117,13 @@ def _history(trip: dict) -> list[dict]:
     return rows[-15:]
 
 
-def maybe_apply_web(webd: dict, yes: bool) -> None:
-    """Show advisory changes found online; on confirmation write a newer local advisories table."""
+def maybe_apply_web(webd: dict, apply_web: bool) -> None:
+    """Show advisory changes found online; on confirmation write a newer local advisories table.
+
+    Overwriting a travel advisory is a judgement, not a confirmation of something already shown:
+    it changes the FOD and CDC flags of every later advice. So this asks even under --yes, unless
+    --apply-web says otherwise.
+    """
     changed = [a for a in webd.get("advisories", []) if a.get("changed")]
     for n in webd.get("news", []):
         print(f"  nieuws {n.get('date')}: {n.get('item')} ({n.get('url')})")
@@ -113,7 +132,7 @@ def maybe_apply_web(webd: dict, yes: bool) -> None:
         return
     for a in changed:
         print(f"  WIJZIGING {a['province']}: FOD {a.get('fod')} ({a.get('fod_reason')}), CDC {a.get('cdc')}  [{a.get('source')}]")
-    if yes or input("Deze wijzigingen lokaal overnemen in advisories.yaml? [j/n]: ").strip().lower().startswith("j"):
+    if apply_web or input("Deze wijzigingen lokaal overnemen in advisories.yaml? [j/n]: ").strip().lower().startswith("j"):
         adv = {k: v for k, v in risk.advisories().items() if k != "_source"}
         for a in changed:
             adv.setdefault("provinces", {})[a["province"]] = {"fod": a.get("fod"), "fod_reason": a.get("fod_reason"),
@@ -124,22 +143,31 @@ def maybe_apply_web(webd: dict, yes: bool) -> None:
         print(f"  bewaard in {risk.LOCAL_ADVISORIES} (zet het ook in de repo als het blijvend is)")
 
 
-def write_reply(backend, inputs: dict) -> dict:
+def write_reply(backend, inputs: dict, sources: list[str], overall: str | None = None,
+                numbers: bool = True) -> dict:
+    """Write the reply, check it against the facts it came from, and allow one repair round.
+
+    `issues` blocks the widget (style, invented numbers); `notes` only warns (the rule verdict not
+    coming back in the letter). Both drive the repair round.
+    """
     d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
-    issues = mail.check_text(d["reply"])
-    if issues:   # one repair round with the concrete problems
-        _say("Tekstcontrole faalt (" + "; ".join(issues) + "), herstelronde")
-        inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues}
+    issues = mail.check_reply(d["reply"], sources, numbers=numbers)
+    note = mail.verdict_note(d["reply"], overall)
+    if issues or note:   # one repair round with the concrete problems
+        _say("Controle faalt (" + "; ".join(issues + ([note] if note else [])) + "), herstelronde")
+        inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + ([note] if note else [])}
         d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
-        issues = mail.check_text(d["reply"])
+        issues = mail.check_reply(d["reply"], sources, numbers=numbers)
+        note = mail.verdict_note(d["reply"], overall)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"
-    d["issues"] = issues
+    d["issues"], d["notes"] = issues, [note] if note else []
     return d
 
 
 def run_advies(src: str, out: str | None = None, backend: str = "claude-code", model: str | None = None,
                yes: bool = False, web: bool = False, outlook: bool = False, asof: str | None = None,
-               refresh: bool = False, open_browser: bool = True, llm_backend=None) -> dict:
+               refresh: bool = False, open_browser: bool = True, llm_backend=None,
+               apply_web: bool = False, numbers: bool = True) -> dict:
     t0 = time.time()
     req = parse_request(src)
     _say(f"Aanvraag: {req.get('subject')}")
@@ -191,7 +219,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
                                         "huidige_tabel": {k: v for k, v in risk.advisories().items() if k != "_source"},
                                         "reisschema": summary["table"]},
                             required=["advisories", "news"], web=True)
-        maybe_apply_web(webd, yes)
+        maybe_apply_web(webd, apply_web)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     _say("Mail schrijven")
@@ -207,17 +235,34 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
                                                  "questions_from_an", "contradictions", "missing_info", "review_on")},
               "aanvraag_tekst": req_in["body"][:6000],
               "context": _context_text(), "geschiedenis": _history(trip), "web": webd or "(niet gevraagd)"}
-    r = write_reply(be, inputs)
+    # every number in the mail must come from one of these; see mail.unknown_numbers
+    sources = [inputs["skelet"], json.dumps(summary, ensure_ascii=False, default=str),
+               json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
+    r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers)
 
     (outp / "reply.txt").write_text(r["reply"], encoding="utf-8")
     sugg = list(r.get("suggestions", []))
+    for n in r["notes"]:
+        sugg.insert(0, n)
     if bad:
         sugg.insert(0, f"QA faalde: {bad}. Controleer de cijfers voor verzending.")
     if r["issues"]:
-        sugg.insert(0, "Tekstcontrole faalt nog: " + "; ".join(r["issues"]) + ". Pas reply.txt aan en draai `dienstreis widget`.")
+        sugg.insert(0, "Controle faalt nog: " + "; ".join(r["issues"]) + ". Pas reply.txt aan en draai `dienstreis widget`.")
     (outp / "sugg.txt").write_text("\n".join(sugg) + "\n", encoding="utf-8")
+
+    # the widget is the copy-to-Outlook page: it is only built for a reply that passed every check
     html_path = outp / f"reply_{_slug(trip.get('traveller', 'trip'))}.html"
-    html_path.write_text(mail.widget(r["reply"], sugg, "Reply Team Actueel"), encoding="utf-8")
+    if r["issues"]:
+        html_path = None
+        print(f"\nWidget niet gebouwd; {outp / 'reply.txt'} bevat nog: " + "; ".join(r["issues"]))
+        print(f"Corrigeer de tekst en draai:\n  dienstreis widget {outp / 'reply.txt'} "
+              f"--suggestions {outp / 'sugg.txt'} --out {outp / 'reply.html'}")
+    else:
+        html_path.write_text(mail.widget(r["reply"], sugg, "Reply Team Actueel"), encoding="utf-8")
+
+    # what the model was given and answered, for every step and retry of this run
+    (outp / "llm_trace.json").write_text(
+        json.dumps(llm.trace_of(be), ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     review = r.get("review_on") or trip.get("review_on")
     log_row(trip, summary, review_on=str(review or ""))
@@ -227,19 +272,20 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
             f.write(("" if not CONTEXT.exists() or CONTEXT.read_text(encoding="utf-8").endswith("\n") else "\n")
                     + "- " + r["context_update"].strip() + "\n")
 
-    if outlook:
+    if outlook and not r["issues"]:
         from .outlook import draft
         try:
             draft(req, r["reply"], [summary["map"], summary["epicurve"]])
             print("Conceptmail staat open in Outlook (niet verzonden).")
         except Exception as e:
             print(f"Outlook-concept niet gelukt ({e}); gebruik de widget.")
-    if open_browser:
+    if open_browser and html_path:
         webbrowser.open(html_path.resolve().as_uri())
 
     _say(f"Klaar in {time.time() - t0:.0f} s")
-    print(f"Widget: {html_path}\nKaart: {summary['map']}\nCurve: {summary['epicurve']}\nNotities:")
+    print(f"Widget: {html_path or '(niet gebouwd)'}\nKaart: {summary['map']}\n"
+          f"Curve: {summary['epicurve']}\nNotities:")
     for s in sugg:
         print(f"  - {s}")
     return {"out": str(outp), "reply": r["reply"], "suggestions": sugg, "summary": summary, "trip": trip,
-            "widget": str(html_path)}
+            "issues": r["issues"], "widget": str(html_path) if html_path else None}

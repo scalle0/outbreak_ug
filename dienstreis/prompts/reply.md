@@ -56,6 +56,7 @@ Vertrek van `skelet`. Elke `[[CLAUDE: ...]]`-plaatshouder vervang je of schrap j
 - Deze woorden niet gebruiken: cruciaal, essentieel, significant, belangrijk, substantieel, aanzienlijk. Ook geen "eerlijk", "echt", "gewoon" als versterker.
 - Platte tekst, geen markdown (geen sterretjes, geen koppen met #). Genummerde lijsten mogen.
 - Cijfers met spatie als duizendtalscheiding (7 672). Datums als 19/09 of 19 september.
+- Elk getal in de mail moet letterlijk uit de invoer komen (`skelet`, `risico_per_stop`, `epi`, `qa`, `web`, `aanvraag_tekst`). Reken niets uit, rond niets af, schat niets: een getal dat daar niet staat wordt automatisch geweigerd. Heb je een cijfer nodig dat er niet is, schrijf het dan in woorden of laat het weg.
 
 ## Uitvoer
 
