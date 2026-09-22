@@ -70,10 +70,10 @@ def _extent(rs, zones, pad=1.6, min_span=6.0, near_km=450):
 
 
 def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbours: bool = True) -> dict:
-    zones = ob.zones.copy()
+    # simplified outlines for drawing only; the risk assessment used the exact boundaries
+    zones, prov = data.display_geometry(ob.zones)
     zones["fc"] = zones.cases.map(_colour)
     countries = data.fetch_countries()
-    prov = zones.dissolve(by="PROVINCE").reset_index()
     (x0, x1, y0, y1), far = _extent(rs, zones)
 
     fig, ax = plt.subplots(figsize=(12.5, 10), dpi=300)

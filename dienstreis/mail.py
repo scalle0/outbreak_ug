@@ -8,7 +8,7 @@ from __future__ import annotations
 import html
 import re
 
-from .risk import LABEL, StopRisk, overall
+from .risk import LABEL, StopRisk, overall, overrides, rule_overall
 
 MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september",
           "oktober", "november", "december"]
@@ -55,12 +55,21 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
     return head + "; ".join(parts) + "."
 
 
+def _override_hint(rs: list[StopRisk], trip: dict) -> str:
+    ov = overrides(rs, trip)
+    if not ov:
+        return ""
+    parts = "; ".join(f"{o['scope']}: {o['van']} -> {o['naar']} ({o['reason']})" for o in ov)
+    return (f" De arts week bewust af van de regel: {parts}. Schrijf het oordeel zoals het nu is, "
+            f"en zeg kort waarom, zonder de regelcategorie te noemen.")
+
+
 def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bool) -> str:
     who = trip.get("traveller", "de reiziger")
     wk = list(epi["weekly_cases_last4_full_weeks"].values())
     lines = ["Beste An,", "",
              f"[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. "
-             f"Regel-uitkomst: {overall(rs)}.]]", "",
+             f"Regel-uitkomst: {rule_overall(rs)}.{_override_hint(rs, trip)}]]", "",
              "Mijn beoordeling per luik:", ""]
     lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
     tot = ecdc if ecdc.get("ok") else {"cases": epi["last_total"], "deaths": epi["last_deaths"], "data_until": None}
@@ -151,8 +160,14 @@ def verdict_note(txt: str, overall: str | None) -> str | None:
     """
     if not overall:
         return None
-    want = ("afraden" if "niet goedkeuren" in overall else
-            "voorwaardelijk" if "voorwaardelijk" in overall else "geen bezwaar")
+    if "niet goedkeuren" in overall:
+        want = "afraden"
+    elif "voorwaardelijk" in overall:
+        want = "voorwaardelijk"
+    elif "geen" in overall and "bezwaar" in overall:
+        want = "geen bezwaar"
+    else:
+        return None   # a verdict the clinician wrote themselves: nothing to match it against
     if re.search(_VERDICT[want], txt, re.I):
         return None
     return f"regeloordeel '{want}' komt niet terug in de mail (regels: {overall}); bedoeld of niet?"
@@ -183,6 +198,8 @@ hr {{ margin:20px 0; border:none; border-top:1px solid var(--border); }} .s {{ f
 
 
 SOURCES = [
+    ("WHO, Disease Outbreak News",
+     "https://www.who.int/emergencies/disease-outbreak-news"),
     ("ECDC, epidemiologische update", "https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda"),
     ("INRB-UMIE, INSP-situatierapporten per gezondheidszone", "https://github.com/INRB-UMIE/Ebola_DRC_2026"),
     ("INSP/RDC, situatierapporten", "https://insp.cd/"),

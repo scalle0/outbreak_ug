@@ -21,6 +21,8 @@ from pathlib import Path
 
 PLACES = Path(__file__).parent / "config" / "places.csv"
 LODGING = {"hotel", "family", "guesthouse", "camp", "compound", "unknown"}
+CATEGORIES = set("ABCDEFX")
+MIN_REASON = 15
 # the DRC and its neighbours, wide enough for a stopover in Europe or southern Africa
 LAT_RANGE, LON_RANGE = (-35.0, 60.0), (-25.0, 60.0)
 MAX_SPAN_DAYS = 400
@@ -96,6 +98,13 @@ def coerce(trip: dict) -> dict:
                     pass
         if isinstance(s.get("place"), str):
             s["place"] = s["place"].strip()
+        if isinstance(s.get("override"), dict):
+            o = dict(s["override"])
+            if isinstance(o.get("category"), str):
+                o["category"] = o["category"].strip().upper()
+            if isinstance(o.get("reason"), str):
+                o["reason"] = o["reason"].strip()
+            s["override"] = o
         stops.append(s)
     t["stops"] = stops
     return t
@@ -151,6 +160,7 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
         sl = s.get("lodging")
         if sl is not None and str(sl).lower() not in LODGING:
             issues.append(f"{tag}: onbekende verblijfsvorm '{sl}'")
+        issues += _check_override(s.get("override"), tag)
 
     # the year is the classic failure: a trip from December into March crosses into the next year
     dates = [d for s in stops for d in (s.get("from"), s.get("to")) if isinstance(d, date)]
@@ -165,7 +175,38 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
         if last > today.replace(year=today.year + 3):
             issues.append(f"laatste datum {last} ligt meer dan drie jaar in de toekomst; "
                           f"controleer de jaartallen")
+    issues += _check_override(trip.get("override"), "overrule van het eindoordeel", overall=True)
     rv = trip.get("review_on")
     if rv is not None and not isinstance(rv, date) and str(rv).strip():
         issues.append(f"go/no-go-datum onleesbaar ({rv!r})")
+    return issues
+
+
+def _check_override(o, tag: str, overall: bool = False) -> list[str]:
+    """An override may be anything the clinician can defend, but it must say what it is defending.
+
+    The reason is not decoration: it goes into the risk table, the archived advice and the prompt
+    that writes the mail, so a later advice can see that a rule was set aside and why.
+    """
+    if o is None:
+        return []
+    if not isinstance(o, dict):
+        return [f"{tag}: 'override' moet een blok met 'reason' zijn"]
+    issues = []
+    reason = str(o.get("reason") or "").strip()
+    if len(reason) < MIN_REASON:
+        issues.append(f"{tag}: een overrule vraagt een reden van minstens {MIN_REASON} tekens "
+                      f"(nu {len(reason)}); die reden komt in het advies en in het archief")
+    if overall:
+        if not str(o.get("verdict") or "").strip():
+            issues.append(f"{tag}: geef 'verdict' met het oordeel dat in de plaats komt")
+    else:
+        cat = o.get("category")
+        if cat is None:
+            issues.append(f"{tag}: geef 'category' (een van {' '.join(sorted(CATEGORIES))})")
+        elif cat not in CATEGORIES:
+            issues.append(f"{tag}: onbekende categorie '{cat}' (kies uit {' '.join(sorted(CATEGORIES))})")
+    unknown = set(o) - {"category", "reason", "verdict"}
+    if unknown:
+        issues.append(f"{tag}: onbekende sleutel(s) in override: {', '.join(sorted(unknown))}")
     return issues

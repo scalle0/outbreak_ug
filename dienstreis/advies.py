@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from . import llm, log, mail, risk
+from . import archive, llm, log, mail, risk
 from . import trip as trip_mod
 from .pipeline import _slug, analyse, log_row
 from .msg import parse_request
@@ -165,7 +165,7 @@ def write_reply(backend, inputs: dict, sources: list[str], overall: str | None =
 
 
 def run_advies(src: str, out: str | None = None, backend: str = "claude-code", model: str | None = None,
-               yes: bool = False, web: bool = False, outlook: bool = False, asof: str | None = None,
+               yes: bool = False, web: bool = True, outlook: bool = False, asof: str | None = None,
                refresh: bool = False, open_browser: bool = True, llm_backend=None,
                apply_web: bool = False, numbers: bool = True) -> dict:
     t0 = time.time()
@@ -199,13 +199,26 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     _say("Analyse (data, zones, kaart, curve)")
     summary = analyse(trip, outp, refresh=refresh, asof=asof)
     print(summary["table"])
-    print(f"Oordeel (regels): {summary['overall']}")
+    if summary.get("overrides"):
+        print(f"Oordeel (regels): {summary['rule_overall']}")
+        for o in summary["overrides"]:
+            print(f"  OVERRULE {o['scope']}: {o['van']} -> {o['naar']} ({o['reason']})")
+        print(f"Oordeel (na overrule): {summary['overall']}")
+    else:
+        print(f"Oordeel (regels): {summary['overall']}")
     qa = summary["qa"]
     bad = [k for k in ("zone_sum_matches_national",) if not qa[k]]
     if qa.get("ecdc_matches") is False:
         bad.append("ecdc_matches")
     if qa.get("advisories_stale"):
-        print(f"  let op: reisadviezen {qa['advisories_verified_days_ago']} dagen oud; gebruik --web of werk advisories.yaml bij")
+        print(f"  let op: reisadviezen {qa['advisories_verified_days_ago']} dagen oud; "
+              f"de webstap werkt ze bij, of pas advisories.yaml aan")
+    who = qa.get("who") or {}
+    if who.get("ok"):
+        print(f"  WHO: {who.get('item')} ({who.get('date')}, {who.get('days_old')} dagen oud)")
+    for src in qa.get("sources_unreachable", []):
+        print(f"  let op: {src.upper()} niet bereikbaar ({(qa.get(src) or {}).get('reason')}); "
+              f"die kruiscontrole ontbreekt in dit advies")
     if qa.get("map_label_overlaps") or qa.get("map_labels_clipped"):
         print(f"  let op: kaartlabels overlappen ({qa['map_label_overlaps']}) of vallen weg ({qa.get('map_labels_clipped')}); bekijk de kaart")
     if bad:
@@ -213,12 +226,13 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
 
     webd = {}
     if web:
-        _say("Reisadviezen en nieuws op het web")
+        _say("Reisadviezen (FOD, CDC), WHO en nieuws op het web")
         provs = sorted({s["province"] for s in summary["stops"] if s.get("province")})
         webd = llm.ask_json(be, "web", {"vandaag": date.today().isoformat(), "provincies": provs,
                                         "huidige_tabel": {k: v for k, v in risk.advisories().items() if k != "_source"},
+                                        "who_laatste_don": summary["qa"].get("who"),
                                         "reisschema": summary["table"]},
-                            required=["advisories", "news"], web=True)
+                            required=["advisories", "news", "who"], web=True)
         maybe_apply_web(webd, apply_web)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
@@ -234,7 +248,10 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
               "aanvraag": {k: d.get(k) for k in ("traveller", "note", "nationality", "profile", "work_nature", "transport",
                                                  "questions_from_an", "contradictions", "missing_info", "review_on")},
               "aanvraag_tekst": req_in["body"][:6000],
-              "context": _context_text(), "geschiedenis": _history(trip), "web": webd or "(niet gevraagd)"}
+              "context": _context_text(), "geschiedenis": _history(trip),
+              "eerdere_adviezen": archive.for_trip(trip, summary),
+              "overrules": summary.get("overrides", []), "regel_oordeel_zonder_overrule": summary.get("rule_overall"),
+              "web": webd or "(niet gevraagd)"}
     # every number in the mail must come from one of these; see mail.unknown_numbers
     sources = [inputs["skelet"], json.dumps(summary, ensure_ascii=False, default=str),
                json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
@@ -244,6 +261,9 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     sugg = list(r.get("suggestions", []))
     for n in r["notes"]:
         sugg.insert(0, n)
+    for src in qa.get("sources_unreachable", []):
+        sugg.insert(0, f"{src.upper()} was niet bereikbaar tijdens deze run; die kruiscontrole "
+                       f"ontbreekt. Kijk de bron na voor verzending.")
     if bad:
         sugg.insert(0, f"QA faalde: {bad}. Controleer de cijfers voor verzending.")
     if r["issues"]:
@@ -265,7 +285,9 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         json.dumps(llm.trace_of(be), ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     review = r.get("review_on") or trip.get("review_on")
-    log_row(trip, summary, review_on=str(review or ""))
+    advice_dir = archive.save(trip, summary, r["reply"], request=req_in["body"] or "", suggestions=sugg)
+    log_row(trip, summary, review_on=str(review or ""), advice_dir=str(advice_dir))
+    print(f"Bewaard in {advice_dir}")
     if r.get("context_update"):
         CONTEXT.parent.mkdir(parents=True, exist_ok=True)
         with open(CONTEXT, "a", encoding="utf-8") as f:
@@ -288,4 +310,5 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     for s in sugg:
         print(f"  - {s}")
     return {"out": str(outp), "reply": r["reply"], "suggestions": sugg, "summary": summary, "trip": trip,
-            "issues": r["issues"], "widget": str(html_path) if html_path else None}
+            "issues": r["issues"], "advice_dir": str(advice_dir),
+            "widget": str(html_path) if html_path else None}

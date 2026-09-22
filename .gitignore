@@ -1,8 +1,42 @@
+# Python
 __pycache__/
+*.py[cod]
 *.egg-info/
+build/
+dist/
 .pytest_cache/
-out_*/
+
+# environments (the real one lives outside OneDrive, see README)
+.venv/
+venv/
+.env
+
+# editors
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# request mails and anything derived from them: these carry travellers' personal data
 *.msg
+*.eml
+*.pst
+*.ost
+!tests/fixtures/*.eml
+out_*/
 stops*.yaml
 !examples/*.yaml
-!tests/fixtures/*.eml
+reply*.txt
+reply*.html
+sugg.txt
+request.json
+llm_trace.json
+prompt_*.md
+antwoord_*.json
+
+# local state that belongs to the user, not the repo
+advice_log.csv
+context.md
+advisories.yaml
+!dienstreis/config/advisories.yaml

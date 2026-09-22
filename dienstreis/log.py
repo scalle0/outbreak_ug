@@ -7,7 +7,8 @@ from datetime import date
 from pathlib import Path
 
 LOG = Path(os.environ.get("DIENSTREIS_LOG", Path.home() / ".config" / "dienstreis" / "advice_log.csv"))
-FIELDS = ["advised_on", "traveller", "departure", "stops", "categories", "overall", "review_on", "note"]
+FIELDS = ["advised_on", "traveller", "departure", "stops", "categories", "overall", "review_on",
+          "note", "overrules", "advice_dir"]
 
 
 def append(row: dict, path: Path | None = None) -> Path:

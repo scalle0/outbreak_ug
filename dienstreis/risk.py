@@ -69,6 +69,8 @@ class StopRisk:
     neighbours_active: list = field(default_factory=list)
     nearest_active: dict | None = None
     category: str = "F"
+    rule_category: str | None = None      # what the rules said, when a clinician overrode it
+    override_reason: str | None = None
     fod: str | None = None
     fod_reason: str | None = None
     cdc: int | None = None
@@ -77,6 +79,10 @@ class StopRisk:
     @property
     def verdict(self) -> str:
         return VERDICT[self.category]
+
+    @property
+    def overridden(self) -> bool:
+        return self.rule_category is not None and self.rule_category != self.category
 
 
 def _norm_prov(p: str | None) -> str | None:
@@ -141,6 +147,24 @@ def assess_stop(stop: dict, zones, adv: dict, profile: dict) -> StopRisk:
         r.flags.append("lang verblijf (>= 14 nachten) in risicogebied")
     if r.new14 >= 5:
         r.flags.append(f"stijgend in de zone: {r.new14} nieuwe gevallen in 14 dagen")
+    return _apply_override(r, stop.get("override"))
+
+
+def _apply_override(r: StopRisk, o: dict | None) -> StopRisk:
+    """Let the clinician set the category aside, on the record.
+
+    The rules classify a health zone; they do not know the dossier. What the rules said is kept in
+    `rule_category` and the reason travels with it, so the table, the archive and the mail all show
+    that a judgement was made rather than a category silently changing.
+    """
+    if not o or not o.get("category"):
+        return r
+    r.rule_category = r.category
+    r.category = o["category"]
+    r.override_reason = o.get("reason")
+    if r.overridden:
+        r.flags.append(f"overrule: {LABEL[r.rule_category]} ({r.rule_category}) naar {r.category}; "
+                       f"{r.override_reason}")
     return r
 
 
@@ -149,13 +173,40 @@ def assess(trip: dict, ob) -> list[StopRisk]:
     return [assess_stop(s, ob.zones, adv, trip.get("profile", {})) for s in trip["stops"]]
 
 
-def overall(rs: list[StopRisk]) -> str:
-    cats = {r.category for r in rs}
+def _verdict_for(cats: set[str]) -> str:
     if "A" in cats:
         return "niet goedkeuren in huidige vorm (minstens een luik af te raden)"
     if cats & set("BDE"):
         return "voorwaardelijk, met go/no-go dichter bij vertrek"
     return "geen ebola-gerelateerd bezwaar"
+
+
+def rule_overall(rs: list[StopRisk]) -> str:
+    """What the rules alone conclude, before any override."""
+    return _verdict_for({r.rule_category or r.category for r in rs})
+
+
+def effective_overall(rs: list[StopRisk]) -> str:
+    """The verdict over the categories as they stand, per-stop overrides included."""
+    return _verdict_for({r.category for r in rs})
+
+
+def overall(rs: list[StopRisk], trip: dict | None = None) -> str:
+    """The advice as it stands: the categories after any override, or the verdict the clinician wrote."""
+    o = (trip or {}).get("override") or {}
+    return str(o["verdict"]) if o.get("verdict") else effective_overall(rs)
+
+
+def overrides(rs: list[StopRisk], trip: dict | None = None) -> list[dict]:
+    """Every rule set aside in this advice, for the table, the archive and the mail prompt."""
+    out = [{"scope": r.place, "van": LABEL[r.rule_category], "naar": LABEL[r.category],
+            "category": r.category, "rule_category": r.rule_category, "reason": r.override_reason}
+           for r in rs if r.overridden]
+    o = (trip or {}).get("override") or {}
+    if o.get("verdict"):
+        out.append({"scope": "eindoordeel", "van": effective_overall(rs), "naar": o["verdict"],
+                    "reason": o.get("reason")})
+    return out
 
 
 def table(rs: list[StopRisk]) -> pd.DataFrame:
@@ -168,5 +219,6 @@ def table(rs: list[StopRisk]) -> pd.DataFrame:
                      "actieve_buren": ", ".join(f"{n['zone']} ({n['cases']})" for n in r.neighbours_active[:4]) or "-",
                      "dichtstbij_actief": (f"{r.nearest_active['zone']} {r.nearest_active['km']} km"
                                            if r.nearest_active else "-"),
-                     "FOD": r.fod or "-", "CDC": r.cdc or "-", "signalen": "; ".join(r.flags)})
+                     "FOD": r.fod or "-", "CDC": r.cdc or "-",
+                     "regel_cat": r.rule_category or "-", "signalen": "; ".join(r.flags)})
     return pd.DataFrame(rows)

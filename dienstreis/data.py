@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import time
 import unicodedata
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,9 @@ import requests
 
 INRB_REPO = "https://github.com/INRB-UMIE/Ebola_DRC_2026.git"
 ECDC_URL = "https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda"
+WHO_DON_URL = "https://www.who.int/emergencies/disease-outbreak-news"
+WHO_DON_API = "https://www.who.int/api/news/diseaseoutbreaknews"
+UA = "Mozilla/5.0 (compatible; dienstreis-advies)"
 NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/"
                 "geojson/ne_50m_admin_0_countries.geojson")
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
@@ -38,6 +42,11 @@ DAILY = [
 ]
 SHAPES = [f"data/shapefiles/DRC_Health_zones.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
 NEEDED = DAILY + SHAPES
+
+# Drawing tolerance in degrees. The map is 12.5 inch at 300 dpi, about 3 750 pixels for a country
+# 2 000 km wide: roughly 500 m per pixel. Detail finer than half a pixel cannot appear on the page.
+DISPLAY_TOLERANCE = 0.0025
+
 
 DAILY_MAX_AGE_H = 6.0
 SHAPES_MAX_AGE_H = 30 * 24.0
@@ -156,15 +165,26 @@ def reset_cache() -> float:
     return size
 
 
-def fetch_countries() -> gpd.GeoDataFrame:
-    """Country borders for the map background. Downloaded once; national borders do not move."""
+def fetch_countries(tolerance: float = DISPLAY_TOLERANCE) -> gpd.GeoDataFrame:
+    """Country borders for the map background. Downloaded once; national borders do not move.
+
+    Drawn twice per map (behind the zones and again in the locator inset), so it is simplified to
+    the same drawing tolerance and kept that way in the cache.
+    """
     p = CACHE / "ne_50m_admin_0_countries.geojson"
     if not p.exists():
         CACHE.mkdir(parents=True, exist_ok=True)
         r = requests.get(NE_COUNTRIES, timeout=60)
         r.raise_for_status()
         p.write_bytes(r.content)
-    return gpd.read_file(p)[["ADMIN", "ISO_A3", "geometry"]]
+    if not tolerance:
+        return gpd.read_file(p)[["ADMIN", "ISO_A3", "geometry"]]
+    simple = CACHE / f"ne_50m_countries_{tolerance:g}.geojson"
+    if not simple.exists():
+        c = gpd.read_file(p)[["ADMIN", "ISO_A3", "geometry"]]
+        c["geometry"] = c.geometry.simplify(tolerance)
+        c.to_file(simple, driver="GeoJSON")
+    return gpd.read_file(simple)
 
 
 # ---------------------------------------------------------------- name handling
@@ -301,3 +321,92 @@ def ecdc_snapshot(timeout: int = 30) -> dict:
                 "url": ECDC_URL}
     except Exception as e:  # network or layout change
         return {"ok": False, "reason": repr(e)}
+
+
+def _shape_stamp(repo: Path) -> str:
+    """Identity of the health-zone shapefile, so cached outlines follow a refreshed shapefile."""
+    f = repo / "data/shapefiles/DRC_Health_zones.shp"
+    st = f.stat()
+    return f"{int(st.st_mtime)}_{st.st_size}"
+
+
+def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None,
+                     tolerance: float = DISPLAY_TOLERANCE) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Zone and province outlines for drawing: simplified, computed once, cached on disk.
+
+    Two costs sat in every single advice. Merging the health zones into 26 province outlines takes
+    about 50 seconds, and drawing a few thousand full-resolution polygons at 300 dpi another 25;
+    both depend only on the shapefile, which is refreshed at most monthly. So they are computed on
+    the first run after a shapefile change and read from the cache afterwards.
+
+    Only what is drawn is simplified. `geo` decides which health zone a place falls in, which zones
+    border it and how far the nearest active zone is, and those answers must come from the exact
+    boundaries: `zones` itself is never touched here.
+    """
+    repo = Path(repo or (CACHE / "inrb"))
+    tag = f"{tolerance:g}_{_shape_stamp(repo)}"
+    fz, fp = CACHE / f"display_zones_{tag}.geojson", CACHE / f"display_prov_{tag}.geojson"
+
+    if fz.exists() and fp.exists():
+        geo_z, prov = gpd.read_file(fz), gpd.read_file(fp)
+    else:
+        # dissolve at full resolution first: simplifying the zones first would leave gaps and
+        # spikes along the province borders, which are the one line on the map that must be right
+        prov = zones.dissolve(by="PROVINCE").reset_index()[["PROVINCE", "geometry"]]
+        if tolerance:
+            prov["geometry"] = prov.geometry.simplify(tolerance)
+        geo_z = zones[["Nom", "geometry"]].copy()
+        if tolerance:
+            geo_z["geometry"] = geo_z.geometry.simplify(tolerance)
+        CACHE.mkdir(parents=True, exist_ok=True)
+        for f in CACHE.glob("display_*.geojson"):      # drop outlines of an older shapefile
+            f.unlink(missing_ok=True)
+        geo_z.to_file(fz, driver="GeoJSON")
+        prov.to_file(fp, driver="GeoJSON")
+
+    out = zones.copy()
+    out["geometry"] = out.Nom.map(dict(zip(geo_z.Nom, geo_z.geometry)))
+    out = out.set_geometry("geometry")
+    missing = out.geometry.isna()
+    if missing.any():                                   # a zone the cache does not know: keep its own
+        out.loc[missing, "geometry"] = zones.loc[missing, "geometry"]
+    return out, prov
+
+
+def who_snapshot(timeout: int = 40, top: int = 20) -> dict:
+    """Most recent WHO Disease Outbreak News item about Ebola in the DRC.
+
+    Read from the DON JSON API, not the page: the page is rendered client-side and a regex over its
+    HTML finds nothing. A headline and a date, not figures; the counts that carry the advice come
+    from INSP. Fails soft like the ECDC check, because a source being unreachable must make itself
+    visible in the QA block, never stop an advice.
+    """
+    try:
+        r = requests.get(WHO_DON_API, timeout=timeout, headers={"User-Agent": UA},
+                         params={"$orderby": "PublicationDateAndTime desc", "$top": str(top)})
+        r.raise_for_status()
+        items = r.json().get("value", [])
+        for it in items:
+            title = str(it.get("Title") or "")
+            if re.search(r"ebola", title, re.I) and re.search(r"congo|DRC", title, re.I):
+                day = str(it.get("PublicationDateAndTime") or "")[:10]
+                link = str(it.get("ItemDefaultUrl") or "").strip("/")
+                return {"ok": True, "date": day or None, "item": title,
+                        "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
+                               if link else WHO_DON_URL,
+                        "days_old": (date.today() - date.fromisoformat(day)).days if day else None}
+        return {"ok": False, "reason": f"no DRC Ebola item in the last {len(items)} DON entries",
+                "url": WHO_DON_URL}
+    except Exception as e:   # network, API change or unparseable payload
+        return {"ok": False, "reason": repr(e), "url": WHO_DON_URL}
+
+
+def sources_snapshot(asof: str | None = None) -> dict:
+    """The sources checked on every run, next to the INSP figures.
+
+    ECDC and WHO are read here; FOD and CDC are prose pages that resist parsing, so they are checked
+    in the web step (prompts/web.md) and recorded in advisories.yaml with the date they were verified.
+    """
+    if asof:
+        return {"ecdc": {"ok": False, "reason": "asof run"}, "who": {"ok": False, "reason": "asof run"}}
+    return {"ecdc": ecdc_snapshot(), "who": who_snapshot()}

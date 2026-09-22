@@ -22,7 +22,8 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     ob = data.load(refresh=refresh, asof=asof)
-    ecdc = data.ecdc_snapshot() if not asof else {"ok": False, "reason": "asof run"}
+    src = data.sources_snapshot(asof)
+    ecdc, who = src["ecdc"], src["who"]
     rs = risk.assess(trip, ob)
     tab = risk.table(rs)
     tab.to_csv(out / "risk.csv", index=False, encoding="utf-8")
@@ -48,17 +49,23 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     age = (date.today() - adv["verified"]).days if isinstance(adv["verified"], date) else None
     qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"],
           "ecdc_matches": (ecdc.get("cases") == epi["last_total"]) if ecdc.get("ok") else None,
-          "ecdc": ecdc, "unmatched_zone_names": ob.unmatched,
+          "ecdc": ecdc, "who": who,
+          "who_days_old": who.get("days_old"),
+          "sources_unreachable": [k for k, v in src.items() if not v.get("ok")
+                                  and v.get("reason") != "asof run"],
+          "unmatched_zone_names": ob.unmatched,
           "advisories_verified_days_ago": age, "advisories_stale": age is None or age > 14,
           "advisories_source": adv.get("_source", "package"),
           "map_label_overlaps": mp["label_overlaps"], "map_labels_clipped": mp.get("labels_clipped", 0),
           "far_stops_in_inset": mp["far_stops_in_inset"],
-          "skeleton_issues": mail.check_text(skel)}
-    summary = {"asof": str(ob.asof.date()), "overall": risk.overall(rs), "epi": epi,
+          "skeleton_issues": mail.check_text(skel),
+          "overrules_count": len(risk.overrides(rs, trip))}
+    summary = {"asof": str(ob.asof.date()), "overall": risk.overall(rs, trip),
+               "rule_overall": risk.rule_overall(rs), "overrides": risk.overrides(rs, trip), "epi": epi,
                "stops": [{**{k: v for k, v in r.__dict__.items() if k not in ("lat", "lon")},
                           "verdict": r.verdict, "label": risk.LABEL[r.category]} for r in rs],
                "qa": qa, "files": sorted(str(p) for p in out.iterdir()),
-               "map": mp["path"], "epicurve": str(out / f"epicurve_{ob.asof:%Y%m%d}.png"),
+               "who": who, "map": mp["path"], "epicurve": str(out / f"epicurve_{ob.asof:%Y%m%d}.png"),
                "departure": str(first or ""), "table": tab.drop(columns=["signalen"]).to_string(index=False)}
     (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     if log_it:
@@ -66,10 +73,14 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     return summary
 
 
-def log_row(trip: dict, summary: dict, review_on: str | None = None) -> None:
+def log_row(trip: dict, summary: dict, review_on: str | None = None,
+            advice_dir: str = "") -> None:
     from . import log
     log.append({"advised_on": date.today().isoformat(), "traveller": trip.get("traveller", ""),
                 "departure": summary.get("departure", ""),
                 "stops": "; ".join(f"{s['place']}/{s.get('zone') or s.get('country')}" for s in summary["stops"]),
                 "categories": "".join(s["category"] for s in summary["stops"]), "overall": summary["overall"],
-                "review_on": str(review_on or trip.get("review_on") or ""), "note": trip.get("note", "")})
+                "review_on": str(review_on or trip.get("review_on") or ""), "note": trip.get("note", ""),
+                "overrules": "; ".join(f"{o['scope']}: {o['van']} -> {o['naar']} ({o['reason']})"
+                                       for o in summary.get("overrides", [])),
+                "advice_dir": advice_dir})

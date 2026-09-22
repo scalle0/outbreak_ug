@@ -26,9 +26,20 @@ What happens:
 | 1 | Python | read the .msg (attachments included) |
 | 2 | LLM | itinerary from the mail -> `stops.yaml`; shown in the terminal, you confirm or edit it in Notepad |
 | 3 | Python | INRB/INSP data, health zone per stop, category A-F, map, epicurve, ECDC cross-check, reply skeleton |
-| 4 | LLM, optional (`--web`) | check FOD/CDC advisories and news not yet in the data; changes are offered for a local `advisories.yaml` |
-| 5 | LLM | reply to An and notes for you, using `context.md` and the advice log for consistency |
-| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, widget in the browser, Outlook draft with map and epicurve (never sent), log line, context line, `llm_trace.json` |
+| 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories and news not yet in the data; changes are offered for a local `advisories.yaml` |
+| 5 | LLM | reply to An and notes for you, using `context.md` and the earlier advices for the same destinations |
+| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, widget in the browser, Outlook draft with map and epicurve (never sent), log line, context line, archived advice, `llm_trace.json` |
+
+### Which account pays
+
+The default backend signs in as **you**, through the Claude Code you already have installed. No API
+key, no `.env` file, nothing to configure: `claude auth status` shows `authMethod: claude.ai`, and
+that is the account the advices run on. An `ANTHROPIC_API_KEY` in your environment does not change
+that; it is only used when you ask for `--llm api` explicitly.
+
+Do not put an API key in a `.env` file inside this repository: the project lives in a synced folder,
+so the key would be uploaded with everything else. If you ever need one, set it as a Windows user
+variable (`setx ANTHROPIC_API_KEY ...`), which is stored per user and outside the synced tree.
 
 LLM backends (`--llm`, or the environment variable `DIENSTREIS_LLM`):
 
@@ -61,14 +72,62 @@ figure. Four checks hold that line, and each one names the problem instead of co
 advice can be traced back to what the model was given. `--no-number-check` switches the number
 check off for the rare reply where a legitimate figure trips it.
 
+## Sources checked every run
+
+| source | how | when |
+|---|---|---|
+| INSP situation reports per health zone (INRB-UMIE) | the figures the whole advice rests on | every run |
+| ECDC epidemiological update | page parsed, compared with the INSP national total | every run |
+| WHO Disease Outbreak News | read from the WHO JSON API: latest DRC Ebola item, its date and age | every run |
+| FOD Buitenlandse Zaken, US CDC | read in the web step; they are prose pages, and "formally advised against for security reasons" means something different from "for health reasons" | every run, `--no-web` to skip |
+
+A source that cannot be reached never stops an advice: it fails soft and shows up in the QA block
+under `sources_unreachable`, and in the notes. A run with `--asof` skips the live sources
+altogether, because today's pages do not belong with last month's figures.
+
+## Overruling a rule
+
+The categories classify a health zone. They do not know the dossier, so you can set one aside, per
+stop or for the whole trip, as long as you say why:
+
+```yaml
+stops:
+  - place: Kisangani
+    from: 2026-12-06
+    to: 2026-12-13
+    override: {category: C, reason: verblijf in een gesloten compound, geen contact met de gemeenschap}
+override: {verdict: goedkeuren mits compound, reason: ...}   # optional, for the whole trip
+```
+
+A reason is required. What the rules said is kept next to what you decided: the risk table gains a
+`regel_cat` column, `summary.json` keeps `rule_overall` and `overrides`, the log line and the
+archived advice record it, and the step that writes the mail is told a rule was set aside and why,
+so the letter argues the point instead of quietly reporting a different category. An override may be
+stricter as well as milder. It applies to that one advice and is not carried into the next run:
+an old judgement should not be laid silently over new figures.
+
+## Earlier advices
+
+Every advice is kept whole under `%USERPROFILE%\.config\dienstreis\adviezen\<date>_<traveller>\`:
+the mail as written, the figures behind it, and the overrides. When a new request touches a place,
+zone or province you have advised on before, those advices go to the step that writes the mail in
+full, so a contradiction with what you said last time is visible while the letter is being written
+rather than after it is sent.
+
+```bash
+dienstreis zoek Kisangani            # on place, zone, province, traveller or note
+dienstreis zoek --overruled --vol    # advices where a rule was set aside, with the full text
+dienstreis zoek --sinds 2026-08-01 --oordeel afraden
+```
+
 ## Privacy
 
 This tool is no longer fully local. With the `claude-code` and `api` backends, the subject and body
 of the request mail, the text of its attachments, `context.md` (which names colleagues and earlier
-advices), the matching rows of the advice log and the calculated figures are sent to Anthropic under
-your own subscription or API key. Nothing is sent by `data`, `run`, `check`, `widget` or `due`, and
+advices), the matching rows of the advice log, **the full text of earlier advices for the same
+destinations** and the calculated figures are sent to Anthropic under your own subscription or API key. Nothing is sent by `data`, `run`, `check`, `widget` or `due`, and
 `--llm manual` keeps the machine offline: it writes the prompt to a file and waits for you to paste
-an answer back. `--web` additionally lets the model search the open web. Decide deliberately what
+an answer back. `--no-web` stops the model searching the open web. Decide deliberately what
 goes into `context.md`; it is the richest personal data in the system and it goes out with every reply.
 
 Local files (never in the repo): `%USERPROFILE%\.config\dienstreis\context.md`, `advice_log.csv`,
@@ -104,6 +163,7 @@ Only what is stale is fetched, because the two halves age very differently:
 |---|---|---|
 | INSP figures per zone, aliases | every 6 hours | new situation report most days |
 | health-zone shapefile (66 MB) | every 30 days | zone boundaries almost never move |
+| province outlines and simplified zone outlines for the map | when the shapefile changes | see below |
 | Natural Earth country borders (3 MB) | once | national borders do not move |
 
 With git, the clone is sparse (`--filter=blob:none --sparse`, checkout limited to the ten files the
@@ -154,7 +214,22 @@ stops:
 | `reply.txt`, `reply_*.html` | the reply, and the copy widget (only written when every check passed) |
 | `sugg.txt` | notes for you, not part of the mail: commitments made, deviations, what to verify |
 | `llm_trace.json` | every prompt, answer and retry of this run |
-| `web.json` | what `--web` found (only with `--web`) |
+| `web.json` | what the web step found (FOD, CDC, WHO, news) |
+
+## Why the map is fast
+
+Drawing used to take about 105 of the 115 seconds an advice needed. Fifty of those went into
+merging the health zones into 26 province outlines, and another twenty-five into drawing a few
+thousand full-resolution polygons at 300 dpi, on every single run, for a shapefile that changes at
+most once a month. Both are now computed once and cached (`data.display_geometry`), and the outlines
+are simplified to about 250 m: the map is 12.5 inch at 300 dpi for a country 2 000 km wide, roughly
+500 m per pixel, so finer detail cannot appear on the page. A map now takes about 20 seconds, an
+advice about 30; the first run after a new shapefile pays the one-off cost of rebuilding the outlines.
+
+**Only what is drawn is simplified.** Which health zone a place falls in, which zones border it and
+how far the nearest active zone is are all decided on the exact boundaries. `display_geometry` works
+on a copy and never touches `ob.zones`, and `test_display_geometry.py` pins that, including a point
+sitting right on a zone border.
 
 ## Risk categories (health-zone level)
 
@@ -194,9 +269,21 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 
 ## Tests
 
-`pytest -q` runs the whole `advies` pipeline with a fake LLM (no model calls; checks the repair
-round, the prompt inputs, the itinerary checks, the number check and the outputs; never touches your
-log or context), covers the itinerary and reply checks on their own in `test_trip.py` and
-`test_reply_checks.py`, and reproduces the manual advices of August and September 2026 with frozen data dates
-(one trip on 22 Aug data, three on 19 Sep data), including the published figures
-of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani).
+`pytest -q` needs no model and, apart from the pipeline and regression tests, no network:
+
+| file | what it pins |
+|---|---|
+| `test_advies_pipeline.py` | the whole `advies` run with a fake LLM: the repair round, the prompt inputs, overruling and archiving end to end, the web step on and off |
+| `test_trip.py` | the itinerary checks: Belgian and ISO dates, unknown places, stop order, wrong years |
+| `test_reply_checks.py` | style, invented numbers, and the ways Dutch writes "afraden" |
+| `test_overrule.py` | a rule may be set aside, never silently: reason required, rule verdict preserved |
+| `test_archive.py` | advices saved, searchable, and handed back to the next advice |
+| `test_cache.py` | what is fetched and when, with git and requests replaced |
+| `test_sources.py` | WHO and ECDC, including every way they can fail |
+| `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
+| `test_request_parsing.py` | reading the request mail, against an invented fixture |
+| `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
+
+The pipeline and regression tests each do a full analysis against the cached data, so a complete
+run takes minutes. `pytest -q --ignore=tests/test_advies_pipeline.py --ignore=tests/test_regression.py`
+runs the rest in a couple of seconds while you work.

@@ -4,28 +4,54 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
-| F-007 | Regels kunnen overrulen, met vastgelegde reden | gevraagd | 2026-09-22 |
-| F-006 | Adviezen gelogd, gedateerd en doorzoekbaar, zodat nieuw advies oud advies niet tegenspreekt | gevraagd | 2026-09-22 |
-| F-005 | WHO en FOD Buitenlandse Zaken elke keer meenemen, naast CDC en ECDC | gevraagd | 2026-09-22 |
+| F-008 | Kaart sneller: elk advies ruim een minuut korter | klaar | 2026-09-22 |
+| F-007 | Regels kunnen overrulen, met vastgelegde reden | klaar | 2026-09-22 |
+| F-006 | Adviezen gelogd, gedateerd en doorzoekbaar, zodat nieuw advies oud advies niet tegenspreekt | klaar | 2026-09-22 |
+| F-005 | WHO en FOD Buitenlandse Zaken elke keer meenemen, naast CDC en ECDC | klaar | 2026-09-22 |
 | F-004 | Kaartgegevens apart van de dagcijfers verversen | klaar | 2026-09-22 |
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
 
+## F-008 · Kaart sneller: elk advies ruim een minuut korter
+- **Gevraagd:** 2026-09-22 — "pick up F-008"
+- **Status:** klaar (2026-09-22)
+- **Gebouwd:** `data.display_geometry()` berekent de provinciegrenzen en de vereenvoudigde zonecontouren eenmaal en bewaart ze in de cache, met de mtime en grootte van de shapefile als sleutel; contouren van een oudere shapefile worden opgeruimd. `fetch_countries()` bewaart de landgrenzen op dezelfde manier vereenvoudigd, want die worden twee keer per kaart getekend (achtergrond en locatiekaartje). `figures.itinerary_map` gebruikt die contouren in plaats van elke run opnieuw te dissolven.
+- **Gemeten:** `itinerary_map` gaat van 106 naar 21 seconden; een volledig advies van ongeveer 115 naar ongeveer 30 seconden. De eerste run na een nieuwe shapefile duurt eenmalig langer (ongeveer 100 seconden) omdat de contouren dan gemaakt worden. Cache erbij: 4,9 MB.
+- **Beslissingen:**
+  - Er wordt eerst op volle resolutie gedissolveerd en pas daarna vereenvoudigd. Andersom laat de vereenvoudiging gaten en pieken achter langs de provinciegrenzen, en dat is net de lijn op de kaart die moet kloppen.
+  - De vereenvoudiging raakt uitsluitend wat getekend wordt. `geo.zone_of`, `geo.neighbours` en `geo.nearest_active` blijven op de exacte grenzen werken: daar hangt de zone-indeling en dus het risico van af. `test_display_geometry.py` legt dat vast, inclusief een punt vlak bij een zonegrens.
+  - Tolerantie 0,0025 graden, ongeveer 250 m. De kaart is 12,5 inch op 300 dpi voor een land van 2 000 km breed, dus ongeveer 500 m per pixel: fijner detail kan niet op papier verschijnen.
+  - Voor en na visueel vergeleken op een reis Kinshasa-Kisangani-Durba: de zones, kleuren, arcering, de blauwe omlijning en het locatiekaartje zijn niet te onderscheiden. Wat wel verschuift zijn enkele labelposities (Mangobo, Kabondo, Mongbwalu, Damas), omdat adjustText op minieme hoekpuntverschillen anders uitkomt. `label_overlaps` en `labels_clipped` blijven 0.
+
 ## F-007 · Regels kunnen overrulen, met vastgelegde reden
 - **Gevraagd:** 2026-09-22 — "lastly, the user must be able to overrule rules"
-- **Status:** gevraagd
-- **Open:** af te spreken wat precies overruled kan worden en hoe het vastgelegd wordt. Voorstel: per halte de categorie A-F/X of het eindoordeel kunnen overschrijven in `stops.yaml` (`override: {category: C, reason: "..."}`), met een verplichte reden. De overrule verschijnt dan in de risicotabel, in `summary.json`, in de log en in de mailprompt, zodat het model weet dat de arts van de regel afgeweken is en waarom. Een overrule zonder reden wordt geweigerd. Te bespreken: mag een overrule ook strenger zijn dan de regel (waarschijnlijk ja), en moet ze aflopen bij een volgende run met nieuwe cijfers.
+- **Status:** klaar (2026-09-22)
+- **Gebouwd:** in `stops.yaml` kan een halte `override: {category: C, reason: "..."}` krijgen, en de reis `override: {verdict: "...", reason: "..."}` voor het eindoordeel. De reden is verplicht (minstens 15 tekens) en een onbekende categorie of sleutel wordt geweigerd (`trip._check_override`). `risk` bewaart wat de regels zeiden in `rule_category` en zet de overrule als signaal bij de halte; `rule_overall()` blijft naast `overall()` bestaan. De overrule komt terug in de risicotabel (kolom `regel_cat`), in `summary.json` (`overrides`, `rule_overall`), in de logregel (`overrules`), in het archief en in de mailprompt, met de instructie het oordeel te schrijven zoals het nu is en kort te zeggen waarom, zonder de regelcategorie te noemen.
+- **Beslissingen:**
+  - Een overrule mag beide kanten op: strenger dan de regel (F naar B) is even geldig als milder. De regels kennen het dossier niet.
+  - Een overrule geldt voor dat ene advies; ze staat in `stops.yaml` en gaat niet automatisch mee naar een volgende run met nieuwe cijfers. Dat is bewust: een overrule die blijft gelden zou een oude beoordeling stilzwijgend over nieuwe gegevens leggen.
+  - `mail.verdict_note` controleert niet langer op de regelwoorden wanneer de arts zelf een eindoordeel geschreven heeft; daar valt niets tegen af te toetsen.
+  - Drie oordelen naast elkaar, omdat ze drie verschillende vragen beantwoorden: `rule_overall` (wat de regels zeggen, voor elke overrule), `effective_overall` (de categorieen zoals ze nu staan, met de overrules per halte) en `overall` (het advies zoals het buitengaat, inclusief een eigen eindoordeel). Een eerste versie liet `overall` terugvallen op `rule_overall`, waardoor een overrule per halte het eindoordeel niet meer beinvloedde; `test_rule_overall_reports_what_the_rules_said_not_the_override` houdt dat tegen.
 
 ## F-006 · Adviezen gelogd, gedateerd en doorzoekbaar
 - **Gevraagd:** 2026-09-22 — "all advices must be logged, dated and searchable, so that rules and previous advice doesn't contradict current advice that is being generated"
-- **Status:** gevraagd
-- **Open:** er is al een `advice_log.csv` (datum, reiziger, haltes, categorieen, oordeel, go/no-go) en een `context.md` met notities; wat ontbreekt is de volledige tekst van het verstuurde advies en een fatsoenlijke zoekfunctie. Voorstel: elk advies integraal bewaren (mailtekst, `summary.json`, overrules) in `~/.config/dienstreis/adviezen/JJJJ-MM-DD_reiziger/`, met `dienstreis zoek <term>` op plaats, zone, reiziger, periode en oordeel. De treffers voor dezelfde bestemming gaan dan als volledige eerdere adviezen naar de mailprompt in plaats van de huidige logregels, zodat een tegenspraak zichtbaar wordt voor het model en in de notities belandt. Te bespreken: hoe lang bewaren, en dat dit persoonsgegevens van collega's zijn die dan ook naar het model gaan.
+- **Status:** klaar (2026-09-22)
+- **Gebouwd:** `archive.py` bewaart elk advies in `~/.config/dienstreis/adviezen/JJJJ-MM-DD_reiziger/` (`advies.json` met reiziger, data, haltes, zones, provincies, categorieen, oordeel, overrules en de volledige mailtekst; `reply.txt`; `summary.json`). `dienstreis zoek [term] [--sinds] [--tot] [--oordeel] [--overruled] [--vol]` zoekt op plaats, zone, provincie, reiziger of notitie, nieuwste eerst. `archive.for_trip` geeft de eerdere adviezen voor dezelfde plaatsen, zones of provincies mee aan de mailprompt (`eerdere_adviezen`), met de volledige tekst: een logregel van een regel kan niet tonen dat een nieuw advies een ouder tegenspreekt, de tekst wel. De logregel houdt nu ook `overrules` en `advice_dir` bij, zodat log en archief naar elkaar verwijzen.
+- **Beslissingen:**
+  - De volledige mailtekst gaat mee naar het model, niet enkel de samenvatting. Dat is het punt van de functie, maar het betekent ook dat reisgegevens van collega's uit eerdere dossiers meegestuurd worden. Staat in de privacyparagraaf van de README.
+  - Twee adviezen voor dezelfde persoon op dezelfde dag krijgen een map met achtervoegsel, ze overschrijven elkaar niet.
+  - Een onleesbaar `advies.json` wordt overgeslagen in plaats van de zoekopdracht te laten mislukken.
 
 ## F-005 · WHO en FOD Buitenlandse Zaken elke keer meenemen
 - **Gevraagd:** 2026-09-22 — "we should also check the WHO and FOD buitenlandse zaken every time (next to CDC and eCDC...), maybe also wanda to be sure?"
-- **Status:** gevraagd
-- **Open:** de webstap (`--web`) kijkt nu naar FOD en CDC en is optioneel; ECDC wordt deterministisch gescrapet als kruiscontrole. Te doen: WHO Disease Outbreak News en de WHO-situatierapporten erbij, FOD en CDC bij elke run in plaats van enkel met `--web`, en de bronnenlijst in `mail.SOURCES` mee laten groeien. **Vraag aan Steven:** met "wanda" is wellicht wanda.be bedoeld, het reisadvies van het ITG. Graag bevestigen, want dat is de enige bron in het rijtje die specifiek Belgisch en klinisch is; ze heeft een ander gewicht dan FOD (veiligheid) of CDC (niveau). Te bespreken: elke bron elke keer ophalen maakt elke run trager en afhankelijk van het web, dus wellicht met een eigen cache per bron en een duidelijke melding als een bron niet bereikbaar was.
+- **Status:** klaar (2026-09-22)
+- **Gebouwd:** `data.who_snapshot()` leest het recentste Disease Outbreak News over ebola in de DRC uit de WHO-API (`who.int/api/news/diseaseoutbreaknews`), met datum, titel, link en ouderdom in dagen. `data.sources_snapshot()` haalt WHO en ECDC bij elke run op; beide falen zacht en komen in het QA-blok terecht (`who`, `who_days_old`, `sources_unreachable`). De webstap staat nu standaard aan (`--no-web` om ze over te slaan) en kijkt FOD, CDC en WHO na; `prompts/web.md` vraagt expliciet of er een nieuwer DON of een WHO-risicobeoordeling is. WHO staat ook in `mail.SOURCES`.
+- **Beslissingen:**
+  - wanda.be valt weg op vraag van Steven (2026-09-22).
+  - De WHO-pagina wordt niet gescrapet maar via de JSON-API gelezen: de pagina wordt client-side opgebouwd, een regex over de HTML vindt niets (nagegaan, leverde eerst "no DRC Ebola item" op).
+  - FOD en CDC blijven in de webstap in plaats van deterministisch gescrapet te worden: het zijn lopende teksten, en het verschil tussen "formeel afgeraden om veiligheidsredenen" en "om gezondheidsredenen" bepaalt de formulering van het advies.
+  - Een `--asof`-run haalt geen live bronnen op: de pagina's van vandaag horen niet bij de cijfers van vorige maand.
 
 ## F-004 · Kaartgegevens apart van de dagcijfers verversen
 - **Gevraagd:** 2026-09-22 — "The maps we make: are these downloaded every time?"

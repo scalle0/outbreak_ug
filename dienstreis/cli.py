@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,widget,due,context}."""
+"""Command line: dienstreis {advies,msg,data,run,check,widget,due,zoek,context}."""
 from __future__ import annotations
 
 import argparse
@@ -63,8 +63,9 @@ def cmd_run(a):
 
 def cmd_advies(a):
     from .advies import run_advies
-    run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, web=a.web, outlook=a.outlook,
+    run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, outlook=a.outlook,
                asof=a.asof, refresh=a.refresh, open_browser=not a.no_open, apply_web=a.apply_web,
+               web=not a.no_web,
                numbers=not a.no_number_check)
 
 
@@ -78,6 +79,27 @@ def cmd_context(a):
     else:
         edit_file(CONTEXT)
     print(CONTEXT)
+
+
+def cmd_zoek(a):
+    from . import archive
+    from datetime import date as _d
+    rows = archive.search(a.term or "", verdict=a.oordeel or "",
+                          since=_d.fromisoformat(a.sinds) if a.sinds else None,
+                          until=_d.fromisoformat(a.tot) if a.tot else None,
+                          overruled=True if a.overruled else None, limit=a.limit)
+    if not rows:
+        print("Geen advies gevonden.")
+        return
+    for r in rows:
+        ov = f"  OVERRULE: {len(r['overrides'])}" if r.get("overrides") else ""
+        print(f"{r['advised_on']}  {r['traveller']}  {', '.join(str(p) for p in r.get('places', []))}"
+              f"  [{r.get('categories', '')}]  {r.get('overall', '')}{ov}")
+        if a.vol:
+            for line in str(r.get("reply", "")).splitlines():
+                print(f"    {line}")
+        print(f"    {r['dir']}")
+    print(f"\n{len(rows)} advies(en).")
 
 
 def cmd_check(a):
@@ -119,7 +141,9 @@ def main(argv=None):
     v.add_argument("--llm", default=os.environ.get("DIENSTREIS_LLM", "claude-code"),
                    choices=["claude-code", "api", "manual"], help="LLM-backend (standaard: claude-code)")
     v.add_argument("--model", default=os.environ.get("DIENSTREIS_MODEL"))
-    v.add_argument("--web", action="store_true", help="laat de LLM FOD/CDC en recent nieuws nakijken")
+    v.add_argument("--no-web", action="store_true",
+                   help="FOD, CDC en WHO niet live laten nakijken (sneller, maar op de tabel van de laatste keer)")
+    v.add_argument("--web", action="store_true", help=argparse.SUPPRESS)   # standaard aan sinds 0.3
     v.add_argument("--yes", action="store_true", help="reisschema niet laten bevestigen (stopt wel bij fouten)")
     v.add_argument("--apply-web", action="store_true",
                    help="wijzigingen uit --web zonder vragen overnemen in de lokale advisories.yaml")
@@ -140,6 +164,14 @@ def main(argv=None):
     c = s.add_parser("check", help="controle van een mailtekst of widget"); c.add_argument("file"); c.set_defaults(f=cmd_check)
     w = s.add_parser("widget", help="HTML-widget uit afgewerkte mailtekst"); w.add_argument("text"); w.add_argument("--suggestions"); w.add_argument("--out", required=True); w.add_argument("--title", default="Reply Team Actueel"); w.set_defaults(f=cmd_widget)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
+    z = s.add_parser("zoek", help="eerdere adviezen zoeken op plaats, zone, provincie, reiziger of notitie")
+    z.add_argument("term", nargs="?", default="")
+    z.add_argument("--sinds", help="JJJJ-MM-DD"); z.add_argument("--tot", help="JJJJ-MM-DD")
+    z.add_argument("--oordeel", help="filter op het eindoordeel, bv. afraden")
+    z.add_argument("--overruled", action="store_true", help="enkel adviezen waarin een regel overruled is")
+    z.add_argument("--vol", action="store_true", help="de volledige mailtekst tonen")
+    z.add_argument("--limit", type=int, default=50)
+    z.set_defaults(f=cmd_zoek)
     a = p.parse_args(argv)
     a.f(a)
 
