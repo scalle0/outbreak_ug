@@ -126,11 +126,12 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
         mpatches.Patch(fc="none", ec="#000", hatch="....", label="Nieuwe gevallen laatste 14 dagen"),
         mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label="Gezondheidszone van een stop"),
         Line2D([0], [0], marker="s", color=BLUE, ls=(0, (4, 3)), mfc=BLUE, mec="white", ms=8, label="Reisschema")]
-    ax.legend(handles=legend, loc="lower right", fontsize=8.3, framealpha=0.96, edgecolor="#999",
-              title="Bevestigde BVD-gevallen per gezondheidszone", title_fontsize=8.8)
+    inset_corner, legend_corner = _free_corners(inside, (x0, x1, y0, y1))
+    leg = ax.legend(handles=legend, loc=legend_corner, fontsize=8.3, framealpha=0.96, edgecolor="#999",
+                    title="Bevestigde BVD-gevallen per gezondheidszone", title_fontsize=8.8)
 
-    # locator inset (whole DRC), shows far stops such as Kinshasa
-    axi = ax.inset_axes([0.0, 0.0, 0.24, 0.26], zorder=20)
+    # locator inset (whole DRC), shows far stops such as Kinshasa; placed in a corner without stops
+    axi = ax.inset_axes(CORNERS[inset_corner], zorder=20)
     countries.plot(ax=axi, color="#f4f4f4", edgecolor="#bbbbbb", linewidth=0.3)
     prov.plot(ax=axi, color="#eeeeee", edgecolor="#999999", linewidth=0.3)
     zones[zones.cases > 0].plot(ax=axi, color="#ef6548", linewidth=0)
@@ -157,10 +158,43 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
              fontsize=7.1, color="#444444", transform=ax.transAxes, va="top")
     fig.canvas.draw()
     overlaps = _overlaps(texts, fig)
+    clipped = _clipped(texts, fig, ax, [axi, leg])
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    return {"path": out, "label_overlaps": overlaps, "extent": (x0, x1, y0, y1),
+    return {"path": out, "label_overlaps": overlaps, "labels_clipped": clipped, "extent": (x0, x1, y0, y1),
             "far_stops_in_inset": [r.place for r in far]}
+
+
+CORNERS = {"lower left": [0.0, 0.0, 0.24, 0.26], "lower right": [0.76, 0.0, 0.24, 0.26],
+           "upper left": [0.0, 0.74, 0.24, 0.26], "upper right": [0.76, 0.74, 0.24, 0.26]}
+
+
+def _free_corners(stops, ext) -> tuple[str, str]:
+    """Corner for the inset and for the legend: the two with the fewest stops (and stop labels) nearby."""
+    x0, x1, y0, y1 = ext
+    pts = [((r.lon - x0) / (x1 - x0), (r.lat - y0) / (y1 - y0)) for r in stops]
+
+    def load(name):
+        bx, by, bw, bh = CORNERS[name]
+        m = 0.08   # labels sit to the right of and around a stop
+        return sum(1 for px, py in pts if bx - m <= px <= bx + bw + m and by - m <= py <= by + bh + m)
+
+    order = sorted(CORNERS, key=lambda c: (load(c), ["lower left", "lower right", "upper left", "upper right"].index(c)))
+    return order[0], order[1]
+
+
+def _clipped(texts, fig, ax, covers) -> int:
+    """Labels that stick out of the map frame or disappear under the inset or the legend."""
+    r = fig.canvas.get_renderer()
+    frame = ax.get_window_extent(r)
+    boxes = [c.get_window_extent(r) for c in covers if c is not None]
+    n = 0
+    for t in texts:
+        b = t.get_window_extent(r)
+        outside = b.x0 < frame.x0 or b.x1 > frame.x1 or b.y0 < frame.y0 or b.y1 > frame.y1
+        if outside or any(b.overlaps(c) for c in boxes):
+            n += 1
+    return n
 
 
 def _overlaps(texts, fig) -> int:

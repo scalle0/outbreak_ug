@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import time
 import unicodedata
@@ -33,6 +34,20 @@ NEEDED = [
 ] + [f"data/shapefiles/DRC_Health_zones.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
 
 
+INRB_RAW = "https://raw.githubusercontent.com/INRB-UMIE/Ebola_DRC_2026/main/"
+
+
+def _download_needed(repo: Path) -> None:
+    for f in NEEDED:
+        r = requests.get(INRB_RAW + f, timeout=120)
+        r.raise_for_status()
+        if r.content.startswith(b"version https://git-lfs"):
+            raise RuntimeError(f"{f} is a Git LFS pointer; install git to fetch the INRB data")
+        p = repo / f
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(r.content)
+
+
 # ---------------------------------------------------------------- fetching
 def fetch_inrb(refresh: bool = False, max_age_h: float = 6.0) -> Path:
     """Clone or update the INRB repo into the cache and make sure the needed files exist."""
@@ -42,15 +57,20 @@ def fetch_inrb(refresh: bool = False, max_age_h: float = 6.0) -> Path:
     if repo.exists() and fresh and not refresh and all((repo / f).exists() for f in NEEDED):
         return repo
     CACHE.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}   # raw sitrep PDFs live in LFS; we do not need them
-    run = lambda *a: subprocess.run(list(a), check=True, env=env, capture_output=True, text=True)
-    if not (repo / ".git").exists():
-        run("git", "clone", "--depth", "1", "-q", INRB_REPO, str(repo))
+    if shutil.which("git"):
+        env = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}   # raw sitrep PDFs live in LFS; we do not need them
+        run = lambda *a: subprocess.run(list(a), check=True, env=env, capture_output=True, text=True)
+        if not (repo / ".git").exists():
+            if repo.exists():
+                shutil.rmtree(repo)   # left over from a download without git
+            run("git", "clone", "--depth", "1", "-q", INRB_REPO, str(repo))
+        else:
+            run("git", "-C", str(repo), "fetch", "--depth", "1", "-q", "origin", "main")
+            run("git", "-C", str(repo), "reset", "--hard", "-q", "origin/main")
+        # a shallow clone sometimes leaves tracked files unmaterialised: check them out explicitly
+        run("git", "-C", str(repo), "checkout", "--", *NEEDED)
     else:
-        run("git", "-C", str(repo), "fetch", "--depth", "1", "-q", "origin", "main")
-        run("git", "-C", str(repo), "reset", "--hard", "-q", "origin/main")
-    # a shallow clone sometimes leaves tracked files unmaterialised: check them out explicitly
-    run("git", "-C", str(repo), "checkout", "--", *NEEDED)
+        _download_needed(repo)   # no git (typical Windows PC): fetch only the files we use
     missing = [f for f in NEEDED if not (repo / f).exists()]
     if missing:
         raise RuntimeError(f"INRB files missing after fetch: {missing}")

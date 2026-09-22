@@ -10,10 +10,11 @@ LOG = Path(os.environ.get("DIENSTREIS_LOG", Path.home() / ".config" / "dienstrei
 FIELDS = ["advised_on", "traveller", "departure", "stops", "categories", "overall", "review_on", "note"]
 
 
-def append(row: dict, path: Path = LOG) -> Path:
+def append(row: dict, path: Path | None = None) -> Path:
+    path = path or LOG
     path.parent.mkdir(parents=True, exist_ok=True)
     new = not path.exists()
-    with open(path, "a", newline="") as f:
+    with open(path, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         if new:
             w.writeheader()
@@ -21,19 +22,21 @@ def append(row: dict, path: Path = LOG) -> Path:
     return path
 
 
-def due(today: date | None = None, path: Path = LOG) -> list[dict]:
+def due(today: date | None = None, path: Path | None = None) -> list[dict]:
+    path = path or LOG
     today = today or date.today()
     if not path.exists():
         return []
     out = []
-    for r in csv.DictReader(open(path)):
+    for r in csv.DictReader(open(path, encoding="utf-8")):
         if r.get("review_on") and date.fromisoformat(r["review_on"]) <= today:
             out.append(r)
     return out
 
 
-def history(place_or_name: str, path: Path = LOG) -> list[dict]:
+def history(place_or_name: str, path: Path | None = None) -> list[dict]:
+    path = path or LOG
     if not path.exists():
         return []
     q = place_or_name.lower()
-    return [r for r in csv.DictReader(open(path)) if q in r["stops"].lower() or q in r["traveller"].lower()]
+    return [r for r in csv.DictReader(open(path, encoding="utf-8")) if q in r["stops"].lower() or q in r["traveller"].lower()]

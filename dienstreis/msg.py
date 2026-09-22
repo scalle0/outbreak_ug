@@ -66,12 +66,47 @@ def _original_request(body: str) -> str:
 
 
 def _extract_text(p: Path) -> str | None:
+    """Pure-Python first (works on Windows), external tools as fallback."""
+    try:
+        if p.suffix.lower() == ".docx":
+            import docx
+            d = docx.Document(str(p))
+            rows = [" | ".join(c.text for c in r.cells) for t in d.tables for r in t.rows]
+            return "\n".join([x.text for x in d.paragraphs] + rows)
+        if p.suffix.lower() == ".pdf":
+            from pypdf import PdfReader
+            return "\n".join(pg.extract_text() or "" for pg in PdfReader(str(p)).pages)
+    except Exception:
+        pass
     for cmd in (["extract-text", str(p)], ["pandoc", str(p), "-t", "plain"]):
         try:
             return subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=True).stdout
         except Exception:
             continue
     return None
+
+
+def parse_request(path: str | Path) -> dict:
+    """.msg via olefile; .eml via the email package; anything else is read as pasted mail text."""
+    path = Path(path)
+    if path.suffix.lower() == ".msg":
+        return parse_msg(path)
+    if path.suffix.lower() == ".eml":
+        import email
+        from email import policy
+        m = email.message_from_bytes(path.read_bytes(), policy=policy.default)
+        part = m.get_body(preferencelist=("plain", "html"))
+        body = part.get_content() if part else ""
+        rec = [{"name": None, "email": a} for a in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", f"{m['to']} {m['cc']}")]
+    else:
+        body = path.read_text(encoding="utf-8", errors="replace")
+        m, rec = {}, []
+    return {"subject": (m.get("subject") if m else None) or path.stem, "sender": m.get("from") if m else None,
+            "recipients": rec, "body": body, "attachments": [],
+            "sent_to_ugent_address": any(r["email"].lower().startswith("steven.callens@ugent.be") for r in rec),
+            "traveller_mentions_outbreak": bool(re.search(r"ebola|bundibugyo|outbreak|uitbraak|épidémie",
+                                                          _original_request(body), re.I)),
+            "emails_in_thread": sorted(set(e.lower() for e in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", body)))}
 
 
 if __name__ == "__main__":

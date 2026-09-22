@@ -11,6 +11,8 @@ Categories (health zone level, relative to the data date):
 """
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -29,8 +31,20 @@ LABEL = {"A": "getroffen zone, recent geval (<= 21 d)", "B": "getroffen zone, la
          "X": "buiten de DRC"}
 
 
+LOCAL_ADVISORIES = Path(os.environ.get("DIENSTREIS_ADVISORIES",
+                                     Path.home() / ".config" / "dienstreis" / "advisories.yaml"))
+
+
 def advisories() -> dict:
-    return yaml.safe_load(open(CONFIG / "advisories.yaml"))
+    """Package table, or the local copy when that one was verified more recently (see `dienstreis advies --web`)."""
+    pkg = yaml.safe_load(open(CONFIG / "advisories.yaml", encoding="utf-8"))
+    pkg["_source"] = "package"
+    if LOCAL_ADVISORIES.exists():
+        loc = yaml.safe_load(open(LOCAL_ADVISORIES, encoding="utf-8"))
+        if loc and str(loc.get("verified", "")) > str(pkg.get("verified", "")):
+            loc["_source"] = str(LOCAL_ADVISORIES)
+            return loc
+    return pkg
 
 
 @dataclass
