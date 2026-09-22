@@ -5,7 +5,7 @@ Je helpt Steven Callens (diensthoofd Algemene Inwendige Ziekten en Infectieziekt
 Haal het reisschema eruit. Je beoordeelt hier nog geen risico.
 
 Regels:
-- Een stop per verblijfplaats, in chronologische volgorde, met datums in ISO (JJJJ-MM-DD). De einddatum van een stop is de laatste nacht of dag daar.
+- Een stop per verblijfplaats, in chronologische volgorde, met datums in ISO (JJJJ-MM-DD). `from` is de dag van aankomst, `to` de dag van vertrek van die plaats, ook als de reiziger die dag meteen doorreist. Twee opeenvolgende stops delen dus die datum: Sakania `to: 2026-10-10` en Lubumbashi `from: 2026-10-10`. Zet niet de laatste overnachting als `to`: het aantal nachten wordt berekend als `to` min `from`, en dat aantal telt mee in de beoordeling.
 - Neem transitpunten op (luchthaven, rivierhaven, grensovergang) met `transit_only: true` als de reiziger er enkel passeert.
 - Gebruik bij voorkeur plaatsnamen uit `bekende_plaatsen`. Voor een onbekende plaats geef je `lat` en `lon` (decimaal) en zet je de plaats in `missing_info` als je de coördinaten niet zeker kent.
 - Accommodatie: `lodging: family` als de reiziger bij familie of kennissen verblijft, anders `hotel`. Zet dit per stop als het verschilt, en in `profile` wat voor het grootste deel van de reis geldt.

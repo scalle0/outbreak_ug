@@ -151,6 +151,35 @@ _VERDICT = {
 }
 
 
+MAX_WORDS = 500
+
+
+def word_count(txt: str) -> int:
+    """Words in the reply, without the salutation and the signature block."""
+    out, rows = [], txt.splitlines()
+    if rows and rows[0].strip().startswith("Beste"):
+        rows = rows[1:]
+    for row in rows:
+        if row.strip().startswith("Met vriendelijke groet"):
+            break
+        out.append(row)
+    return len(" ".join(out).split())
+
+
+def length_note(txt: str, limit: int = MAX_WORDS) -> str | None:
+    """Warn when the reply has grown into a report.
+
+    An reads this to decide about a trip, not to follow the reasoning; the reasoning belongs in the
+    notes. Raised in the repair round so the model gets one chance to cut, but never blocking: a
+    long reply that is accurate can still be sent, and only the clinician can judge that.
+    """
+    n = word_count(txt)
+    if n <= limit:
+        return None
+    return (f"de mail telt {n} woorden, dat is te lang (richtlijn 350, maximum {limit}); "
+            f"kort in en zet wat wegvalt in de notities")
+
+
 def verdict_note(txt: str, overall: str | None) -> str | None:
     """Warn when the rule verdict does not come back in the letter at all.
 

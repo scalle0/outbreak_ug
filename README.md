@@ -67,6 +67,7 @@ figure. Four checks hold that line, and each one names the problem instead of co
 | every number in the reply appears in the calculated facts | `mail.unknown_numbers` | one repair round naming the number; if it survives, no widget and no Outlook draft |
 | style: no em-dash, no banned intensifiers, no open placeholders | `mail.check_text` | same |
 | the rule verdict (afraden / voorwaardelijk / geen bezwaar) still appears in the letter | `mail.verdict_note` | a note in `sugg.txt`. Only a warning: the model may argue against the rules, but you should see that it did |
+| the reply stays readable in a minute (350 words, 500 at most) | `mail.length_note` | one attempt to cut, then a note. Also only a warning: what falls out of the mail belongs in `sugg.txt`, which is where the reasoning goes |
 
 `out_*/llm_trace.json` keeps every prompt, answer and retry of the run, so a sentence in a sent
 advice can be traced back to what the model was given. `--no-number-check` switches the number

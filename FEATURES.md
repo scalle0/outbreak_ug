@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
 | F-008 | Kaart sneller: elk advies ruim een minuut korter | klaar | 2026-09-22 |
 | F-007 | Regels kunnen overrulen, met vastgelegde reden | klaar | 2026-09-22 |
 | F-006 | Adviezen gelogd, gedateerd en doorzoekbaar, zodat nieuw advies oud advies niet tegenspreekt | klaar | 2026-09-22 |
@@ -12,6 +13,14 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-009 · Kortere mail aan Team Actueel
+- **Gevraagd:** 2026-09-22 — "the mail indeed has to be much shorter"
+- **Status:** klaar (2026-09-22)
+- **Gebouwd:** `prompts/reply.md` heeft een paragraaf Lengte (richtlijn 350 woorden, maximum 500) en een herschreven structuur: kernoordeel in een of twee zinnen, twee tot drie zinnen per luik met alleen de cijfers die het oordeel dragen, stand van zaken in twee zinnen, profiel alleen als het het oordeel verandert, hoogstens zes voorwaarden van elk een regel, en per vraag van An hoogstens drie zinnen. Expliciet erbij: de valkuilen staan er om fouten te vermijden, niet om te tonen dat het model eraan gedacht heeft, en wat uit de mail valt hoort in `suggestions`, waar wel uitgeweid mag worden. `mail.length_note` telt de woorden tussen aanhef en ondertekening en voedt de bestaande herstelronde.
+- **Beslissingen:**
+  - De lengtecontrole waarschuwt, ze blokkeert niet. Een te lange maar correcte mail is verstuurbaar; alleen de arts kan oordelen of de lengte terecht is. Ze zit dus bij `notes`, naast `verdict_note`, en niet bij `issues`.
+  - De grens telt de eigenlijke tekst, niet de aanhef en de ondertekening, zodat de redirectregel de telling niet beinvloedt.
 
 ## F-008 · Kaart sneller: elk advies ruim een minuut korter
 - **Gevraagd:** 2026-09-22 — "pick up F-008"
@@ -101,5 +110,4 @@ Een fout gevonden en hersteld: de mail schreef "het laatste geval dateert van va
 Aandachtspunt, geen fout: de mail telde 1 642 woorden. De cijfercontrole bewijst dat een getal ergens uit de invoer komt, niet dat het waar is; cijfers die uit de webstap komen (het aantal gehospitaliseerden, de cholera-aantallen, de WHO-cijfers van DON617) zijn zo betrouwbaar als de webpagina die het model gelezen heeft. Het veld `checked_how` in `web.json` zegt of de pagina zelf gelezen is of enkel een zoekresultaat.
 
 ## Voorstellen (nog niet gevraagd)
-- De mail is lang (1 642 woorden in de proefdraai, negen voorwaarden). Te bekijken of `prompts/reply.md` naar een kortere brief moet sturen, met de details in de notities voor Steven in plaats van in de mail aan An. Dat is een redactionele keuze, geen technische.
 - Een echte `.msg` als testfixture. De OLE-parser in `msg.py` wordt nu enkel handmatig getest; `.eml` en `.txt` zitten wel in de tests. Een `.msg` maken vraagt Outlook, en een bestaande aanvraag committen vraagt eerst een beslissing over anonimisering.

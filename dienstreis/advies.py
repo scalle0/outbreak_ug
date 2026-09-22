@@ -143,6 +143,11 @@ def maybe_apply_web(webd: dict, apply_web: bool) -> None:
         print(f"  bewaard in {risk.LOCAL_ADVISORIES} (zet het ook in de repo als het blijvend is)")
 
 
+def _soft_notes(reply: str, overall: str | None) -> list[str]:
+    """Things worth one more try but never worth refusing a correct reply over."""
+    return [n for n in (mail.verdict_note(reply, overall), mail.length_note(reply)) if n]
+
+
 def write_reply(backend, inputs: dict, sources: list[str], overall: str | None = None,
                 numbers: bool = True) -> dict:
     """Write the reply, check it against the facts it came from, and allow one repair round.
@@ -152,15 +157,15 @@ def write_reply(backend, inputs: dict, sources: list[str], overall: str | None =
     """
     d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
     issues = mail.check_reply(d["reply"], sources, numbers=numbers)
-    note = mail.verdict_note(d["reply"], overall)
-    if issues or note:   # one repair round with the concrete problems
-        _say("Controle faalt (" + "; ".join(issues + ([note] if note else [])) + "), herstelronde")
-        inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + ([note] if note else [])}
+    notes = _soft_notes(d["reply"], overall)
+    if issues or notes:   # one repair round with the concrete problems
+        _say("Controle faalt (" + "; ".join(issues + notes) + "), herstelronde")
+        inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + notes}
         d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
         issues = mail.check_reply(d["reply"], sources, numbers=numbers)
-        note = mail.verdict_note(d["reply"], overall)
+        notes = _soft_notes(d["reply"], overall)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"
-    d["issues"], d["notes"] = issues, [note] if note else []
+    d["issues"], d["notes"] = issues, notes
     return d
 
 

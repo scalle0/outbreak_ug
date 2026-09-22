@@ -38,30 +38,32 @@ De echte risico's voor een reiziger zonder zorgcontact zijn vaak operationeel: k
 - De 21-dagenregel op de FOD-site gaat over maatregelen van andere landen; België legt zelf geen inreisbeperking op. De interne DRC-regel (21 dagen in een niet-getroffen provincie na transit door een getroffen provincie) staat enkel in het Nederlandse reisadvies en is niet bevestigd: vermelden als te verifiëren via de ambassade, en de gevolgen voor de terugreis benoemen als het schema in een getroffen provincie eindigt.
 - "Medische evacuatie pas na negatieve test" is een inschatting, geen gepubliceerde regel; zo formuleren of laten bevestigen door de verzekeraar.
 
+## Lengte
+
+An moet de mail in een minuut kunnen lezen en er meteen mee verder kunnen. **Richt op 350 woorden, blijf onder 500.** Dat is krap en dat is de bedoeling: het dwingt je te kiezen wat An echt nodig heeft.
+
+Wat je weglaat uit de mail is niet verloren, het hoort in `suggestions`, dat Steven wel leest:
+- je redenering, je twijfels, wat je overwogen en verworpen hebt;
+- achtergrond over de uitbraak die het oordeel niet verandert;
+- wat Steven nog moet verifiëren, en welke toezeggingen hij in de mail doet.
+
+De mail is een antwoord, geen verslag van je denkwerk. De valkuilen hierboven zijn er om te vermijden dat je iets fout schrijft, niet om te tonen dat je eraan gedacht hebt. Schrijf niet wat An al ziet in de kaart en de curve in bijlage. Herhaal een cijfer niet twee keer. Geen samenvattende slotalinea.
+
 ## Structuur van de mail
 
-Vertrek van `skelet`. Elke `[[CLAUDE: ...]]`-plaatshouder vervang je of schrap je; de automatische alinea's herformuleer je tot natuurlijk Nederlands.
-1. Een zin kernoordeel (verschilt deze aanvraag van eerdere?).
-2. Per luik: data, oordeel, feitelijke onderbouwing.
-3. Kort de actuele stand (nationaal totaal met datum, trend over volle weken).
-4. Profiel, enkel wat het oordeel verandert.
-5. Voorwaarden als genummerde lijst: pretravel consult, geen transit door getroffen zones, go/no-go-datum met expliciete criteria, meldpunt bij koorts, temperatuur tot 21 dagen na terugkeer, verzekering, vragen om ontbrekende info (zie `aanvraag.missing_info` en `aanvraag.contradictions`).
-6. Antwoord op elke expliciete vraag van An (`aanvraag.questions_from_an`).
-7. Bijlagen vermelden (kaart, epidemiecurve).
+Vertrek van `skelet`. Elke `[[CLAUDE: ...]]`-plaatshouder vervang je of schrap je; de automatische alinea's herformuleer je tot natuurlijk Nederlands, korter mag.
 
-## Conventies
-
-- Nederlands (Vlaams, zakelijk). Aanhef "Beste An,". Meteen ter zake, geen beleefdheidsfrasen of inleidende zinnen.
-- Afsluiten met "Met vriendelijke groet," en op de volgende regel "Steven Callens" (plus de redirectregel als het skelet die bevat).
-- Nooit een em-dash (het teken U+2014). Gebruik een dubbelepunt, puntkomma of nieuwe zin.
-- Deze woorden niet gebruiken: cruciaal, essentieel, significant, belangrijk, substantieel, aanzienlijk. Ook geen "eerlijk", "echt", "gewoon" als versterker.
-- Platte tekst, geen markdown (geen sterretjes, geen koppen met #). Genummerde lijsten mogen.
-- Cijfers met spatie als duizendtalscheiding (7 672). Datums als 19/09 of 19 september.
-- Elk getal in de mail moet letterlijk uit de invoer komen (`skelet`, `risico_per_stop`, `epi`, `qa`, `web`, `aanvraag_tekst`). Reken niets uit, rond niets af, schat niets: een getal dat daar niet staat wordt automatisch geweigerd. Heb je een cijfer nodig dat er niet is, schrijf het dan in woorden of laat het weg.
+1. **Kernoordeel, een of twee zinnen.** Wat is het antwoord, en wijkt het af van een eerder advies voor dezelfde bestemming?
+2. **Per luik twee tot drie zinnen**: oordeel, en het ene of twee cijfers die dat oordeel dragen. Niet alle beschikbare cijfers, alleen wat het oordeel draagt. Een luik zonder bezwaar is een halve zin.
+3. **Stand van zaken, twee zinnen**: nationaal totaal met de datum, en de trend over volle weken.
+4. **Profiel**: alleen als het het oordeel verandert. Verandert het niets, laat het weg.
+5. **Voorwaarden, hoogstens zes, elk een regel.** Alleen wat voor deze reis geldt. Het pretravel consult, de go/no-go met criteria, en het meldpunt bij koorts met temperatuuropvolging tot 21 dagen horen er zo goed als altijd bij; de rest neem je alleen op als dit dossier erom vraagt. Ontbrekende informatie (`aanvraag.missing_info`, `aanvraag.contradictions`) bundel je in een enkele voorwaarde, niet een per item.
+6. **Antwoord op elke expliciete vraag van An** (`aanvraag.questions_from_an`): per vraag hoogstens drie zinnen, het antwoord eerst. Zijn er geen vragen, laat dit weg.
+7. Bijlagen in een halve zin.
 
 ## Uitvoer
 
-Antwoord uitsluitend met dit JSON-object. `suggestions` zijn notities voor Steven, niet voor de mail: register, commitment audit (welke toezeggingen doe je in de mail), afwijkingen van eerdere adviezen, onzekerheden, wat hij moet verifiëren, bijlagen. `context_update` is één regel voor zijn contextbestand (datum, reiziger, bestemming, kernoordeel, toezeggingen), zonder medische gegevens.
+Antwoord uitsluitend met dit JSON-object. `suggestions` zijn notities voor Steven, niet voor de mail, en hier mag je wel uitweiden: je redenering, wat je bewust uit de mail gelaten hebt, register, commitment audit (welke toezeggingen doe je in de mail), afwijkingen van eerdere adviezen, onzekerheden, wat hij moet verifiëren, bijlagen. `context_update` is één regel voor zijn contextbestand (datum, reiziger, bestemming, kernoordeel, toezeggingen), zonder medische gegevens.
 
 ```json
 {

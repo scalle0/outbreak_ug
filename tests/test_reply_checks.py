@@ -80,3 +80,33 @@ def test_verdict_note_is_not_blocking():
     """A phrasing mismatch warns, it never stops a reply whose numbers are right."""
     soft = "Beste An,\n\nIk zie hier niets problematisch.\n"
     assert mail.check_reply(soft, [FACTS]) == []
+
+
+def _mail(words, salutation=True):
+    parts = (["Beste An,", ""] if salutation else []) + [" ".join(["woord"] * words), "",
+                                                         "Met vriendelijke groet,", "Steven Callens",
+                                                         "steven.callens@uzgent.be"]
+    return "\n".join(parts)
+
+
+def test_word_count_ignores_salutation_and_signature():
+    assert mail.word_count(_mail(120)) == 120
+
+
+def test_a_long_reply_is_flagged():
+    note = mail.length_note(_mail(900))
+    assert note and "900" in note and "notities" in note
+
+
+def test_a_normal_reply_is_not_flagged():
+    assert mail.length_note(_mail(340)) is None
+
+
+def test_the_limit_is_the_boundary():
+    assert mail.length_note(_mail(mail.MAX_WORDS)) is None
+    assert mail.length_note(_mail(mail.MAX_WORDS + 1)) is not None
+
+
+def test_length_never_blocks_a_correct_reply():
+    """An over-long but accurate mail is still sendable; only the clinician can judge that."""
+    assert mail.check_reply(_mail(1500), ["geen getallen"]) == []
