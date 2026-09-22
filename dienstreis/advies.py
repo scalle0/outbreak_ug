@@ -161,7 +161,7 @@ def write_reply(backend, inputs: dict, sources: list[str], overall: str | None =
     if issues or notes:   # one repair round with the concrete problems
         _say("Controle faalt (" + "; ".join(issues + notes) + "), herstelronde")
         inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + notes}
-        d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
+        d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], repair=True)
         issues = mail.check_reply(d["reply"], sources, numbers=numbers)
         notes = _soft_notes(d["reply"], overall)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"

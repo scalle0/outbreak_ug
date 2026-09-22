@@ -232,6 +232,23 @@ how far the nearest active zone is are all decided on the exact boundaries. `dis
 on a copy and never touches `ob.zones`, and `test_display_geometry.py` pins that, including a point
 sitting right on a zone border.
 
+## Where everything lives
+
+Four places, and only one of them is irreplaceable.
+
+| | where | what | if you lose it |
+|---|---|---|---|
+| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`), and `advisories.yaml` if the web step wrote one | gone for good. Back this up |
+| **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
+| **Per-run output** | `out_<traveller>/` where you ran the command | the reply, widget, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
+| **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/` in this repo | places, zone spellings, the FOD/CDC table, and the three prompts that hold the clinical judgement rules | it is in git |
+
+The advice folders are the thing worth protecting: they are what later advices are checked against,
+and the only record of what was actually sent. `out_*/` is scratch, and is gitignored.
+
+Both `.config` and `.cache` can be moved with `DIENSTREIS_CONTEXT`, `DIENSTREIS_LOG`,
+`DIENSTREIS_ARCHIVE`, `DIENSTREIS_ADVISORIES` and `DIENSTREIS_CACHE`.
+
 ## Risk categories (health-zone level)
 
 | cat | rule | default verdict |

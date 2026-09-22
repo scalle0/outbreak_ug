@@ -201,15 +201,18 @@ def trace_of(backend: Backend) -> list[dict]:
     return backend.__dict__.setdefault("trace", [])
 
 
-def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web: bool = False) -> dict:
+def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web: bool = False,
+             repair: bool = False) -> dict:
+    """One step. `repair` marks a second pass over the same step after the checks rejected it,
+    so the trace tells a repair round apart from a retry on unusable JSON."""
     prompt = build_prompt(step, inputs)
     last = None
     for attempt in range(2):
         t0 = time.time()
         text = backend.complete(prompt, step=step, web=web)
-        entry = {"step": step, "attempt": attempt + 1, "web": web, "backend": backend.name,
-                 "model": getattr(backend, "model", None), "seconds": round(time.time() - t0, 1),
-                 "prompt": prompt, "answer": text}
+        entry = {"step": step, "repair": repair, "attempt": attempt + 1, "web": web,
+                 "backend": backend.name, "model": getattr(backend, "model", None),
+                 "seconds": round(time.time() - t0, 1), "prompt": prompt, "answer": text}
         trace_of(backend).append(entry)
         try:
             d = extract_json(text)

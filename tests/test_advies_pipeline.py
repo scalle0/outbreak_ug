@@ -198,3 +198,16 @@ def test_no_web_skips_it(env):
     advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
                       open_browser=False, llm_backend=fake, web=False)
     assert "web" not in fake.prompts
+
+
+def test_trace_marks_the_repair_round(env):
+    """A repair round and a retry on unusable JSON must be distinguishable afterwards."""
+    tmp, req = env
+    replies = iter([{"reply": BAD, "suggestions": []}, {"reply": GOOD, "suggestions": []}])
+    fake = llm.Fake({"stops": STOPS, "reply": lambda p: json.dumps(next(replies), ensure_ascii=False)})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake, web=False)
+    trace = json.loads((Path(res["out"]) / "llm_trace.json").read_text(encoding="utf-8"))
+    reply_calls = [e for e in trace if e["step"] == "reply"]
+    assert [e["repair"] for e in reply_calls] == [False, True]
+    assert all(e["repair"] is False for e in trace if e["step"] == "stops")
