@@ -1,0 +1,13 @@
+# INSP spelling (as it appears in the situation reports) -> health-zone name in the INRB/GRID3 shapefile.
+# Add a line whenever `dienstreis data` reports an unmatched zone.
+observed,shapefile_nom
+Makiso-Kisangani,Makiso Kisangani
+Makiso Kisangani,Makiso Kisangani
+MakisoKisangani,Makiso Kisangani
+Lubunga,Lubunga (Tshopo)
+Lubunga (Tshopo),Lubunga (Tshopo)
+Nia-Nia,Nia Nia
+Miti-Murhesa,Miti Murhesa
+Gethy,Gety
+Rumba,Rimba
+Wanie-Rukula,Wanierukula

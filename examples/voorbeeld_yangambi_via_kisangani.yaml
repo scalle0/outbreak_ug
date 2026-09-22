@@ -1,0 +1,14 @@
+traveller: Reiziger C
+note: fluxtoren Yangambi, eerst Haut-Katanga
+profile: {lodging: hotel}
+sent_to_ugent_address: true
+review_on: 2026-10-07
+stops:
+  - {place: Ndola,      from: 2026-10-04, to: 2026-10-04, transit_only: true}
+  - {place: Sakania,    from: 2026-10-04, to: 2026-10-10}
+  - {place: Lubumbashi, from: 2026-10-10, to: 2026-10-11}
+  - {place: Kinshasa,   from: 2026-10-11, to: 2026-10-14}
+  - {place: Kisangani,  from: 2026-10-14, to: 2026-10-14, transit_only: true}
+  - {place: Yangambi,   from: 2026-10-14, to: 2026-10-25}
+  - {place: Kisangani,  from: 2026-10-25, to: 2026-10-26}
+  - {place: Kinshasa,   from: 2026-10-26, to: 2026-10-27}

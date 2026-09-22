@@ -1,0 +1,27 @@
+# Travel advisory per DRC province. The code APPLIES these; Claude must VERIFY them against the
+# live pages before each advice and update `verified` (the run prints a warning if older than 14 days).
+#   fod:  formeel_afgeraden | niet_essentieel_afgeraden   (FOD Buitenlandse Zaken, Belgium)
+#   fod_reason: why the FOD advises against (security vs health) - matters for wording
+#   cdc:  1-4 (CDC Travel Health Notice level for Ebola)
+verified: 2026-09-22
+sources:
+  fod: https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo
+  fod_update: https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/laatste-update-de-democratische-republiek-congo
+  cdc: https://wwwnc.cdc.gov/travel/notices
+default:
+  fod: niet_essentieel_afgeraden
+  fod_reason: algemene volatiliteit
+  cdc: 2
+provinces:
+  Ituri:        {fod: formeel_afgeraden, fod_reason: veiligheidssituatie, cdc: 4}
+  Nord-Kivu:    {fod: formeel_afgeraden, fod_reason: gewapend conflict, cdc: 4}
+  Sud-Kivu:     {fod: formeel_afgeraden, fod_reason: gewapend conflict, cdc: 2}
+  Tshopo:       {fod: formeel_afgeraden, fod_reason: veiligheidssituatie, cdc: 3}
+  Tanganyika:   {fod: formeel_afgeraden, fod_reason: veiligheidssituatie, cdc: 2}
+  Maniema:      {fod: formeel_afgeraden, fod_reason: veiligheidssituatie, cdc: 2}
+  Haut-Uele:    {fod: niet_essentieel_afgeraden, fod_reason: algemene volatiliteit, cdc: 3}
+# countries outside the DRC: only what matters for routing
+countries:
+  UGA: {note: "Uganda outbreak declared over (WHO 25 Aug 2026); DRC border closed"}
+  ZMB: {note: "no cases reported"}
+  COG: {note: "no cases reported"}

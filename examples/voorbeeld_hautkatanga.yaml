@@ -1,0 +1,7 @@
+traveller: Reiziger B
+profile: {lodging: hotel}
+sent_to_ugent_address: false
+stops:
+  - {place: Ndola,      from: 2026-10-04, to: 2026-10-04, transit_only: true}
+  - {place: Sakania,    from: 2026-10-04, to: 2026-10-10}
+  - {place: Lubumbashi, from: 2026-10-10, to: 2026-10-11}

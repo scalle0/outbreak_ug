@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dienstreis-advies"
+version = "0.1.0"
+description = "Outbreak travel-risk advice for UGent dienstreizen (Ebola BVD DRC 2026): zone-level risk, maps, epicurve, Dutch reply skeleton"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2", "geopandas>=0.14", "shapely>=2", "matplotlib>=3.7", "pyyaml", "requests",
+                "olefile", "adjustText>=1.0", "tabulate"]
+
+[project.scripts]
+dienstreis = "dienstreis.cli:main"
+
+[tool.setuptools]
+packages = ["dienstreis"]
+
+[tool.setuptools.package-data]
+dienstreis = ["config/*"]

@@ -1,0 +1,10 @@
+traveller: Reiziger D
+note: veldwerk, verblijf bij familie
+profile: {lodging: family, healthcare_work: false}
+sent_to_ugent_address: false
+review_on: 2026-11-01
+stops:
+  - {place: Kinshasa,  from: 2026-11-28, to: 2026-12-06}
+  - {place: Kisangani, from: 2026-12-06, to: 2026-12-14}
+  - {place: Isiro,     from: 2026-12-14, to: 2026-12-22}
+  - {place: Durba,     from: 2026-12-22, to: 2027-03-01, lodging: family}
