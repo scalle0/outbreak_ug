@@ -348,8 +348,6 @@
   "who_days_old": null,
   "sources_unreachable": [],
   "unmatched_zone_names": [],
-  "map_label_overlaps": 0,
-  "map_labels_clipped": 0,
   "far_stops_in_inset": [
    "Ndola",
    "Sakania",

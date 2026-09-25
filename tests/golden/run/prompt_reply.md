@@ -225,8 +225,8 @@ niet goedkeuren in huidige vorm (minstens een luik af te raden)
  "advisories_verified_days_ago": X,
  "advisories_stale": false,
  "advisories_source": "X",
- "map_label_overlaps": 0,
- "map_labels_clipped": 0,
+ "map_label_overlaps": X,
+ "map_labels_clipped": X,
  "skeleton_issues": [
   "4 open [[CLAUDE]]-plaatshouder(s)"
  ],

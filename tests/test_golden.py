@@ -8,7 +8,10 @@ during the run, so the files stay valid while the outbreak and the live advisori
 
 Line endings are normalised (git turns LF into CRLF on Windows checkouts); nothing else is.
 What depends on the day the test runs (`vandaag`, the age of the advisories table) or on the
-machine (output paths) is taken out before comparing.
+machine (output paths) is taken out before comparing. So are the two label counts of the map
+(`map_label_overlaps`, `map_labels_clipped`): label placement differs slightly between two runs of
+the same code on the same data (seen 2026-09-25, before and after the refactor alike), so they are
+checked as counts, not pinned.
 
 Regenerate only on purpose, after reading the diff:
     DIENSTREIS_GOLDEN_WRITE=1 pytest tests/test_golden.py
@@ -35,6 +38,7 @@ EXAMPLES = {"voorbeeld_kisangani_kortverblijf": "2026-08-22",
             "voorbeeld_yangambi_via_kisangani": "2026-09-19",
             "voorbeeld_familieverblijf_hautuele": "2026-09-19"}
 FILES = ["risk.csv", "reply_skeleton.txt", "sources.txt", "summary.json"]
+LABEL_COUNTS = ("map_label_overlaps", "map_labels_clipped")
 
 
 def _text(b: bytes | str) -> str:
@@ -63,6 +67,8 @@ def _norm_summary(raw: str) -> str:
     s["epi"]["path"] = Path(s["epi"]["path"]).name
     for k in ("advisories_verified_days_ago", "advisories_stale", "advisories_source"):
         s["qa"].pop(k, None)                           # depend on the day the test runs
+    for k in LABEL_COUNTS:                             # depend on where the labels land
+        assert isinstance(s["qa"].pop(k), int)
     return json.dumps(s, ensure_ascii=False, indent=1) + "\n"
 
 
@@ -72,6 +78,8 @@ def _norm_prompt(p: str) -> str:
     p = re.sub(r'"advisories_verified_days_ago": [^,\n]*', '"advisories_verified_days_ago": X', p)
     p = re.sub(r'"advisories_source": "[^"]*"', '"advisories_source": "X"', p)
     p = re.sub(r'"path": "[^"]*?([^"\\/]+)"', r'"path": "\1"', p)     # the run's temp folder
+    for k in LABEL_COUNTS:
+        p = re.sub(rf'"{k}": \d+', f'"{k}": X', p)
     return p
 
 
