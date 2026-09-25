@@ -1,1 +1,565 @@
-date,admin1,admin2,cases_cum,deaths_cum,case_def,source_url
+# Mpox, DRC: vermoede en bevestigde gevallen, cumulatief. Bron: WHO mpox-dashboard, data tot 2026-08-16,
+# gelezen op 2026-09-25. Per gezondheidszone: totaal sinds 2024, met een rij op 2026-07-05 (voor het
+# zesweekse venster van de WHO) en een op de laatste rapportdatum van de zone. NATIONAAL: wekelijks,
+# bevestigd + vermoed, cumulatief sinds 2023 (andere basis dan de zones). Nieuwe rijen: de webstap stelt
+# ze voor, de arts bevestigt ze in de lokale kopie.
+date,admin1,admin2,cases_cum,deaths_cum,case_def,source_url
+2023-01-08,NATIONAAL,,150,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-01-15,NATIONAAL,,293,10,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-01-22,NATIONAAL,,407,14,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-01-29,NATIONAAL,,546,23,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-02-05,NATIONAAL,,666,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-02-12,NATIONAAL,,818,35,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-02-19,NATIONAAL,,953,44,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-02-26,NATIONAAL,,1059,51,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-03-05,NATIONAAL,,1212,55,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-03-12,NATIONAAL,,1389,62,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-03-19,NATIONAAL,,1579,66,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-03-26,NATIONAAL,,1815,83,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-04-02,NATIONAAL,,2050,98,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-04-09,NATIONAAL,,2328,109,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-04-16,NATIONAAL,,2608,127,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-04-23,NATIONAAL,,2889,141,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-04-30,NATIONAAL,,3178,165,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-05-07,NATIONAAL,,3503,194,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-05-14,NATIONAAL,,3837,218,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-05-21,NATIONAAL,,4141,234,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-05-28,NATIONAAL,,4429,246,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-06-04,NATIONAAL,,4722,257,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-06-11,NATIONAAL,,5061,272,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-06-18,NATIONAAL,,5329,284,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-06-25,NATIONAAL,,5662,304,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-07-02,NATIONAAL,,5951,332,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-07-09,NATIONAAL,,6295,368,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-07-16,NATIONAAL,,6639,379,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-07-23,NATIONAAL,,7042,389,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-07-30,NATIONAAL,,7499,405,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-08-06,NATIONAAL,,7939,430,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-08-13,NATIONAAL,,8432,461,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-08-20,NATIONAAL,,8913,476,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-08-27,NATIONAAL,,9168,484,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-09-03,NATIONAAL,,9639,503,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-09-10,NATIONAAL,,10102,519,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-09-17,NATIONAAL,,10554,534,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-09-24,NATIONAAL,,10895,541,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-10-01,NATIONAAL,,11254,548,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-10-08,NATIONAAL,,11604,560,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-10-15,NATIONAAL,,11833,564,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-10-22,NATIONAAL,,12147,566,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-10-29,NATIONAAL,,12471,580,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-11-05,NATIONAAL,,12668,589,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-11-12,NATIONAAL,,12899,603,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-11-19,NATIONAAL,,13168,606,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-11-26,NATIONAAL,,13428,614,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-12-03,NATIONAAL,,13610,618,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-12-10,NATIONAAL,,13694,620,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-12-17,NATIONAAL,,13824,624,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-12-24,NATIONAAL,,14080,637,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2023-12-31,NATIONAAL,,14252,640,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-01-07,NATIONAAL,,14544,663,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-01-14,NATIONAAL,,14878,690,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-01-21,NATIONAAL,,15214,712,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-01-28,NATIONAAL,,15648,741,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-02-04,NATIONAAL,,16099,776,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-02-11,NATIONAAL,,16692,825,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-02-18,NATIONAAL,,17292,862,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-02-25,NATIONAAL,,17952,903,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-03-03,NATIONAAL,,18398,918,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-03-10,NATIONAAL,,18833,927,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-03-17,NATIONAAL,,19178,939,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-03-24,NATIONAAL,,19531,951,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-03-31,NATIONAAL,,19861,956,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-04-07,NATIONAAL,,20232,966,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-04-14,NATIONAAL,,20601,970,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-04-21,NATIONAAL,,20932,977,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-04-28,NATIONAAL,,21277,983,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-05-05,NATIONAAL,,21907,995,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-05-12,NATIONAAL,,22588,1011,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-05-19,NATIONAAL,,23199,1018,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-05-26,NATIONAAL,,23763,1031,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-06-02,NATIONAAL,,24296,1044,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-06-09,NATIONAAL,,24968,1055,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-06-16,NATIONAAL,,25665,1068,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-06-23,NATIONAAL,,26342,1075,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-06-30,NATIONAAL,,27209,1083,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-07-07,NATIONAAL,,28311,1097,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-07-14,NATIONAAL,,29492,1115,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-07-21,NATIONAAL,,30779,1139,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-07-28,NATIONAAL,,31954,1172,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-08-04,NATIONAAL,,33071,1199,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-08-11,NATIONAAL,,34281,1224,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-08-18,NATIONAAL,,35859,1262,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-08-25,NATIONAAL,,37866,1299,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-01,NATIONAAL,,40081,1357,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-08,NATIONAAL,,42646,1431,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-15,NATIONAAL,,45235,1483,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-22,NATIONAAL,,48051,1544,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-29,Haut Katanga,Kafubu,5,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-09-29,NATIONAAL,,50722,1591,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-10-06,NATIONAAL,,53393,1633,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-10-13,NATIONAAL,,55838,1659,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-10-20,NATIONAAL,,58311,1695,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-10-27,NATIONAAL,,60689,1728,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-11-03,NATIONAAL,,63161,1762,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-11-10,NATIONAAL,,65888,1795,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-11-17,NATIONAAL,,68628,1817,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-11-24,NATIONAAL,,71111,1853,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-12-01,NATIONAAL,,73685,1883,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-12-08,NATIONAAL,,76716,1913,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-12-15,NATIONAAL,,79751,1933,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-12-22,NATIONAAL,,82080,1945,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2024-12-29,NATIONAAL,,84388,1967,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-01-05,NATIONAAL,,87343,1987,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-01-12,NATIONAAL,,91182,2017,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-01-19,NATIONAAL,,94582,2059,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-01-26,NATIONAAL,,97553,2084,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-02-02,NATIONAAL,,100311,2134,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-02-09,NATIONAAL,,103151,2176,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-02-16,NATIONAAL,,105816,2222,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-02-23,NATIONAAL,,108753,2266,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-03-02,NATIONAAL,,111559,2295,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-03-09,NATIONAAL,,114418,2325,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-03-16,NATIONAAL,,117469,2347,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-03-23,NATIONAAL,,120086,2372,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-03-30,NATIONAAL,,122594,2383,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-04-06,NATIONAAL,,124844,2392,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-04-13,NATIONAAL,,127538,2409,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-04-20,NATIONAAL,,130855,2419,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-04-27,NATIONAAL,,134358,2431,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-05-04,NATIONAAL,,137237,2441,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-05-11,NATIONAAL,,139975,2454,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-05-18,NATIONAAL,,142128,2464,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-05-25,NATIONAAL,,144883,2472,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-06-01,NATIONAAL,,147766,2475,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-06-08,NATIONAAL,,150207,2497,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-06-15,NATIONAAL,,152428,2512,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-06-22,NATIONAAL,,154510,2522,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-06-29,NATIONAAL,,156541,2543,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-07-06,NATIONAAL,,158576,2562,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-07-13,NATIONAAL,,160519,2579,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-07-20,NATIONAAL,,162502,2595,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-07-27,NATIONAAL,,164654,2609,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-03,NATIONAAL,,166766,2620,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-10,NATIONAAL,,169020,2632,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-17,NATIONAAL,,171050,2657,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-24,NATIONAAL,,172886,2676,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-31,Bas Uele,Titule,52,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-08-31,NATIONAAL,,174830,2692,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-07,Bas Uele,Viadana,135,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-07,Equateur,Makanza,29,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-07,NATIONAAL,,176688,2713,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-14,NATIONAAL,,178559,2730,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-21,Haut Katanga,Kasenga,7,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-21,NATIONAAL,,180272,2744,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-09-28,NATIONAAL,,182021,2760,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-10-05,NATIONAAL,,183492,2768,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-10-12,NATIONAAL,,185013,2781,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-10-19,NATIONAAL,,186261,2788,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-10-26,NATIONAAL,,187778,2799,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-11-02,NATIONAAL,,189213,2809,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-11-09,NATIONAAL,,190388,2815,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-11-16,NATIONAAL,,191401,2826,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-11-23,NATIONAAL,,192718,2832,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-11-30,NATIONAAL,,194059,2838,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-12-07,Equateur,Monieka,193,29,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-12-07,NATIONAAL,,195227,2843,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-12-14,NATIONAAL,,196425,2851,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-12-21,NATIONAAL,,197566,2855,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2025-12-28,NATIONAAL,,198897,2861,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-01-04,NATIONAAL,,200058,2877,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-01-11,NATIONAAL,,201121,2890,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-01-18,NATIONAAL,,202166,2895,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-01-25,NATIONAAL,,203225,2899,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-02-01,NATIONAAL,,204277,2908,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-02-08,NATIONAAL,,205309,2916,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-02-15,Equateur,Iboko,959,45,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-02-15,NATIONAAL,,206295,2930,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-02-22,NATIONAAL,,207409,2943,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-03-01,NATIONAAL,,208422,2956,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-03-08,NATIONAAL,,209343,2966,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-03-15,NATIONAAL,,210305,2974,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-03-22,NATIONAAL,,211151,2987,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-03-29,NATIONAAL,,212098,2995,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-05,Equateur,Bomongo,48,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-05,NATIONAAL,,212926,3001,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-12,Bas Uele,Dingila,487,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-12,NATIONAAL,,213711,3010,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-19,NATIONAAL,,214422,3019,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-26,Haut Katanga,Kapolowe,18,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-04-26,NATIONAAL,,215334,3028,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-05-03,NATIONAAL,,216101,3037,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-05-10,NATIONAAL,,216866,3038,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-05-17,NATIONAAL,,217985,3046,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-05-24,NATIONAAL,,219786,3052,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-05-31,NATIONAAL,,221127,3058,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-07,NATIONAAL,,221985,3069,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-14,NATIONAAL,,222705,3075,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-21,Haut Katanga,Kamalondo,22,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-21,Haut Katanga,Kampemba,23,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-21,NATIONAAL,,223522,3091,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-28,Bas Uele,Bondo,334,15,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-28,Bas Uele,Poko,65,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-28,Equateur,Lolanga Mampoko,153,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-06-28,NATIONAAL,,224224,3100,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Aketi,1436,94,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Ango,78,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Bili,155,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Buta,162,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Likati,469,29,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Bas Uele,Monga,2600,25,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Basankusu,659,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Bikoro,1583,11,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Bolenge,521,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Bolomba,1475,25,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Djombo,765,16,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Ingende,184,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Irebu,183,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Lilanga Bobangi,335,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Lotumbe,2953,225,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Lukolela,303,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Mbandaka,726,13,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Ntondo,222,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Equateur,Wangata,458,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Kambove,10,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Katuba,52,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Kikula,23,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Kisanga,13,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Likasi,20,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Lubumbashi,43,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Mitwaba,2,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Katanga,Tshamilemba,5,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Lomami,Kitenge,10,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Lomami,Mulongo,76,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Dungu,509,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Gombari,40,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Makoro,29,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Rungu,40,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Wamba,14,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Haut Uele,Watsa,139,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Ituri,Ariwara,55,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Ituri,Nia-Nia,171,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Banga Lubaka,18,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Dekese,1275,50,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Ilebo,50,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Kakenge,37,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Kamonia,26,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Kamuesha,59,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Kanzala,795,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Mikope,67,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Mushenge,1351,32,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Mutena,50,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Mweka,69,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Ndjoko Punda,16,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai,Nyanga,18,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai Central,Kalomba,6,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kasai Central,Mikalayi,0,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Binza-Ozone,354,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Kalamu I,491,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Kalamu Ii,496,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Kasa-Vubu,170,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Kimbanseke,79,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Kinshasa,63,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Lemba,88,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Limete,867,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Masina I,107,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Ngaba,159,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kinshasa,Nsele,302,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kongo Central,Kuimba,40,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kongo Central,Ngidinga,63,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kwilu,Bagata,64,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kwilu,Bandundu,39,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kwilu,Ipamu,52,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Kwilu,Mokala,118,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lomami,Kamana,6,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lomami,Ludimbi-Lukula,1035,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Bunkeya,4,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Dilala,26,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Dilolo,8,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Fungurume,20,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Kapanga,44,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Kasaji,1,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Lualaba,Manika,24,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Banjow Moke,56,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Bokoro,94,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Bosobe,312,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Kiri,115,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Mimia,145,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Ntand Embelo,63,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maindombe,Oshwe,313,27,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maniema,Ferekeni,7,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maniema,Kailo,86,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maniema,Kindu,197,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maniema,Punia,25,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Maniema,Tunda,362,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Bosomanzi,527,10,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Bosomodanda,84,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Lisala,1210,19,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Lolo,252,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Yamaluka,47,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Mongala,Yambuku,92,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,NATIONAAL,,224943,3111,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Goma,1371,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Karisimbi,5306,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Katoyi,413,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Masisi,350,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Nyiragongo,3188,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Kivu,Rutshuru,60,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Ubangi,Abuzi,26,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Ubangi,Businga,468,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Ubangi,Karawa,89,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Ubangi,Loko,83,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Nord Ubangi,Yakoma,24,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Bena-Dibele,1819,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Dikungu,3239,54,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Djalo-Ndjeka,1331,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Katako-Kombe,1917,13,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Kole,1752,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Lodja,1766,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Lomela,2222,50,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Lusambo,2960,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Minga,1262,41,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Omendjadi,1704,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Ototo,1529,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Pania Mutombo,1377,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Tshudi-Loto,2398,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Tshumbe,2356,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Vanga-Kete,1104,25,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sankuru,Wembo-Nyama,2720,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Bagira-Kasha,384,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Ibanda,884,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Kamituga,1738,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Kaniola,25,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Katana,1000,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Kaziba,1141,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Kimbi Lulenge,1600,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Kitutu,1219,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Minova,1956,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Miti-Murrhesa,9934,11,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Mubumbano,548,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Mwenga,223,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Nundu,655,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Nyangezi,6026,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Nyantende,2621,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Ruzizi,599,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Shabunda Centre,503,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Kivu,Uvira,2806,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bangabola,556,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bogose Nubea,141,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bokonzi,95,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bominenge,453,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Budjala,3856,23,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bulu,946,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Bwamanda,425,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Kungu,147,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Mbaya,658,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Ndage,421,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Tandala,270,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Sud-Ubangi,Zongo,1783,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tanganyika,Kabalo,90,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tanganyika,Kalemie,1827,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tanganyika,Mbulula,11,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tanganyika,Moba,626,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tanganyika,Nyemba,960,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Banalia,79,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Basali,335,10,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Basoko,655,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Isangi,225,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Kabondo,302,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Lowa,26,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Makiso-Kisangani,849,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Mangobo,117,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Opala,631,27,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Tshopo,98,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Ubundu,47,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Yabaondo,521,15,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Yahuma,792,21,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Yakusu,968,13,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Yaleko,218,23,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshopo,Yalimbongo,2854,214,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Befale,910,48,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Boende,312,12,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Bokungu,2587,67,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Busanga,1390,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Djolu,1541,42,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Ikela,3880,31,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Lingomo,4182,217,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Mompono,866,77,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Mondombe,206,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Monkoto,1589,47,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-05,Tshuapa,Yalifafu,2058,92,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kasai,Banga Lubaka,19,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kasai,Kakenge,38,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kasai,Mikope,72,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kasai,Ndjoko Punda,21,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kwilu,Bagata,66,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Kwilu,Bandundu,40,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Maniema,Ferekeni,8,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,NATIONAAL,,225648,3135,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Nord Ubangi,Yakoma,25,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Sud-Ubangi,Mbaya,661,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Sud-Ubangi,Tandala,271,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-12,Tshopo,Mangobo,118,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Equateur,Ntondo,227,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Haut Katanga,Kambove,11,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Haut Lomami,Mulongo,78,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Kinshasa,Masina I,111,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Lualaba,Kapanga,57,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Mongala,Bosomanzi,528,10,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,NATIONAAL,,226265,3143,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Nord Kivu,Rutshuru,66,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Sud-Kivu,Katana,1002,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Tshopo,Kabondo,308,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Tshopo,Lowa,27,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-19,Tshopo,Ubundu,48,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Bas Uele,Monga,2602,25,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Equateur,Lukolela,306,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Haut Katanga,Katuba,54,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Haut Katanga,Kisanga,14,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Haut Uele,Rungu,42,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Ituri,Ariwara,56,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Kasai,Ilebo,51,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Kasai,Kamonia,27,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Kasai Central,Kalomba,9,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Kinshasa,Kasa-Vubu,172,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Kinshasa,Nsele,303,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Lualaba,Kasaji,2,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Maindombe,Banjow Moke,60,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Maindombe,Ntand Embelo,64,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Maniema,Kindu,200,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Maniema,Tunda,365,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,NATIONAAL,,227116,3147,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Sud-Ubangi,Bominenge,459,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Tshopo,Isangi,234,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Tshopo,Opala,639,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-07-26,Tshopo,Yahuma,809,22,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Haut Katanga,Likasi,25,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Kasai,Mweka,75,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Kinshasa,Kalamu I,495,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Lomami,Kamana,7,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,NATIONAAL,,227929,3149,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Nord Ubangi,Loko,88,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Sud-Kivu,Kaziba,1147,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Sud-Ubangi,Bokonzi,100,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Sud-Ubangi,Kungu,149,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshopo,Basali,336,10,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshopo,Tshopo,100,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshopo,Yabaondo,522,15,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshopo,Yakusu,993,14,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshopo,Yaleko,227,24,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshuapa,Boende,332,12,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-02,Tshuapa,Mondombe,216,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Bas Uele,Aketi,1442,94,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Bas Uele,Bili,156,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Bas Uele,Likati,477,29,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Equateur,Bolenge,529,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Equateur,Irebu,187,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Equateur,Lilanga Bobangi,350,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Haut Katanga,Lubumbashi,45,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Haut Katanga,Tshamilemba,11,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kasai Central,Mikalayi,1,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kinshasa,Kimbanseke,81,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kinshasa,Kinshasa,64,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kinshasa,Limete,868,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kinshasa,Ngaba,160,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kongo Central,Kuimba,41,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Kwilu,Mokala,120,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Lualaba,Bunkeya,15,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Maindombe,Bokoro,97,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Maindombe,Oshwe,319,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Mongala,Lisala,1214,19,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Mongala,Yambuku,105,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,NATIONAAL,,228589,3152,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Nord Kivu,Katoyi,418,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Nord Ubangi,Abuzi,28,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Nord Ubangi,Businga,485,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Nord Ubangi,Karawa,90,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sankuru,Wembo-Nyama,2739,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Ibanda,892,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Kaniola,34,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Mubumbano,552,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Nundu,668,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Ruzizi,603,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Kivu,Uvira,2815,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Ubangi,Bangabola,569,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Sud-Ubangi,Bulu,947,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tanganyika,Kalemie,1829,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tanganyika,Moba,629,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshopo,Banalia,80,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshopo,Basoko,660,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshopo,Makiso-Kisangani,857,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshopo,Yalimbongo,2876,214,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshuapa,Befale,941,48,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-09,Tshuapa,Mompono,928,82,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Basankusu,667,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Bikoro,1636,11,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Bolomba,1480,25,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Djombo,776,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Ingende,189,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Lotumbe,2997,225,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Mbandaka,736,13,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Equateur,Wangata,471,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Katanga,Mitwaba,3,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Lomami,Kitenge,17,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Uele,Dungu,514,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Uele,Gombari,43,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Uele,Makoro,35,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Haut Uele,Watsa,156,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Ituri,Nia-Nia,172,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Dekese,1305,51,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Kamuesha,60,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Kanzala,826,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Mushenge,1393,32,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Mutena,51,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kasai,Nyanga,19,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kinshasa,Binza-Ozone,357,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Kinshasa,Kalamu Ii,511,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Lomami,Ludimbi-Lukula,1060,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Lualaba,Dilala,29,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Lualaba,Fungurume,22,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Lualaba,Manika,29,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Maindombe,Bosobe,323,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Maindombe,Kiri,123,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Maindombe,Mimia,147,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Maniema,Kailo,90,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Maniema,Punia,34,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Mongala,Lolo,271,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,NATIONAAL,,229249,3162,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Nord Kivu,Goma,1431,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Nord Kivu,Karisimbi,5352,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Nord Kivu,Nyiragongo,3220,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Bena-Dibele,1895,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Dikungu,3333,54,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Djalo-Ndjeka,1528,3,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Katako-Kombe,1956,14,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Kole,1859,29,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Lodja,1792,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Lomela,2359,50,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Lusambo,3028,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Minga,1313,41,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Omendjadi,2089,12,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Ototo,1584,17,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Pania Mutombo,1506,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Tshudi-Loto,2465,28,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Tshumbe,2489,7,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sankuru,Vanga-Kete,1189,26,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Kamituga,1773,8,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Kimbi Lulenge,1650,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Kitutu,1220,6,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Minova,1988,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Miti-Murrhesa,9966,11,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Mwenga,224,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Nyangezi,6220,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Nyantende,2681,1,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Kivu,Shabunda Centre,514,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Ubangi,Budjala,3877,23,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Ubangi,Bwamanda,454,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Sud-Ubangi,Zongo,1791,4,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tanganyika,Kabalo,95,0,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tanganyika,Nyemba,1002,2,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Bokungu,2716,68,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Busanga,1477,5,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Djolu,1603,44,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Ikela,4136,46,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Lingomo,4430,220,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Monkoto,1636,47,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/
+2026-08-16,Tshuapa,Yalifafu,2847,109,vermoed en bevestigd,https://worldhealthorg.shinyapps.io/mpx_global/

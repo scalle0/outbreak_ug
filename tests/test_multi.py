@@ -93,7 +93,7 @@ def test_the_skeleton_covers_every_outbreak(two_outbreaks, tmp_path):
     skel = (tmp_path / "out" / "reply_skeleton.txt").read_text(encoding="utf-8")
     assert "Voor Testziekte:" in skel
     testblock = skel.split("Voor Testziekte:")[1].split("Stand van zaken")[0]
-    assert "Kinshasa" in testblock and "Kisangani" not in testblock      # only where it matters
+    assert "Kinshasa" in testblock and "Kisangani" not in testblock      # only where it weighs
     assert "Stand van zaken Ebola (Bundibugyo-virus)" in skel and "Stand van zaken Testziekte" in skel
     assert skel.count("go/no-go-datum en criteria") == 1                 # the same condition once
     assert "Testvoorwaarde voor de testziekte." in skel

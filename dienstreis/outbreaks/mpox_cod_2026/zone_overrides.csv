@@ -1,0 +1,17 @@
+# WHO mpox dashboard spelling -> health-zone name in the INRB/GRID3 shapefile (checked 2026-09-25).
+# Dingila (Bas-Uele) has no zone of its own in the shapefile; it stays unmatched and QA reports it.
+observed,shapefile_nom
+Miti-Murrhesa,Miti Murhesa
+Kalamu Ii,Kalamu 2
+Kalamu I,Kalamu 1
+Masina I,Masina 1
+Shabunda Centre,Shabunda
+Ndjoko Punda,Ndjoko Mpunda
+Banjow Moke,Banzow Moke
+Bagira-Kasha,Bagira
+Kamuesha,Kamwesha
+Ntand Embelo,Ntandembelo
+Bosomanzi,Boso Manzi
+Bosomodanda,Boso Mondanda
+Bogose Nubea,Bogosenubea
+Lolanga Mampoko,Mampoko

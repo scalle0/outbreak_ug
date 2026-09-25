@@ -121,10 +121,19 @@ Two adapters:
   top of the notes, because categories A and B rest on recent cases; an empty table gives an advice
   without figures for that outbreak, never one without objection.
 
-`mpox_cod_2026` (mpox, DRC, per province) is a profile in concept: its clinical parameters wait for
-confirmation (F-012), so it is not active and routing never picks it. A request that names mpox gets
-a note pointing to it, and `--uitbraak mpox_cod_2026` uses it on purpose. `dienstreis uitbraken`
-lists the profiles with their state, countries and neighbours. Case questions are planned (F-013).
+`mpox_cod_2026` is mpox (clade I) in the DRC per health zone, on a table seeded from the WHO mpox
+dashboard (data to 16 August 2026): suspected and confirmed cases since 2024, the date of the last
+report per zone, and the national weekly series. It counts new cases over 42 days (WHO's six-week
+window), writes "vermoede en bevestigde gevallen", makes a zone with a case in 21 days conditional
+and nothing advised against, and counts as stale after 60 days. Being active, it is assessed next to
+Ebola on every trip through the DRC or a neighbouring country. A profile can be kept in concept with
+`active: false`: routing then skips it, a request naming its disease gets a note pointing to it, and
+`--uitbraak <id>` uses it on purpose. `dienstreis uitbraken` lists the profiles with their state,
+countries and neighbours. Case questions are planned (F-013).
+
+What a profile may set beyond the Ebola keys: `case_words` (how the letter names what the figures
+count), `windows.recent` (days over which new cases are counted, default 14), `flags.rising_recent`,
+and for a table `national_check: false` when zone and national figures come from different bases.
 
 ## Which outbreaks apply
 
@@ -425,6 +434,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_sources.py` | WHO and ECDC, including every way they can fail |
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
 | `test_table_adapter.py` | the hand-kept table: the same fields as any adapter, national totals, unknown names, the local copy, rows accepted from the web step, an old table and an empty one |
+| `test_mpox.py` | the mpox profile on its seeded WHO table: the one unmatched zone, the counts, the example trips, and a letter that says "vermoede en bevestigde gevallen" |
 | `test_route.py` | which outbreaks apply: outbreak country, neighbouring country, none; a stop's country from the map, including the France and South Sudan code traps; overrides that must name their outbreak |
 | `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the skeleton covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |

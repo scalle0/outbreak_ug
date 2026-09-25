@@ -78,6 +78,7 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     # simplified outlines for drawing only; the risk assessment used the exact boundaries
     zones, prov = data.display_geometry(ob.zones, spec=spec)
     zones["fc"] = zones.cases.map(_colour)
+    cw = spec.case_words
     countries = data.fetch_countries()
     (x0, x1, y0, y1), far = _extent(rs, zones)
 
@@ -116,7 +117,7 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     if all(r.category in "FX" for r in rs):   # trip far from the outbreak: say how far instead
         na = min((r.nearest_active for r in rs if r.nearest_active), key=lambda x: x["km"], default=None)
         if na:
-            ax.text(0.02, 0.97, f"Geen bevestigde gevallen in het getoonde gebied.\nDichtstbijzijnde zone met recente gevallen: "
+            ax.text(0.02, 0.97, f"Geen {cw['none']} in het getoonde gebied.\nDichtstbijzijnde zone met recente gevallen: "
                     f"{na['zone']} ({na['province']}), circa " + f"{round(na['km'], -1):,.0f}".replace(",", " ") + " km",
                     transform=ax.transAxes, va="top", fontsize=9, color="#333",
                     bbox=dict(boxstyle="round,pad=0.5", fc="white", ec="#999", lw=0.8), zorder=12)
@@ -127,8 +128,9 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     except Exception:
         pass
 
-    legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(BINS)] + [
-        mpatches.Patch(fc="none", ec="#000", hatch="....", label="Nieuwe gevallen laatste 14 dagen"),
+    bins = [(lo, c, f"Geen {cw['none']}" if lo == 0 else l) for lo, c, l in BINS]
+    legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(bins)] + [
+        mpatches.Patch(fc="none", ec="#000", hatch="....", label=f"Nieuwe gevallen laatste {spec.recent} dagen"),
         mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label=f"{cap(spec.unit)} van een stop"),
         Line2D([0], [0], marker="s", color=BLUE, ls=(0, (4, 3)), mfc=BLUE, mec="white", ms=8, label="Reisschema")]
     inset_corner, legend_corner = _free_corners(inside, (x0, x1, y0, y1))
@@ -222,8 +224,8 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
     last_full = inc.index[-1] if nat.index[-1] >= inc.index[-1] else inc.index[-2]
 
     fig, (a, b) = plt.subplots(2, 1, figsize=(11, 8.6), dpi=300, sharex=True, gridspec_kw={"height_ratios": [1.1, 1]})
-    a.plot(nat.index, nat.cases, color="#333333", lw=2, label="Bevestigde gevallen (cumulatief)")
-    a.plot(nat.index, nat.deaths, color="#999999", lw=2, label="Bevestigde overlijdens (cumulatief)")
+    a.plot(nat.index, nat.cases, color="#333333", lw=2, label=f"{cap(spec.case_words['cases'])} (cumulatief)")
+    a.plot(nat.index, nat.deaths, color="#999999", lw=2, label=f"{cap(spec.case_words['deaths'])} (cumulatief)")
     a.fill_between(nat.index, nat.deaths, color="#999999", alpha=0.12)
     last = nat.dropna(subset=["cases"]).iloc[-1]
     cfr = 100 * last.deaths / last.cases

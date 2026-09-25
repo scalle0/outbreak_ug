@@ -340,6 +340,9 @@ def boundaries(spec) -> gpd.GeoDataFrame:
     src = outbreak.load(spec.adapter["boundaries"]["from"])
     repo = fetch_inrb(spec=src)
     level = spec.adapter["level"]
+    if level == "admin2":                 # the zones as they are: read in seconds, nothing to cache
+        hz = gpd.read_file(repo / f"{src.adapter['shapes']}.shp")
+        return hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
     cached = CACHE / f"units_{src.id}_{level}_{_shape_stamp(repo, src)}.geojson"
     if cached.exists():
         return gpd.read_file(cached)
@@ -386,6 +389,8 @@ def _load_table(spec, refresh: bool, asof: str | None) -> Outbreak:
         national = pd.DataFrame({"cases": cw.sum(axis=1),
                                  "deaths": dw.reindex(cw.index).ffill().fillna(0).sum(axis=1)})
     ob = derive(hz, cw, dw, national, asof, unmatched, spec)
+    if spec.adapter.get("national_check") is False:   # zone and national figures from different bases
+        ob.checks["zone_sum_matches_national"] = None
     ob.checks["table"] = str(path)
     ob.checks["table_last_date"] = str(ob.asof.date())
     return ob
@@ -429,7 +434,7 @@ def derive(hz: gpd.GeoDataFrame, cw: pd.DataFrame, dw: pd.DataFrame, national: p
     first_case = cw.gt(0).apply(lambda s: s[s].index.min() if s.any() else pd.NaT)
     fig = pd.DataFrame({
         "cases": cw.loc[t], "deaths": dw.reindex(columns=cw.columns).ffill().loc[:t].iloc[-1].fillna(0),
-        "new14": cw.loc[t] - lag(14),
+        "new14": cw.loc[t] - lag(getattr(spec, "recent", 14)),     # new cases over the profile's recent window
         "first_case": first_case, "last_increase": last_inc,
     })
     # a zone whose only report is its first case has no increase row: use first_case then

@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from dienstreis import advies, archive, countries, data, llm, log, pipeline
+from dienstreis import advies, archive, countries, data, llm, log, outbreak, pipeline
 
 HERE = Path(__file__).parent
 GOLDEN = HERE / "golden"
@@ -92,6 +92,8 @@ def frozen():
     this also keeps reading that old local file working; no local country registry is used.
     """
     with pytest.MonkeyPatch.context() as mp:
+        # the goldens pin the Ebola output: routing is tested elsewhere (test_route, test_multi)
+        mp.setattr(outbreak, "active", lambda: [outbreak.default()])
         mp.setattr(countries, "LEGACY", GOLDEN / "advisories.yaml")
         mp.setattr(countries, "LOCAL", GOLDEN / "geen_lokaal_register")
         mp.setattr(data, "_stale", lambda *a, **k: False)

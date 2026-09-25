@@ -1,38 +1,44 @@
-# Mpox (clade I), Democratic Republic of the Congo.
+# Mpox (clade I), Democratic Republic of the Congo, per health zone.
 #
-# CONCEPT (F-012): every value marked CONCEPT is a proposal for Steven to confirm or correct. The
-# profile stays inactive until then, so routing never picks it; it can be tried on purpose with
-# `dienstreis advies ... --uitbraak mpox_cod_2026`.
+# Confirmed by Steven on 2026-09-25 (F-012): the figures (health zones, suspected and confirmed
+# cases, WHO mpox dashboard), the verdict per category, the conditions, and 60 days before the
+# table counts as stale. One value was adapted afterwards and waits for his check: rising_recent,
+# see below.
 id: mpox_cod_2026
-active: false
+active: true
 name_nl: Mpox (clade I)
 countries: [COD]
 match_terms: [mpox, monkeypox, apenpokken, variole simienne, variole du singe]
-unit: provincie                        # the table is kept per province
+unit: gezondheidszone
 
 windows:
-  active: 21                           # CONCEPT: incubation up to 21 days
-  clear: 42                            # CONCEPT: two incubation periods, as for declaring an outbreak over
+  active: 21                           # incubation up to 21 days
+  clear: 42                            # two incubation periods
+  recent: 42                           # new cases are counted over six weeks, the "recent" window of the WHO data
+
+case_words:                            # what the figures count, as the letter names them
+  cases: vermoede en bevestigde gevallen
+  none: vermoede of bevestigde gevallen
+  deaths: overlijdens
 
 metric_epsg: 32735                     # UTM 35S, as for the Ebola profile
 
 adapter:
   type: table
-  cases: cases.csv                     # hand-kept; the web step proposes new rows, you confirm them
-  level: admin1
-  case_def: bevestigd                  # CONCEPT: confirmed cases only (suspected cases run far higher in the DRC)
-  boundaries: {from: ebola_cod_2026}   # the INRB/GRID3 zones, merged into provinces
-  stale_days: 21                       # CONCEPT: older than this, categories A and B are not reliable
+  cases: cases.csv                     # seeded from the WHO dashboard (data to 2026-08-16); the web step proposes new rows
+  level: admin2
+  case_def: vermoed en bevestigd       # the DRC tests only part of its cases; WHO counts both
+  boundaries: {from: ebola_cod_2026}   # the INRB/GRID3 health zones
+  stale_days: 60                       # older than this, categories A and B are not reliable
+  national_check: false                # national series since 2023, zones since 2024: they are not meant to add up
 
-# CONCEPT: mpox needs close contact, so a province with recent cases makes a trip conditional, not
-# advised against; no category reaches afraden. At province level a stop's zone is its province,
-# so E (free zone in an active province) cannot occur.
+# Mpox needs close contact, so a zone with recent cases makes a trip conditional, never advised against.
 categories:
-  A: {label: "provincie met een bevestigd geval in de laatste 21 d", verdict: voorwaardelijk, level: voorwaardelijk}
-  B: {label: "provincie, laatste bevestigde geval 22-42 d", verdict: geen bezwaar, level: geen_bezwaar}
-  C: {label: "provincie, > 42 d zonder bevestigd geval", verdict: geen bezwaar, level: geen_bezwaar}
-  D: {label: "provincie zonder gevallen, grenst aan een actieve provincie", verdict: geen bezwaar, level: geen_bezwaar}
-  E: {label: "niet van toepassing op provincieniveau", verdict: geen bezwaar, level: geen_bezwaar}
+  A: {label: "zone met een geval in de laatste 21 d", verdict: voorwaardelijk, level: voorwaardelijk}
+  B: {label: "zone, laatste geval 22-42 d", verdict: geen bezwaar, level: geen_bezwaar}
+  C: {label: "zone, > 42 d zonder geval", verdict: geen bezwaar, level: geen_bezwaar}
+  D: {label: "vrije zone, grenst aan een zone met recente gevallen", verdict: geen bezwaar, level: geen_bezwaar}
+  E: {label: "vrije zone in een provincie met recente gevallen", verdict: geen bezwaar, level: geen_bezwaar}
   F: {label: "niet getroffen", verdict: geen bezwaar, level: geen_bezwaar}
   X: {label: "buiten de DRC", verdict: zie landnotitie, level: geen_bezwaar}
 
@@ -44,27 +50,32 @@ overall:
 outside_note: buiten DRC
 
 flags:
-  family: "verblijf bij familie: nauw huiselijk contact, verzorging van zieken, gedeeld beddengoed"   # CONCEPT
-  long_stay_nights: 14                 # CONCEPT
-  rising_new14: 20                     # CONCEPT: new confirmed cases in 14 days that make a province "stijgend"
+  family: "verblijf bij familie: nauw huiselijk contact, verzorging van zieken, gedeeld beddengoed"
+  long_stay_nights: 14
+  # TO CHECK: confirmed as 20 new confirmed cases in 14 days; the table counts suspected and confirmed
+  # cases over 42 days, so this is the same rate (20 per 14 days), not a value Steven confirmed.
+  rising_recent: 60
 
-conditions:                            # CONCEPT: after the pretravel line
+conditions:                            # after the pretravel line
   - Geen nauw lichamelijk of seksueel contact met zieken of met personen met huidletsels; geen gedeeld beddengoed, handdoeken of kledij.
   - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
-  - Mpox-vaccinatie (MVA-BN) bespreken op het pretravel consult bij zorg- of labowerk, verblijf bij familie of verwacht nauw contact.
+  - "Mpox-vaccinatie (MVA-BN) volgens advies 9900 van de Hoge Gezondheidsraad: aanbevolen bij zorg- of humanitair werk, geval per geval bij familiebezoek, altijd bij verwacht seksueel risicocontact."
   - Bij koorts of huiduitslag tot 21 dagen na terugkeer eerst telefonisch contact met het ITG of onze dienst.
 
 sources:
-  national: de bijgehouden tabel
+  national: WHO-mpoxdashboard
   ecdc: null                           # the ECDC headline parser is written for the Ebola page
   who:
     label: mpox
-    title: [mpox]
-  mail: []                             # filled in after the source check (F-012)
+    title: [mpox, "congo|DRC|multi-country"]
+  mail:
+    - ["WHO, mpox-dashboard (per provincie en gezondheidszone)", "https://worldhealthorg.shinyapps.io/mpx_global/"]
+    - ["WHO, snelle risicobeoordeling mpox (versie 7, augustus 2026)", "https://www.who.int/publications/m/item/who-rapid-risk-assessment-mpox--global-v.7"]
+    - ["Hoge Gezondheidsraad, advies 9900: vaccinatiestrategie tegen mpox (2026)", "https://www.hgr-css.be/nl/advies/9900/belgische-vaccinatiestrategie-tegen-mpox-herziening-2026"]
 
 figures:                               # {asof} is the last date of the table, dd-mm-yyyy
-  map_title: "Mpox (clade I), DRC: bevestigde gevallen per provincie langs het reisschema"
-  legend_title: Bevestigde mpox-gevallen per provincie
-  map_credit: "Onafhankelijke kaart. Bevestigde gevallen per provincie: met de hand bijgehouden tabel uit officiële bronnen (zie sources.txt), data tot {asof}. Provinciegrenzen: INRB/GRID3."
-  epicurve_title: "Mpox (clade I), DRC: curve uit de bijgehouden cumulatieve cijfers, tot {asof}"
-  epicurve_source: "Met de hand bijgehouden tabel, per rapportdatum van de bron: een toename tussen twee rapporten staat in de week van het latere rapport."
+  map_title: "Mpox (clade I), DRC: vermoede en bevestigde gevallen per gezondheidszone langs het reisschema"
+  legend_title: Vermoede en bevestigde mpox-gevallen per gezondheidszone (sinds 2024)
+  map_credit: "Onafhankelijke kaart. Gevallen per gezondheidszone: WHO mpox-dashboard, met de hand bijgehouden tabel, data tot {asof}. Zonegrenzen: INRB/GRID3."
+  epicurve_title: "Mpox (clade I), DRC: vermoede en bevestigde gevallen per week, tot {asof}"
+  epicurve_source: "WHO, wekelijkse cijfers voor Afrika (bevestigd en vermoed, cumulatief sinds 2023), met de hand bijgehouden tabel."

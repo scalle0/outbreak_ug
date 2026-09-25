@@ -70,6 +70,8 @@ def _check(cfg: dict, path: Path) -> list[str]:
     w = cfg["windows"] or {}
     if not (isinstance(w.get("active"), int) and isinstance(w.get("clear"), int) and 0 < w["active"] < w["clear"]):
         issues.append("windows: active en clear zijn gehele dagen, active kleiner dan clear")
+    if "recent" in w and not (isinstance(w["recent"], int) and w["recent"] > 0):
+        issues.append("windows.recent: het aantal dagen waarover nieuwe gevallen geteld worden")
     if not (cfg["sources"] or {}).get("national"):
         issues.append("sources.national: hoe de nationale cijfers heten in de mail (bv. INSP)")
     a = cfg["adapter"] or {}
@@ -124,6 +126,10 @@ class OutbreakSpec:
         self.conditions: list[str] = list(cfg["conditions"])
         self.sources: dict = cfg["sources"] or {}
         self.figures: dict[str, str] = cfg.get("figures") or {}
+        # what the figures count, as the letter names them; the Ebola profile counts confirmed cases
+        self.case_words: dict[str, str] = {"cases": "bevestigde gevallen", "none": "bevestigde gevallen",
+                                           "deaths": "bevestigde overlijdens", **(cfg.get("case_words") or {})}
+        self.recent: int = int(self.windows.get("recent", 14))   # days over which new cases are counted
         self.sections = _sections(folder / "prompt.md")
 
     def __repr__(self) -> str:

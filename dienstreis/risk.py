@@ -148,8 +148,9 @@ def assess_stop(stop: dict, zones, profile: dict, spec=None) -> StopRisk:
         r.flags.append(f"overnachting(en) in getroffen gebied: {nights}")
     if r.category in "DE" and (nights or 0) >= fl["long_stay_nights"]:
         r.flags.append(f"lang verblijf (>= {fl['long_stay_nights']} nachten) in risicogebied")
-    if r.new14 >= fl["rising_new14"]:
-        r.flags.append(f"stijgend in de zone: {r.new14} nieuwe gevallen in 14 dagen")
+    rising = fl.get("rising_recent", fl.get("rising_new14"))
+    if rising is not None and r.new14 >= rising:
+        r.flags.append(f"stijgend in de zone: {r.new14} nieuwe gevallen in {spec.recent} dagen")
     return _apply_override(r, override_for(stop.get("override"), spec.id))
 
 
@@ -234,7 +235,7 @@ def table(rs: list[StopRisk]) -> pd.DataFrame:
     for r in rs:
         rows.append({"stop": r.place, "van": r.start, "tot": r.end, "nachten": r.nights,
                      "zone": r.zone or "-", "provincie": r.province or r.country, "cat": r.category,
-                     "oordeel": r.verdict, "gevallen": r.cases, "nieuw14d": r.new14,
+                     "oordeel": r.verdict, "gevallen": r.cases, f"nieuw{r.outbreak_spec.recent}d": r.new14,
                      "dagen_sinds_laatste": None if r.days_since_last is None else int(r.days_since_last),
                      "actieve_buren": ", ".join(f"{n['zone']} ({n['cases']})" for n in r.neighbours_active[:4]) or "-",
                      "dichtstbij_actief": (f"{r.nearest_active['zone']} {r.nearest_active['km']} km"

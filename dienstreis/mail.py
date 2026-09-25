@@ -54,23 +54,25 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
         return head + "; ".join([spec.label("X")] + r.flags + extra) + "."
     parts = []
     zone_txt = f"{spec.unit} {r.zone}" if r.zone and r.zone.lower() != r.place.lower() else f"de {spec.unit}"
+    cw = spec.case_words
     if r.category == "A":
-        parts.append(f"af te raden. {cap(zone_txt)} telt {n(r.cases)} bevestigde gevallen "
-                     f"({n(r.deaths)} overlijdens), waarvan {r.new14} in de laatste 14 dagen")
+        parts.append(f"{spec.verdict('A') if spec.verdict('A') != 'afraden' else 'af te raden'}. "
+                     f"{cap(zone_txt)} telt {n(r.cases)} {cw['cases']} "
+                     f"({n(r.deaths)} overlijdens), waarvan {r.new14} in de laatste {spec.recent} dagen")
     elif r.category in "BC":
-        parts.append(f"voorwaardelijk. {cap(zone_txt)} telt {n(r.cases)} gevallen, het laatste "
+        parts.append(f"{spec.verdict(r.category)}. {cap(zone_txt)} telt {n(r.cases)} gevallen, het laatste "
                      f"{int(r.days_since_last)} dagen geleden")
     elif r.category == "D":
         nb = ", ".join(f"{x['zone']} ({x['cases']})" for x in r.neighbours_active[:3])
-        parts.append(f"voorwaardelijk. {cap(zone_txt)} heeft geen bevestigde gevallen, maar grenst "
+        parts.append(f"{spec.verdict('D')}. {cap(zone_txt)} heeft geen {cw['none']}, maar grenst "
                      f"aan zones met actieve transmissie: {nb}")
     elif r.category == "E":
-        parts.append(f"voorwaardelijk. {cap(zone_txt)} heeft geen gevallen; de provincie {r.province} "
+        parts.append(f"{spec.verdict('E')}. {cap(zone_txt)} heeft geen gevallen; de provincie {r.province} "
                      f"telt {n(r.province_cases)} gevallen in {r.province_active_zones} actieve zone(s)")
     else:
         na = r.nearest_active
         dist = f"; de dichtstbijzijnde zone met recente gevallen ({na['zone']}) ligt op circa {n(round(na['km'], -1))} km" if na else ""
-        parts.append(f"geen bezwaar. Geen bevestigde gevallen in {zone_txt} of in de provincie {r.province}{dist}")
+        parts.append(f"{spec.verdict('F')}. Geen {cw['none']} in {zone_txt} of in de provincie {r.province}{dist}")
     if r.fod:
         parts.append(FOD_TXT[r.fod].format(p=r.province, r=r.fod_reason, land=countries.letter(r.country)))
     if r.cdc and r.cdc >= 2:
@@ -96,7 +98,7 @@ def _stand(rs: list[StopRisk], epi: dict, ecdc: dict, named: bool) -> str:
     label = f"Stand van zaken {spec.name}" if named else "Stand van zaken"
     weeks = f" Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}." if wk else ""
     return (f"{label} ({bron}): "
-            f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent)."
+            f"{n(tot['cases'])} {spec.case_words['cases']} en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent)."
             + weeks)
 
 
@@ -113,8 +115,9 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redir
              f"Regel-uitkomst: {rule}.{_override_hint(rs, trip, overrides)}]]", "",
              "Mijn beoordeling per luik:", ""]
     lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
-    for o_rs, _, _ in others:                    # a further outbreak: only the stops where it matters
-        legs = [leg_paragraph(i + 1, r) for i, r in enumerate(o_rs) if r.category not in "FX"]
+    for o_rs, _, _ in others:                    # a further outbreak: only the stops where it weighs
+        legs = [leg_paragraph(i + 1, r) for i, r in enumerate(o_rs)
+                if r.category != "X" and r.outbreak_spec.level(r.category) != "geen_bezwaar"]
         lines += ["", f"Voor {spec_of(o_rs).name}:"] + (legs or ["geen bezwaar op de haltes van dit reisschema."])
     stand = [_stand(x, e, c, named=bool(others)) for x, e, c in [(rs, epi, ecdc)] + list(others) if e]
     lines += [""] + (stand + [""] if stand else [])

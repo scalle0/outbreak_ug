@@ -29,13 +29,16 @@ def test_a_point_takes_its_country_from_the_map():
     assert route.country_of({"place": "op zee", "lat": -30.0, "lon": -20.0}) is None
 
 
+DRC = ["ebola_cod_2026", "mpox_cod_2026"]
+
+
 def test_a_stop_in_the_outbreak_country_applies_it():
-    assert [s.id for s in route.applicable(_trip({"place": "Kinshasa"}))] == ["ebola_cod_2026"]
+    assert [s.id for s in route.applicable(_trip({"place": "Kinshasa"}))] == DRC
 
 
 def test_a_stop_in_a_neighbouring_country_applies_it_too():
     """Borders with an outbreak country are closed or screened: those countries are checked."""
-    assert [s.id for s in route.applicable(_trip({"place": "Kampala"}))] == ["ebola_cod_2026"]
+    assert [s.id for s in route.applicable(_trip({"place": "Kampala"}))] == DRC
 
 
 def test_a_trip_far_from_any_outbreak_goes_to_country_level():
@@ -49,7 +52,8 @@ def test_the_outbreaks_a_trip_names_win_over_routing():
     assert [s.id for s in route.outbreaks_for(t)] == ["ebola_cod_2026"]
 
 
-def test_a_profile_in_concept_is_offered_where_it_reaches():
+def test_a_profile_in_concept_is_offered_where_it_reaches(monkeypatch):
+    monkeypatch.setattr(outbreak.load("mpox_cod_2026"), "active", False)
     assert route.inactive_for("mpox", _trip({"place": "Kinshasa"})) == ["mpox_cod_2026"]
     assert route.inactive_for("mpox", _trip({"place": "Addis Ababa"})) == []
     assert route.inactive_for("cholera", _trip({"place": "Kinshasa"})) == []

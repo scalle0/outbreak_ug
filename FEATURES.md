@@ -6,7 +6,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 |---|---|---|---|
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
-| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | bezig | 2026-09-25 |
+| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | klaar | 2026-09-25 |
 | F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | klaar | 2026-09-25 |
 | F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | klaar | 2026-09-25 |
 | F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
@@ -39,7 +39,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 ## F-012 · Handmatige cijfertabel per uitbraak, mpox (DRC) als tweede profiel
 - **Gevraagd:** 2026-09-25 — keuze "hand-kept table" voor uitbraken zonder INRB-achtige databron
-- **Status:** bezig
+- **Status:** klaar (2026-09-25)
 - **Plan:** eerst nagaan of er een gecureerde mpox-bron bestaat; anders een adapter `table` op een `cases.csv` per uitbraak (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), grenzen van INRB voor de DRC en geoBoundaries voor andere landen. De webstap stelt updates voor, de arts bevestigt. Een verouderde tabel wordt in de QA en bovenaan de notities gemeld.
 - **Gebouwd (deel 1, tabel en concept):**
   - Adapter `table` (`data.py`): een met de hand bijgehouden `cases.csv` in de profielmap (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), op de zonegrenzen van een ander profiel, per provincie samengevoegd en in de cache bewaard. Een rij `NATIONAAL` geeft het nationale totaal, anders wordt opgeteld. Een lokale kopie in `~/.config/dienstreis/outbreaks/<id>/` wint zodra ze even ver of verder reikt. Ouder dan `stale_days`: bovenaan de notities, want A en B rusten op recente gevallen. Een lege tabel geeft een advies zonder cijfers voor die uitbraak, nooit een "geen bezwaar". Met een enkele rapportdatum geen curve, en dan belooft de mail er ook geen.
@@ -48,7 +48,18 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - Tests: `test_table_adapter.py`; `test_route.py` en `test_multi.py` aangevuld. Een proef met echte ebolacijfers en het lege mpox-concept op de reis Kinshasa-Durba toonde dat een lege tabel "geen mpox-gerelateerd bezwaar" opleverde; dat zegt nu "geen cijfers".
 - **Beslissingen:**
   - Een mpox-profiel per land (Steven, 2026-09-25: "Per country"), toegevoegd naarmate aanvragen binnenkomen. Eerst `mpox_cod_2026` voor de DRC; de tabeladapter is generiek, zodat een volgend land een nieuwe map met een eigen tabel is.
-- **Open:** de klinische parameters van mpox (vensters, oordeel per categorie, bevestigde of vermoedelijke gevallen, zone of provincie, voorwaarden, familievlag, drempel voor "stijgend", vaccinatie in de pretravelregel) zijn een oordeel van de arts; het profiel blijft inactief tot hij ze bevestigd heeft. Wie houdt `cases.csv` bij, hoe vaak, en vanaf welke ouderdom is ze verouderd?
+- **Gebouwd (deel 2, mpox actief):**
+  - Bronnenonderzoek (2026-09-25): er is geen gecureerde feed van mpox in de DRC onder het nationale niveau. INRB-UMIE heeft enkel ebola; de INSP-rapporten stoppen in april 2025; OWID en de WHO-API zijn nationaal. Het enige actuele bestand is het WHO-mpoxdashboard, met per gezondheidszone vermoede en bevestigde gevallen sinds 2024, de laatste zes weken en de laatste rapportdatum (data tot 16 augustus 2026), en een nationale weekreeks. Dus een handmatige tabel, gevuld uit dat dashboard; de webstap stelt nieuwere cijfers voor.
+  - `outbreaks/mpox_cod_2026/cases.csv`: 200 zones (per zone een rij voor het zesweekse venster en een op de laatste rapportdatum) en de nationale weekreeks sinds 2023. `zone_overrides.csv` voor 14 WHO-spellingen; Dingila (Bas-Uele) heeft geen eigen zone in de INRB-shapefile en blijft ongematcht.
+  - Nieuw in een profiel: `case_words` (hoe de brief de cijfers noemt; ebola: "bevestigde gevallen"), `windows.recent` (venster voor nieuwe gevallen; mpox 42, ebola 14), `flags.rising_recent`, en `national_check: false` als zone- en nationale cijfers een andere basis hebben. De zinnen per luik nemen het oordeel per categorie uit het profiel in plaats van het vast te schrijven. Ebola blijft byte voor byte gelijk.
+  - Het profiel is actief: elke reis door de DRC of een buurland krijgt mpox naast ebola, met een eigen kaart en curve. In het blok "Voor <ziekte>:" staan enkel de haltes waar die uitbraak meeweegt.
+  - Tests: `test_mpox.py` (de gevulde tabel, de voorbeeldreizen, de woorden in de brief). De golden- en pijplijntests blijven op ebola vastgepind: ze bewaken de ebola-uitvoer en de werking van `advies`, de routering heeft eigen tests.
+- **Beslissingen (Steven, 2026-09-25):**
+  - Cijfers: "Zones, all cases": per gezondheidszone, vermoede en bevestigde gevallen, uit het WHO-dashboard. Met bevestigde gevallen per provincie waren A en B niet te scheiden geweest: het dashboard geeft per provincie geen datum van het laatste bevestigde geval.
+  - Regels: "Confirm as drafted": een zone met een geval in 21 dagen maakt de reis voorwaardelijk, nooit afraden; de rest geen bezwaar; voorwaarden over nauw contact, MVA-BN volgens advies 9900 van de Hoge Gezondheidsraad (zorg- of humanitair werk: aanbevolen; familiebezoek: geval per geval; seksueel risicocontact: altijd), en koorts of uitslag tot 21 dagen na terugkeer.
+  - Verouderd na 60 dagen.
+  - wanda.be staat niet in de bronnen, zoals beslist in F-005; het advies van de Hoge Gezondheidsraad is recenter.
+- **Open:** `rising_recent: 60` is afgeleid, niet bevestigd: de bevestigde drempel was 20 bevestigde gevallen in 14 dagen, de tabel telt vermoede en bevestigde gevallen over 42 dagen. Wie houdt de tabel bij (de webstap stelt voor, de arts aanvaardt)? Een mpox-profiel voor een volgend land wordt een nieuwe map, als een aanvraag erom vraagt.
 
 ## F-011 · Routering, meerdere uitbraken per advies, landniveau
 - **Gevraagd:** 2026-09-25 — "A lot of the question come for ebola, but we should be able to add in messages from other diseases and countries"; keuze: meerdere uitbraken per advies

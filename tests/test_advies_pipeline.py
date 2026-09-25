@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from dienstreis import advies, archive, countries, llm, log
+from dienstreis import advies, archive, countries, llm, log, outbreak
 
 REQ = """Beste Steven,
 
@@ -43,6 +43,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(log, "LOG", tmp_path / "log.csv")
     monkeypatch.setattr(countries, "LEGACY", tmp_path / "advisories.yaml")
     monkeypatch.setattr(countries, "LOCAL", tmp_path / "countries")
+    # these tests are about the advies mechanics on the Ebola trip; routing has its own tests
+    monkeypatch.setattr(outbreak, "active", lambda: [outbreak.default()])
     monkeypatch.setattr(archive, "ARCHIVE", tmp_path / "adviezen")
     (tmp_path / "context.md").write_text("- 2026-09-10: Kisangani-luik Hubeau afgeraden\n", encoding="utf-8")
     req = tmp_path / "aanvraag.txt"
