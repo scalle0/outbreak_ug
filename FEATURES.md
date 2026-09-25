@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
 | F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | gevraagd | 2026-09-25 |
 | F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | gevraagd | 2026-09-25 |
@@ -17,6 +18,15 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-014 · Een map per aanvraag: meerdere mails samen lezen
+- **Gevraagd:** 2026-09-25 — "I will make a folder per request, rather than a msg file, because I now have three emails for one request in one hour time"
+- **Status:** klaar (2026-09-25)
+- **Gebouwd:** `dienstreis advies <map>` (en `dienstreis msg <map>`) leest elke `.msg`, `.eml` en `.txt` in de map als één aanvraag (`msg.parse_folder`). De volgorde komt uit de verzenddatum in de mail zelf: bij `.msg` uit de eigenschappenstroom (verzendtijd, anders ontvangsttijd), bij `.eml` uit de kop `Date`; enkel een mail zonder datum valt terug op de bestandsdatum, en de kop van die mail zegt dat. Elke mail krijgt een kop `===== Mail i van n: datum | afzender | onderwerp =====`. Losse `.docx`, `.pdf` en `.xlsx` tellen als bijlage, andere bestanden niet. Onderwerp, afzender en ontvangers zijn die van de laatste mail, zodat het Outlook-concept daarop antwoordt; of de draad het ugent.be-adres gebruikte en of de reiziger de uitbraak noemde, geldt als een van de mails het zegt. De tekstgrens per stap (12 000 tekens voor het reisschema, 6 000 voor de mail) geldt per mail. `prompts/stops.md` zegt dat een latere mail een eerdere verbetert en dat het verschil in `contradictions` hoort. Tests: `test_request_folder.py`.
+- **Beslissingen:**
+  - De datum in de mail beslist, niet de bestandsnaam of de bestandsdatum: bestanden die uit Outlook bewaard worden, krijgen de datum van het bewaren, niet van het verzenden.
+  - Bij een tegenstrijdigheid geldt de laatste mail, en het verschil gaat naar `contradictions`, zodat het op het bevestigingsscherm staat en niet stil verdwijnt.
+  - Meegenomen: een adres aan het einde van een zin werd met het punt erbij gelezen (`collega@example.org.`); het adrespatroon eindigt nu op een domeinlabel.
 
 ## F-013 · Casusvragen: een reiziger die al ter plaatse is
 - **Gevraagd:** 2026-09-25 — "we should be able to add in messages from other diseases and countries"; bij de keuze van aanvraagtypes: casusvragen erbij

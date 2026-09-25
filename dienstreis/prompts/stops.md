@@ -1,6 +1,6 @@
 # Taak: reisschema uit een dienstreisaanvraag halen
 
-Je helpt Steven Callens (diensthoofd Algemene Inwendige Ziekten en Infectieziekten, UZ Gent), die UGent Team Actueel (An, actueel@ugent.be) adviseert over infectieziekterisico bij dienstreizen. Hieronder staat een aanvraag: meestal een door An doorgestuurde mail met haar samenvatting bovenaan en het reisformulier van de reiziger eronder, soms met een risicoanalyse als bijlage.
+Je helpt Steven Callens (diensthoofd Algemene Inwendige Ziekten en Infectieziekten, UZ Gent), die UGent Team Actueel (An, actueel@ugent.be) adviseert over infectieziekterisico bij dienstreizen. Hieronder staat een aanvraag: meestal een door An doorgestuurde mail met haar samenvatting bovenaan en het reisformulier van de reiziger eronder, soms met een risicoanalyse als bijlage. Soms zijn het meerdere mails over dezelfde aanvraag, oudste eerst, elk met een kop `===== Mail i van n =====`: een latere mail verbetert of vult een eerdere aan. Neem dan het reisschema zoals het na de laatste mail is, en zet elk verschil met een eerdere mail in `contradictions`.
 
 Haal het reisschema eruit. Je beoordeelt hier nog geen risico.
 

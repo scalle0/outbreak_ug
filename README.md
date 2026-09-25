@@ -19,13 +19,21 @@ dienstreis context                        # opens context.md: earlier advices, o
 
 # per request: save the forwarded mail from Outlook as .msg, then
 dienstreis advies "FW_ RRF Vertrek ....msg" --outlook
+
+# a request that came in several mails: save them all (and any loose documents) in one folder
+dienstreis advies "aanvraag Kisangani" --outlook
 ```
+
+A folder is read as one request: every `.msg`, `.eml` and `.txt` in it, in the order they were sent
+(the date in the mail, not the file name), each under its own header, so a correction an hour later
+overrides the first mail and the difference shows up under `contradictions`. Loose `.docx`, `.pdf`
+and `.xlsx` files count as attachments. The Outlook draft answers the last mail.
 
 What happens:
 
 | step | who | what |
 |---|---|---|
-| 1 | Python | read the .msg (attachments included) |
+| 1 | Python | read the .msg, or every mail in the request's folder in the order they were sent (attachments included) |
 | 2 | LLM | itinerary from the mail -> `stops.yaml`; shown in the terminal, you confirm or edit it in Notepad |
 | 3 | Python | INRB/INSP data, health zone per stop, category A-F, map, epicurve, ECDC cross-check, reply skeleton |
 | 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories and news not yet in the data; changes are offered for a local `advisories.yaml` |
@@ -327,6 +335,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_cache.py` | what is fetched and when, with git and requests replaced |
 | `test_sources.py` | WHO and ECDC, including every way they can fail |
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
+| `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |
 | `test_request_parsing.py` | reading the request mail, against an invented fixture |
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |

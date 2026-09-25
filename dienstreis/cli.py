@@ -14,8 +14,8 @@ from .pipeline import _slug, analyse, log_row
 
 
 def cmd_msg(a):
-    from .msg import parse_msg
-    d = parse_msg(a.file, a.attach_dir)
+    from .msg import parse_msg, parse_request
+    d = parse_request(a.file) if Path(a.file).is_dir() else parse_msg(a.file, a.attach_dir)
     if not a.full:
         d["body"] = d["body"][:6000]
         for x in d["attachments"]:
@@ -137,7 +137,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="dienstreis")
     s = p.add_subparsers(dest="cmd", required=True)
     v = s.add_parser("advies", help="volledige workflow: .msg in, widget en conceptmail uit (LLM enkel voor oordeel)")
-    v.add_argument("file", help=".msg, .eml of .txt met de aanvraag")
+    v.add_argument("file", help=".msg, .eml of .txt met de aanvraag, of een map met alle mails van één aanvraag")
     v.add_argument("--llm", default=os.environ.get("DIENSTREIS_LLM", "claude-code"),
                    choices=["claude-code", "api", "manual"], help="LLM-backend (standaard: claude-code)")
     v.add_argument("--model", default=os.environ.get("DIENSTREIS_MODEL"))
@@ -155,7 +155,7 @@ def main(argv=None):
     v.set_defaults(f=cmd_advies)
     x = s.add_parser("context", help="context.md openen (eerdere adviezen, open toezeggingen)")
     x.add_argument("--show", action="store_true"); x.set_defaults(f=cmd_context)
-    m = s.add_parser("msg", help="Outlook .msg naar JSON"); m.add_argument("file"); m.add_argument("--attach-dir"); m.add_argument("--full", action="store_true"); m.set_defaults(f=cmd_msg)
+    m = s.add_parser("msg", help="Outlook .msg (of een map met mails) naar JSON"); m.add_argument("file"); m.add_argument("--attach-dir"); m.add_argument("--full", action="store_true"); m.set_defaults(f=cmd_msg)
     d = s.add_parser("data", help="actuele cijfers en controles"); d.add_argument("--refresh", action="store_true"); d.add_argument("--asof"); d.add_argument("--zone")
     d.add_argument("--reset-cache", action="store_true",
                    help="datacache wissen; de volgende run haalt enkel wat de analyse gebruikt")

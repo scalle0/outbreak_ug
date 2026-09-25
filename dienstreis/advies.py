@@ -1,6 +1,6 @@
 """`dienstreis advies`: the whole workflow from a request mail to a checked reply, run on the user's PC.
 
-    1 read the request (.msg/.eml/.txt)                          deterministic
+    1 read the request (.msg/.eml/.txt, or a folder with all its mails)  deterministic
     2 itinerary from the mail -> stops.yaml, user confirms       LLM (stops)
     3 data, risk per stop, map, epicurve, skeleton, QA           deterministic
     4 optional: advisories and news not yet in the data          LLM with web access (web)
@@ -183,7 +183,8 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     _say(f"Reisschema uit de mail ({be.name})")
     req_in = {k: req.get(k) for k in ("subject", "sender", "body", "sent_to_ugent_address",
                                       "traveller_mentions_outbreak")}
-    req_in["body"] = (req_in["body"] or "")[:12000]
+    per_mail = req.get("mail_count") or 1          # a folder of mails keeps room for every mail
+    req_in["body"] = (req_in["body"] or "")[:12000 * per_mail]
     req_in["attachments"] = [{"name": a["name"], "text": (a.get("text") or "")[:6000]} for a in req.get("attachments", [])]
     d = llm.ask_json(be, "stops", {"vandaag": date.today().isoformat(), "bekende_plaatsen": _known_places(),
                                    "aanvraag": req_in}, required=["traveller", "stops"])
@@ -252,7 +253,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
               "qa": {k: v for k, v in qa.items() if k not in ("ecdc", "far_stops_in_inset")}, "ecdc": qa.get("ecdc"),
               "aanvraag": {k: d.get(k) for k in ("traveller", "note", "nationality", "profile", "work_nature", "transport",
                                                  "questions_from_an", "contradictions", "missing_info", "review_on")},
-              "aanvraag_tekst": req_in["body"][:6000],
+              "aanvraag_tekst": req_in["body"][:6000 * per_mail],
               "context": _context_text(), "geschiedenis": _history(trip),
               "eerdere_adviezen": archive.for_trip(trip, summary),
               "overrules": summary.get("overrides", []), "regel_oordeel_zonder_overrule": summary.get("rule_overall"),
