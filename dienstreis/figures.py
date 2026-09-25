@@ -214,6 +214,11 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
     nat["deaths"] = nat.deaths.ffill().cummax()
     wk = nat.resample("W-SUN").last().ffill()
     inc = wk.diff().clip(lower=0).iloc[1:]
+    last = nat.dropna(subset=["cases"]).iloc[-1]
+    if len(inc) < 2:        # a hand-kept table with one or two report dates: no curve to draw
+        return {"path": None, "weekly_cases_last4_full_weeks": {}, "last_total": int(last.cases),
+                "last_deaths": int(last.deaths) if pd.notna(last.deaths) else 0,
+                "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
     last_full = inc.index[-1] if nat.index[-1] >= inc.index[-1] else inc.index[-2]
 
     fig, (a, b) = plt.subplots(2, 1, figsize=(11, 8.6), dpi=300, sharex=True, gridspec_kw={"height_ratios": [1.1, 1]})

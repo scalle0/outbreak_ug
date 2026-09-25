@@ -49,6 +49,12 @@ def test_the_outbreaks_a_trip_names_win_over_routing():
     assert [s.id for s in route.outbreaks_for(t)] == ["ebola_cod_2026"]
 
 
+def test_a_profile_in_concept_is_offered_where_it_reaches():
+    assert route.inactive_for("mpox", _trip({"place": "Kinshasa"})) == ["mpox_cod_2026"]
+    assert route.inactive_for("mpox", _trip({"place": "Addis Ababa"})) == []
+    assert route.inactive_for("cholera", _trip({"place": "Kinshasa"})) == []
+
+
 def test_a_disease_without_a_profile_is_named():
     ebola = outbreak.default()
     assert route.unmatched_diseases(["mpox", "Ebola", "ebola-uitbraak"], [ebola]) == ["mpox"]

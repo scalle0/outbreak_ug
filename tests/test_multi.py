@@ -166,6 +166,7 @@ def test_country_level_advice_end_to_end(tmp_path, monkeypatch):
     assert '"geen profiel" betekent niet "geen uitbraak"' in fake.prompts["web"][0].lower()
     assert "<ziekten_zonder_profiel>" in fake.prompts["web"][0] and "mpox" in fake.prompts["reply"][0]
     assert res["suggestions"][0].startswith("De aanvraag noemt mpox")
+    assert "concept" not in res["suggestions"][0]          # the mpox concept profile does not reach Ethiopia
     rec = json.loads((Path(res["advice_dir"]) / "advies.json").read_text(encoding="utf-8"))
     assert rec["outbreaks"] == ["geen"] and rec["countries"] == ["ETH"]
 

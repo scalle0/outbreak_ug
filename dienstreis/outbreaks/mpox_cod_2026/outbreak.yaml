@@ -1,0 +1,70 @@
+# Mpox (clade I), Democratic Republic of the Congo.
+#
+# CONCEPT (F-012): every value marked CONCEPT is a proposal for Steven to confirm or correct. The
+# profile stays inactive until then, so routing never picks it; it can be tried on purpose with
+# `dienstreis advies ... --uitbraak mpox_cod_2026`.
+id: mpox_cod_2026
+active: false
+name_nl: Mpox (clade I)
+countries: [COD]
+match_terms: [mpox, monkeypox, apenpokken, variole simienne, variole du singe]
+unit: provincie                        # the table is kept per province
+
+windows:
+  active: 21                           # CONCEPT: incubation up to 21 days
+  clear: 42                            # CONCEPT: two incubation periods, as for declaring an outbreak over
+
+metric_epsg: 32735                     # UTM 35S, as for the Ebola profile
+
+adapter:
+  type: table
+  cases: cases.csv                     # hand-kept; the web step proposes new rows, you confirm them
+  level: admin1
+  case_def: bevestigd                  # CONCEPT: confirmed cases only (suspected cases run far higher in the DRC)
+  boundaries: {from: ebola_cod_2026}   # the INRB/GRID3 zones, merged into provinces
+  stale_days: 21                       # CONCEPT: older than this, categories A and B are not reliable
+
+# CONCEPT: mpox needs close contact, so a province with recent cases makes a trip conditional, not
+# advised against; no category reaches afraden. At province level a stop's zone is its province,
+# so E (free zone in an active province) cannot occur.
+categories:
+  A: {label: "provincie met een bevestigd geval in de laatste 21 d", verdict: voorwaardelijk, level: voorwaardelijk}
+  B: {label: "provincie, laatste bevestigde geval 22-42 d", verdict: geen bezwaar, level: geen_bezwaar}
+  C: {label: "provincie, > 42 d zonder bevestigd geval", verdict: geen bezwaar, level: geen_bezwaar}
+  D: {label: "provincie zonder gevallen, grenst aan een actieve provincie", verdict: geen bezwaar, level: geen_bezwaar}
+  E: {label: "niet van toepassing op provincieniveau", verdict: geen bezwaar, level: geen_bezwaar}
+  F: {label: "niet getroffen", verdict: geen bezwaar, level: geen_bezwaar}
+  X: {label: "buiten de DRC", verdict: zie landnotitie, level: geen_bezwaar}
+
+overall:
+  afraden: niet goedkeuren in huidige vorm (mpox)
+  voorwaardelijk: voorwaardelijk, met mpox-voorzorgen en een go/no-go dichter bij vertrek
+  geen_bezwaar: geen mpox-gerelateerd bezwaar
+
+outside_note: buiten DRC
+
+flags:
+  family: "verblijf bij familie: nauw huiselijk contact, verzorging van zieken, gedeeld beddengoed"   # CONCEPT
+  long_stay_nights: 14                 # CONCEPT
+  rising_new14: 20                     # CONCEPT: new confirmed cases in 14 days that make a province "stijgend"
+
+conditions:                            # CONCEPT: after the pretravel line
+  - Geen nauw lichamelijk of seksueel contact met zieken of met personen met huidletsels; geen gedeeld beddengoed, handdoeken of kledij.
+  - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
+  - Mpox-vaccinatie (MVA-BN) bespreken op het pretravel consult bij zorg- of labowerk, verblijf bij familie of verwacht nauw contact.
+  - Bij koorts of huiduitslag tot 21 dagen na terugkeer eerst telefonisch contact met het ITG of onze dienst.
+
+sources:
+  national: de bijgehouden tabel
+  ecdc: null                           # the ECDC headline parser is written for the Ebola page
+  who:
+    label: mpox
+    title: [mpox]
+  mail: []                             # filled in after the source check (F-012)
+
+figures:                               # {asof} is the last date of the table, dd-mm-yyyy
+  map_title: "Mpox (clade I), DRC: bevestigde gevallen per provincie langs het reisschema"
+  legend_title: Bevestigde mpox-gevallen per provincie
+  map_credit: "Onafhankelijke kaart. Bevestigde gevallen per provincie: met de hand bijgehouden tabel uit officiële bronnen (zie sources.txt), data tot {asof}. Provinciegrenzen: INRB/GRID3."
+  epicurve_title: "Mpox (clade I), DRC: curve uit de bijgehouden cumulatieve cijfers, tot {asof}"
+  epicurve_source: "Met de hand bijgehouden tabel, per rapportdatum van de bron: een toename tussen twee rapporten staat in de week van het latere rapport."

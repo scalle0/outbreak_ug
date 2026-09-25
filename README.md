@@ -99,9 +99,32 @@ The windows, verdicts, conditions and flag texts are clinical judgements: the co
 invents none. A profile is checked when it is read, and refused whole with every problem named
 (`tests/test_outbreak.py`). `ebola_cod_2026/outbreak.yaml` documents every key.
 
-One adapter exists so far, `inrb`: a GitHub repository with INSP situation reports per health zone
-and the zone shapefile. A hand-kept table per outbreak and case questions are planned (FEATURES.md,
-F-012, F-013). `dienstreis uitbraken` lists the profiles with their countries and neighbours.
+Two adapters:
+
+- `inrb`: a GitHub repository with INSP situation reports per health zone and the zone shapefile
+  (the Ebola profile).
+- `table`: a case table kept by hand in the profile folder (`cases.csv`), for an outbreak without a
+  curated feed. One row per date and unit, cumulative, with the case definition and the source:
+
+  ```csv
+  date,admin1,admin2,cases_cum,deaths_cum,case_def,source_url
+  2026-09-15,Tshopo,,4,1,bevestigd,https://...
+  2026-09-15,NATIONAAL,,6,1,bevestigd,https://...
+  ```
+
+  `level` in the profile says whether the unit is the province (`admin1`) or the health zone
+  (`admin2`); the outlines come from another profile (`boundaries: {from: ebola_cod_2026}`), merged
+  into provinces once and cached. A row with `admin1: NATIONAAL` gives the national total; without
+  one the units are summed. The web step gets the last figures and proposes newer official ones as
+  `case_updates`; what you accept goes to `%USERPROFILE%\.config\dienstreis\outbreaks\<id>\cases.csv`,
+  which wins as soon as it reaches the same date. A table older than `stale_days` is flagged at the
+  top of the notes, because categories A and B rest on recent cases; an empty table gives an advice
+  without figures for that outbreak, never one without objection.
+
+`mpox_cod_2026` (mpox, DRC, per province) is a profile in concept: its clinical parameters wait for
+confirmation (F-012), so it is not active and routing never picks it. A request that names mpox gets
+a note pointing to it, and `--uitbraak mpox_cod_2026` uses it on purpose. `dienstreis uitbraken`
+lists the profiles with their state, countries and neighbours. Case questions are planned (F-013).
 
 ## Which outbreaks apply
 
@@ -401,6 +424,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_cache.py` | what is fetched and when, with git and requests replaced |
 | `test_sources.py` | WHO and ECDC, including every way they can fail |
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
+| `test_table_adapter.py` | the hand-kept table: the same fields as any adapter, national totals, unknown names, the local copy, rows accepted from the web step, an old table and an empty one |
 | `test_route.py` | which outbreaks apply: outbreak country, neighbouring country, none; a stop's country from the map, including the France and South Sudan code traps; overrides that must name their outbreak |
 | `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the skeleton covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |

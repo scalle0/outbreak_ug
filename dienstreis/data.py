@@ -3,10 +3,16 @@
 All numbers used downstream come from here, so every function returns data together with
 the date it refers to. Nothing in this module makes judgements.
 
-Where the figures come from is set by the outbreak profile (`adapter` in outbreak.yaml). One
-adapter so far: `inrb`, a GitHub repository with INSP situation reports per health zone and the
-zone shapefile (INRB-UMIE, Ebola DRC 2026). Every adapter hands its series to `derive`, so the
-fields the risk rules read are computed the same way whatever the source.
+Where the figures come from is set by the outbreak profile (`adapter` in outbreak.yaml):
+
+    inrb    a GitHub repository with INSP situation reports per health zone and the zone shapefile
+            (INRB-UMIE, Ebola DRC 2026)
+    table   a hand-kept case table in the profile folder (cases.csv), per province or health zone,
+            on the zone outlines of another profile; the web step proposes new rows, you confirm
+            them into a local copy (~/.config/dienstreis/outbreaks/<id>/cases.csv)
+
+Every adapter hands its series to `derive`, so the fields the risk rules read are computed the
+same way whatever the source.
 """
 from __future__ import annotations
 
@@ -35,6 +41,13 @@ NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
 
 NOT_CONFIGURED = "not configured for this outbreak"   # a source the profile does not name: not a failure
+LOCAL_OUTBREAKS = Path(os.environ.get("DIENSTREIS_OUTBREAKS", Path.home() / ".config" / "dienstreis" / "outbreaks"))
+TABLE_COLUMNS = ["date", "admin1", "admin2", "cases_cum", "deaths_cum", "case_def", "source_url"]
+NATIONAL = "NATIONAAL"                                 # admin1 of a row that holds the national total
+
+
+class TableEmpty(ValueError):
+    """A case table without figures per unit: the outbreak is assessed without figures, and says so."""
 
 
 # What the analysis reads, split by how often it actually changes. The INSP figures are new every
@@ -273,7 +286,109 @@ def load(refresh: bool = False, asof: str | None = None, spec=None) -> Outbreak:
     kind = spec.adapter["type"]
     if kind == "inrb":
         return _load_inrb(spec, refresh, asof)
+    if kind == "table":
+        return _load_table(spec, refresh, asof)
     raise ValueError(f"{spec.id}: onbekende adapter '{kind}'")
+
+
+# ---------------------------------------------------------------- the hand-kept table
+def read_table(path: Path) -> pd.DataFrame:
+    """A case table: one row per date and unit, cumulative figures, the case definition and the source."""
+    t = pd.read_csv(path, comment="#", dtype=str, keep_default_na=False)
+    missing = [c for c in TABLE_COLUMNS if c not in t.columns]
+    if missing:
+        raise ValueError(f"{path}: kolommen ontbreken: {', '.join(missing)}")
+    t["date"] = pd.to_datetime(t["date"], errors="coerce")
+    for c in ("cases_cum", "deaths_cum"):
+        t[c] = pd.to_numeric(t[c], errors="coerce")
+    return t.dropna(subset=["date"])
+
+
+def _last(path: Path) -> pd.Timestamp:
+    t = read_table(path)
+    return t["date"].max() if len(t) else pd.Timestamp.min
+
+
+def table_path(spec) -> Path:
+    """The case table: the package copy, or the local one as soon as it reaches the same date or later."""
+    pkg = spec.file(spec.adapter["cases"])
+    loc = LOCAL_OUTBREAKS / spec.id / spec.adapter["cases"]
+    if loc.exists() and (not pkg.exists() or _last(loc) >= _last(pkg)):
+        return loc
+    return pkg
+
+
+def append_local_table(spec, rows: list[dict]) -> Path:
+    """Add confirmed rows to the local case table (a copy of the package table the first time)."""
+    loc = LOCAL_OUTBREAKS / spec.id / spec.adapter["cases"]
+    base = read_table(table_path(spec)) if table_path(spec).exists() else pd.DataFrame(columns=TABLE_COLUMNS)
+    new = pd.DataFrame([{c: r.get(c, "") for c in TABLE_COLUMNS} for r in rows])
+    new["date"] = pd.to_datetime(new["date"], errors="coerce")
+    t = pd.concat([base, new], ignore_index=True).dropna(subset=["date"])
+    t = t.drop_duplicates(subset=["date", "admin1", "admin2"], keep="last").sort_values(["date", "admin1", "admin2"])
+    loc.parent.mkdir(parents=True, exist_ok=True)
+    t.assign(date=t["date"].dt.strftime("%Y-%m-%d")).to_csv(loc, index=False, encoding="utf-8")
+    return loc
+
+
+def boundaries(spec) -> gpd.GeoDataFrame:
+    """The unit outlines of a table outbreak (Nom, PROVINCE, geometry), taken from another profile's zones.
+
+    At admin1 the zones are merged into provinces, once per shapefile, and kept in the cache: the
+    merge takes about a minute, and these are the exact outlines the zone lookup runs on.
+    """
+    src = outbreak.load(spec.adapter["boundaries"]["from"])
+    repo = fetch_inrb(spec=src)
+    level = spec.adapter["level"]
+    cached = CACHE / f"units_{src.id}_{level}_{_shape_stamp(repo, src)}.geojson"
+    if cached.exists():
+        return gpd.read_file(cached)
+    hz = gpd.read_file(repo / f"{src.adapter['shapes']}.shp")
+    hz = hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
+    if level == "admin1":
+        hz = hz.dissolve(by="PROVINCE").reset_index()[["PROVINCE", "geometry"]]
+        hz["Nom"] = hz["PROVINCE"]
+        hz = hz[["Nom", "PROVINCE", "geometry"]]
+    for f in CACHE.glob(f"units_{src.id}_{level}_*.geojson"):
+        f.unlink(missing_ok=True)
+    hz.to_file(cached, driver="GeoJSON")
+    return hz
+
+
+def _load_table(spec, refresh: bool, asof: str | None) -> Outbreak:
+    path = table_path(spec)
+    t = read_table(path) if path.exists() else pd.DataFrame(columns=TABLE_COLUMNS)
+    national_rows = t[t["admin1"].str.upper() == NATIONAL]
+    sub = t[(t["admin1"].str.upper() != NATIONAL) & (t["admin1"].str.len() > 0)]
+    if sub.empty:
+        raise TableEmpty(f"{spec.id}: geen cijfers per eenheid in {path}")
+    hz = boundaries(spec)
+    key = spec.adapter["level"]
+    ov_path = spec.file("zone_overrides.csv")
+    ov = {}
+    if ov_path.exists():
+        o = pd.read_csv(ov_path, comment="#")
+        ov = {norm(a): b for a, b in zip(o.observed, o.shapefile_nom)}
+    by_norm = {norm(n): n for n in hz.Nom}
+
+    def resolve(obs: str) -> str | None:
+        k = norm(obs)
+        return ov.get(k) or by_norm.get(k)
+
+    def long(col):
+        return sub[[key, "date", col]].set_axis(["nom", "date", "v"], axis=1)
+    cw, unmatched = _to_wide(long("cases_cum"), resolve)
+    dw, _ = _to_wide(long("deaths_cum"), resolve)
+    if len(national_rows):
+        national = (national_rows.groupby("date")[["cases_cum", "deaths_cum"]].max()
+                    .rename(columns={"cases_cum": "cases", "deaths_cum": "deaths"}).sort_index())
+    else:
+        national = pd.DataFrame({"cases": cw.sum(axis=1),
+                                 "deaths": dw.reindex(cw.index).ffill().fillna(0).sum(axis=1)})
+    ob = derive(hz, cw, dw, national, asof, unmatched, spec)
+    ob.checks["table"] = str(path)
+    ob.checks["table_last_date"] = str(ob.asof.date())
+    return ob
 
 
 def _load_inrb(spec, refresh: bool, asof: str | None) -> Outbreak:
@@ -364,6 +479,14 @@ def ecdc_snapshot(timeout: int = 30, spec=None) -> dict:
         return {"ok": False, "reason": repr(e)}
 
 
+def _shape_source(spec):
+    """Where an outbreak's zone outlines live: its own shapefile, or that of the profile a table borrows from."""
+    if spec.adapter["type"] == "table":
+        src = outbreak.load(spec.adapter["boundaries"]["from"])
+        return CACHE / src.adapter["cache_dir"], src
+    return CACHE / spec.adapter["cache_dir"], spec
+
+
 def _shape_stamp(repo: Path, spec=None) -> str:
     """Identity of the health-zone shapefile, so cached outlines follow a refreshed shapefile."""
     f = repo / f"{(spec or outbreak.default()).adapter['shapes']}.shp"
@@ -387,8 +510,9 @@ def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None, toleranc
     The file names carry the outbreak id, so two outbreaks never clean up each other's outlines.
     """
     spec = spec or outbreak.default()
-    repo = Path(repo or (CACHE / spec.adapter["cache_dir"]))
-    tag = f"{spec.id}_{tolerance:g}_{_shape_stamp(repo, spec)}"
+    own_repo, shp_spec = _shape_source(spec)
+    repo = Path(repo or own_repo)
+    tag = f"{spec.id}_{tolerance:g}_{_shape_stamp(repo, shp_spec)}"
     stale = re.compile(rf"display_(zones|prov)_({re.escape(spec.id)}_|\d)")   # \d: names from before 0.3
     fz, fp = CACHE / f"display_zones_{tag}.geojson", CACHE / f"display_prov_{tag}.geojson"
 

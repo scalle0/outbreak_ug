@@ -24,14 +24,23 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
     """One outbreak: its figures, the risk per stop, and its map and curve (file names carry its id when
     there are several). A profile without figures (`geen`) gives the stops at country level only."""
     from . import data, figures, mail, outbreak, risk
-    ob = data.load(refresh=refresh, asof=asof, spec=spec) if spec.has_data else None
+    empty = None
+    try:
+        ob = data.load(refresh=refresh, asof=asof, spec=spec) if spec.has_data else None
+    except data.TableEmpty as e:           # a hand-kept table without figures yet: say so, do not stop
+        ob, empty = None, str(e)
     src = data.sources_snapshot(asof, spec=spec)
     rs = risk.assess(trip, ob, spec)
+    if empty:
+        for r in rs:
+            r.flags.append(f"geen cijfers voor {spec.name}: de tabel is leeg")
     sfx = f"_{spec.id}" if multi else ""
     epi = mp = curve = None
     if ob is not None:
         curve = out / f"epicurve{sfx}_{ob.asof:%Y%m%d}.png"
         epi = figures.epicurve(ob, str(curve), src["ecdc"])
+        if not epi.get("path"):
+            curve = None                   # too few report dates for a curve
         first = min((r.start for r in rs if r.start), default=None)
         last = max((r.end for r in rs if r.end), default=None)
         sub = (f"{trip.get('traveller', '')}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
@@ -48,12 +57,22 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
           "map_label_overlaps": mp["label_overlaps"] if mp else 0,
           "map_labels_clipped": mp.get("labels_clipped", 0) if mp else 0,
           "far_stops_in_inset": mp["far_stops_in_inset"] if mp else []}
+    if spec.adapter.get("type") == "table":
+        # a hand-kept table ages: past `stale_days` the A and B categories can no longer be trusted
+        ref = date.fromisoformat(asof) if asof else date.today()
+        last = ob.checks.get("table_last_date") if ob is not None else None
+        days = (ref - date.fromisoformat(last)).days if last else None
+        qa.update({"table_last_date": last, "table_days_old": days, "table_empty": empty,
+                   "table_stale": days is None or days > spec.adapter["stale_days"]})
     # with several outbreaks the trip-level verdict override belongs to the whole advice, not to one
     t = None if multi else trip
-    return {"spec": spec, "ob": ob, "rs": rs, "tab": risk.table(rs), "epi": epi, "map": mp,
+    part = {"spec": spec, "ob": ob, "rs": rs, "tab": risk.table(rs), "epi": epi, "map": mp,
             "curve": str(curve) if curve else None, "qa": qa, "who": who,
-            "level": outbreak.strictest(spec.level(r.category) for r in rs) if spec.has_data else None,
+            "level": outbreak.strictest(spec.level(r.category) for r in rs) if ob is not None else None,
             "overall": risk.overall(rs, t), "rule_overall": risk.rule_overall(rs), "overrides": risk.overrides(rs, t)}
+    if empty:                              # no figures is not no objection
+        part["overall"] = part["rule_overall"] = f"geen cijfers voor {spec.name}; geen oordeel volgens de regels"
+    return part
 
 
 def _stops(rs) -> list[dict]:
@@ -123,7 +142,8 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
           "advisories_source": {i: c["_source"] for i, c in reg.items() if c},
           **{k: m[k] for k in ("map_label_overlaps", "map_labels_clipped", "far_stops_in_inset")},
           "skeleton_issues": mail.check_text(skel),
-          "overrules_count": len(overrides)}
+          "overrules_count": len(overrides),
+          **{k: v for k, v in m.items() if k.startswith("table_")}}
     first = min((r.start for r in main["rs"] if r.start), default=None)
     ob = main["ob"]
     summary = {"asof": str(ob.asof.date()) if ob is not None else None, "outbreak": main["spec"].id,

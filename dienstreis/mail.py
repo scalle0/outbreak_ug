@@ -94,9 +94,10 @@ def _stand(rs: list[StopRisk], epi: dict, ecdc: dict, named: bool) -> str:
     tot = ecdc if ecdc.get("ok") else {"cases": epi["last_total"], "deaths": epi["last_deaths"], "data_until": None}
     bron = f"ECDC, data tot {nl_months(tot['data_until'])}" if tot.get("data_until") else spec.sources["national"]
     label = f"Stand van zaken {spec.name}" if named else "Stand van zaken"
+    weeks = f" Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}." if wk else ""
     return (f"{label} ({bron}): "
-            f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent). "
-            f"Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}.")
+            f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent)."
+            + weeks)
 
 
 def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redirect: bool,
@@ -122,10 +123,12 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redir
               "Voorwaarden:"]
     conds = list(dict.fromkeys(spec.conditions + [c for o in others for c in spec_of(o[0]).conditions]))
     lines += [f"{i}. {c}" for i, c in enumerate([pretravel_line(rs)] + conds, start=1)]
-    figs = sum(1 for e in [epi] + [o[1] for o in others] if e)
-    attach = [] if not figs else [
-        "In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve." if figs == 1
-        else "In bijlage de kaarten met het reisschema en de bijgewerkte epidemiecurves.", ""]
+    epis = [e for e in [epi] + [o[1] for o in others] if e]        # every outbreak with figures has a map
+    curves = sum(1 for e in epis if e.get("path", True))           # a table with one report date has no curve
+    attach = [] if not epis else [
+        ("In bijlage de kaart met het reisschema" if len(epis) == 1 else "In bijlage de kaarten met het reisschema")
+        + ("" if not curves else " en de bijgewerkte epidemiecurve" if curves == 1 else " en de bijgewerkte epidemiecurves")
+        + ".", ""]
     lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", ""] + attach
     if redirect:
         lines += ["Voor verdere correspondentie kan u mij best bereiken via steven.callens@uzgent.be.", ""]

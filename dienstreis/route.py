@@ -92,6 +92,14 @@ def outbreaks_for(trip: dict) -> list[outbreak.OutbreakSpec]:
     return applicable(trip) or [outbreak.none()]
 
 
+def inactive_for(disease: str, trip: dict) -> list[str]:
+    """Profiles in concept (not active) that match a disease and reach the trip: usable with --uitbraak."""
+    here, d = set(trip_countries(trip)), disease.lower()
+    return [s.id for s in (outbreak.load(i) for i in outbreak.ids())
+            if not s.active and s.match_terms and here & reach(s)
+            and any(t.lower() in d or d in t.lower() for t in s.match_terms)]
+
+
 def unmatched_diseases(mentioned: list[str], specs: list[outbreak.OutbreakSpec]) -> list[str]:
     """Diseases the request names that no applied profile covers: they must be looked for, not assumed away."""
     terms = [t.lower() for s in specs for t in s.match_terms]

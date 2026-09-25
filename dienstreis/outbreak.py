@@ -32,7 +32,7 @@ DEFAULT = "ebola_cod_2026"
 NONE = "geen"                                                  # no outbreak applies: country level
 LEVELS = ("afraden", "voorwaardelijk", "geen_bezwaar")        # strictest first
 CATEGORIES = tuple("ABCDEFX")
-ADAPTERS = ("inrb", "none")
+ADAPTERS = ("inrb", "none", "table")
 REQUIRED = ("id", "active", "name_nl", "countries", "match_terms", "unit", "windows", "metric_epsg",
             "adapter", "categories", "overall", "outside_note", "flags", "conditions", "sources", "figures")
 # a profile without figures (adapter none) has no zones, windows or map
@@ -72,8 +72,18 @@ def _check(cfg: dict, path: Path) -> list[str]:
         issues.append("windows: active en clear zijn gehele dagen, active kleiner dan clear")
     if not (cfg["sources"] or {}).get("national"):
         issues.append("sources.national: hoe de nationale cijfers heten in de mail (bv. INSP)")
-    if (cfg["adapter"] or {}).get("type") not in ADAPTERS:
+    a = cfg["adapter"] or {}
+    if a.get("type") not in ADAPTERS:
         issues.append(f"adapter.type: kies uit {', '.join(ADAPTERS)}")
+    elif a["type"] == "table":
+        if not a.get("cases"):
+            issues.append("adapter.cases: het bestand met de cijfertabel (bv. cases.csv)")
+        if a.get("level") not in ("admin1", "admin2"):
+            issues.append("adapter.level: admin1 (provincie) of admin2 (gezondheidszone)")
+        if not (a.get("boundaries") or {}).get("from"):
+            issues.append("adapter.boundaries.from: het profiel waarvan de zonegrenzen komen")
+        if not isinstance(a.get("stale_days"), int):
+            issues.append("adapter.stale_days: na hoeveel dagen de tabel verouderd is")
     if not isinstance(cfg["metric_epsg"], int):
         issues.append("metric_epsg: een EPSG-code met meters als eenheid")
     return issues

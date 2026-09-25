@@ -6,7 +6,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 |---|---|---|---|
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
-| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | gevraagd | 2026-09-25 |
+| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | bezig | 2026-09-25 |
 | F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | klaar | 2026-09-25 |
 | F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | klaar | 2026-09-25 |
 | F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
@@ -33,13 +33,22 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 - **Status:** gevraagd
 - **Aanleiding:** de mpox-aanvraag van 25/09 (een reiziger in quarantaine ter plaatse, geen reisschema) liep door `dienstreis advies` en kwam eruit als ebola-pretraveladvies: categorie F, "geen ebola-gerelateerd bezwaar", ebolakaart en -curve, een go/no-go-datum drie maanden in het verleden. Het model schreef zelf "Dossiermismatch" in `sugg.txt`, maar de pijplijn kon daar niets mee.
 - **Plan:** de reisschemastap geeft `type: reisadvies | casus | vraag`, te wijzigen op het bevestigingsscherm; voor casus en vraag geen kaart of curve, een eigen mail- en webprompt (ITG, Sciensano, Departement Zorg, WHO, ECDC), dezelfde controles; waarschuwing bij een go/no-go-datum in het verleden.
-- **Open:** privacy van casusmails (identificeerbare gezondheidsgegevens naar Anthropic): bevestigingsvraag, `--llm manual` als standaard, of pseudonimiseren. Het archiefrecord en de logregel van 25/09 staan als ebolareis; opnieuw labelen zodra de velden bestaan?
+- **Beslissingen:**
+  - Privacy (Steven, 2026-09-25: "Ask each time"): voor een casusmail met gezondheidsgegevens toont het programma wat er naar het model gaat en vraagt het toestemming voor het verstuurd wordt.
+  - Het archiefrecord en de logregel van 25/09 (de mpox-casus, als ebolareis bewaard) worden opnieuw gelabeld als casusvraag over mpox zodra die velden bestaan; de tekst blijft zoals ze was (Steven, 2026-09-25).
 
 ## F-012 · Handmatige cijfertabel per uitbraak, mpox (DRC) als tweede profiel
 - **Gevraagd:** 2026-09-25 — keuze "hand-kept table" voor uitbraken zonder INRB-achtige databron
-- **Status:** gevraagd
+- **Status:** bezig
 - **Plan:** eerst nagaan of er een gecureerde mpox-bron bestaat; anders een adapter `table` op een `cases.csv` per uitbraak (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), grenzen van INRB voor de DRC en geoBoundaries voor andere landen. De webstap stelt updates voor, de arts bevestigt. Een verouderde tabel wordt in de QA en bovenaan de notities gemeld.
-- **Open:** de klinische parameters van mpox (vensters, oordeel per categorie, bevestigde of vermoedelijke gevallen, zone of provincie, voorwaarden, familievlag, drempel voor "stijgend", vaccinatie in de pretravelregel) zijn een oordeel van de arts; er gaat niets live zonder zijn bevestiging. Wie houdt `cases.csv` bij, hoe vaak, en vanaf welke ouderdom is ze verouderd?
+- **Gebouwd (deel 1, tabel en concept):**
+  - Adapter `table` (`data.py`): een met de hand bijgehouden `cases.csv` in de profielmap (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), op de zonegrenzen van een ander profiel, per provincie samengevoegd en in de cache bewaard. Een rij `NATIONAAL` geeft het nationale totaal, anders wordt opgeteld. Een lokale kopie in `~/.config/dienstreis/outbreaks/<id>/` wint zodra ze even ver of verder reikt. Ouder dan `stale_days`: bovenaan de notities, want A en B rusten op recente gevallen. Een lege tabel geeft een advies zonder cijfers voor die uitbraak, nooit een "geen bezwaar". Met een enkele rapportdatum geen curve, en dan belooft de mail er ook geen.
+  - De webstap krijgt per tabeluitbraak de laatste cijfers (`tabellen`) en stelt nieuwere officiële cijfers voor (`case_updates`); wat je aanvaardt komt in de lokale tabel.
+  - `outbreaks/mpox_cod_2026/`: mpox (clade I) in de DRC per provincie, als concept en niet actief. De klinische parameters staan gemarkeerd als CONCEPT. Een aanvraag die mpox noemt, krijgt een notitie die naar het concept wijst; `--uitbraak mpox_cod_2026` gebruikt het nu al.
+  - Tests: `test_table_adapter.py`; `test_route.py` en `test_multi.py` aangevuld. Een proef met echte ebolacijfers en het lege mpox-concept op de reis Kinshasa-Durba toonde dat een lege tabel "geen mpox-gerelateerd bezwaar" opleverde; dat zegt nu "geen cijfers".
+- **Beslissingen:**
+  - Een mpox-profiel per land (Steven, 2026-09-25: "Per country"), toegevoegd naarmate aanvragen binnenkomen. Eerst `mpox_cod_2026` voor de DRC; de tabeladapter is generiek, zodat een volgend land een nieuwe map met een eigen tabel is.
+- **Open:** de klinische parameters van mpox (vensters, oordeel per categorie, bevestigde of vermoedelijke gevallen, zone of provincie, voorwaarden, familievlag, drempel voor "stijgend", vaccinatie in de pretravelregel) zijn een oordeel van de arts; het profiel blijft inactief tot hij ze bevestigd heeft. Wie houdt `cases.csv` bij, hoe vaak, en vanaf welke ouderdom is ze verouderd?
 
 ## F-011 · Routering, meerdere uitbraken per advies, landniveau
 - **Gevraagd:** 2026-09-25 — "A lot of the question come for ebola, but we should be able to add in messages from other diseases and countries"; keuze: meerdere uitbraken per advies

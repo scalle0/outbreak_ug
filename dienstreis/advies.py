@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 
-from . import archive, countries, llm, log, mail, outbreak, route
+from . import archive, countries, data, llm, log, mail, outbreak, route
 from . import trip as trip_mod
 from .pipeline import _slug, analyse, log_row, outbreak_ids
 from .msg import parse_request
@@ -138,7 +138,7 @@ def _history(trip: dict) -> list[dict]:
     return rows[-15:]
 
 
-def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEFAULT) -> None:
+def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEFAULT, specs=()) -> None:
     """Show what the web step found that the country registry does not hold; on confirmation keep it locally.
 
     Overwriting a travel advisory or a border measure is a judgement, not a confirmation of something
@@ -153,7 +153,13 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     found = [x for x in webd.get("sources", []) if x.get("country") and x.get("url")]
     checked = sorted({a["country"] for a in webd.get("advisories", []) if a.get("country")})
     first = [i for i in checked if countries.age_days(countries.load(i)) is None]
-    if not (changed or measures or found or first):
+    tables = {sp.id: sp for sp in specs if sp.adapter.get("type") == "table"}
+    rows = [r for r in webd.get("case_updates", []) if r.get("outbreak") in tables and r.get("date")]
+    for r in rows:
+        print(f"  CIJFERS {r['outbreak']} {r.get('date')} {r.get('admin1')} {r.get('admin2') or ''}: "
+              f"{r.get('cases_cum')} gevallen, {r.get('deaths_cum')} overlijdens ({r.get('case_def')})  "
+              f"[{r.get('source_url')}]")
+    if not (changed or measures or found or first or rows):
         print("  landenregister: geen wijzigingen gevonden")
         return
     for a in changed:
@@ -168,6 +174,9 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     if apply_web or input("Dit lokaal overnemen in het landenregister? [j/n]: ").strip().lower().startswith("j"):
         for c in countries.apply_web(webd, outbreak_id).values():
             countries.save_local(c)
+        for oid in sorted({r["outbreak"] for r in rows}):
+            p = data.append_local_table(tables[oid], [r for r in rows if r["outbreak"] == oid])
+            print(f"  cijfers bewaard in {p}")
         print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
 
 
@@ -200,10 +209,42 @@ def write_reply(backend, inputs: dict, sources: list[str], overall: str | None =
     return d
 
 
+def _tables_for_web(specs) -> dict:
+    """For every outbreak with a hand-kept table: its level, case definition, last date and last figures."""
+    out = {}
+    for sp in specs:
+        if sp.adapter.get("type") != "table":
+            continue
+        path = data.table_path(sp)
+        t = data.read_table(path) if path.exists() else None
+        last = t[t["date"] == t["date"].max()] if t is not None and len(t) else None
+        out[sp.id] = {"naam": sp.name, "niveau": sp.adapter["level"], "casusdefinitie": sp.adapter.get("case_def"),
+                      "laatste_datum": str(t["date"].max().date()) if last is not None else None,
+                      "laatste_cijfers": [] if last is None else
+                      last.assign(date=last["date"].dt.strftime("%Y-%m-%d")).to_dict("records")}
+    return out
+
+
 def _stop_view(s: dict) -> dict:
     return {k: s.get(k) for k in ("place", "start", "end", "nights", "zone", "province", "category", "verdict",
                                   "label", "cases", "deaths", "new14", "days_since_last", "neighbours_active",
                                   "nearest_active", "fod", "fod_reason", "cdc", "flags", "lodging", "transit_only")}
+
+
+def _table_notes(summary: dict) -> list[str]:
+    """A hand-kept table that is empty or old: the categories that rest on recent cases cannot be trusted."""
+    parts = summary.get("outbreaks") or {summary.get("outbreak"): {"qa": summary["qa"]}}
+    out = []
+    for oid, o in parts.items():
+        q = o["qa"]
+        if q.get("table_empty"):
+            out.append(f"De cijfertabel van {oid} is leeg: dit advies rust voor die uitbraak niet op cijfers. "
+                       f"Vul de tabel, of aanvaard wat de webstap voorstelt.")
+        elif q.get("table_stale"):
+            out.append(f"De cijfertabel van {oid} is {q.get('table_days_old')} dagen oud (laatste datum "
+                       f"{q.get('table_last_date')}): de categorieën A en B zijn daardoor niet betrouwbaar. "
+                       f"Werk de tabel bij, of aanvaard wat de webstap voorstelt.")
+    return out
 
 
 def _unreachable(summary: dict) -> list[tuple[str, str]]:
@@ -278,8 +319,13 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     unreachable = _unreachable(summary)
     for label, reason in unreachable:
         print(f"  let op: {label} niet bereikbaar ({reason}); die kruiscontrole ontbreekt in dit advies")
+    concept = {x: route.inactive_for(x, trip) for x in unmatched}
     for x in unmatched:
-        print(f"  let op: de aanvraag noemt {x}, maar daarvoor bestaat geen uitbraakprofiel")
+        hint = (f" (er is een profiel in concept: --uitbraak {concept[x][0]})" if concept[x] else "")
+        print(f"  let op: de aanvraag noemt {x}, maar daarvoor geldt geen actief uitbraakprofiel{hint}")
+    table_notes = _table_notes(summary)
+    for x in table_notes:
+        print(f"  let op: {x}")
     if qa.get("map_label_overlaps") or qa.get("map_labels_clipped"):
         print(f"  let op: kaartlabels overlappen ({qa['map_label_overlaps']}) of vallen weg ({qa.get('map_labels_clipped')}); bekijk de kaart")
     if bad:
@@ -304,8 +350,11 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
                   "who_laatste_don": who_in, "reisschema": summary["table"]}
         if unmatched:
             web_in["ziekten_zonder_profiel"] = unmatched
+        tabellen = _tables_for_web(specs)
+        if tabellen:
+            web_in["tabellen"] = tabellen
         webd = llm.ask_json(be, "web", web_in, required=["advisories", "news", "who"], web=True, specs=specs)
-        maybe_apply_web(webd, apply_web, ids[0])
+        maybe_apply_web(webd, apply_web, ids[0], specs)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     _say("Mail schrijven")
@@ -340,10 +389,13 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     for label, _ in unreachable:
         sugg.insert(0, f"{label} was niet bereikbaar tijdens deze run; die kruiscontrole "
                        f"ontbreekt. Kijk de bron na voor verzending.")
+    for x in table_notes:
+        sugg.insert(0, x)
     for x in unmatched:
-        sugg.insert(0, f"De aanvraag noemt {x}, maar daarvoor bestaat geen uitbraakprofiel: de cijfers en "
-                       f"regels van dit advies gaan daar niet over. Kijk wat de webstap vond, en of er een "
-                       f"profiel nodig is.")
+        hint = (f" Er is een profiel in concept ({', '.join(concept[x])}): na bevestiging van de parameters "
+                f"kan het mee, of nu al met --uitbraak." if concept[x] else " Kijk of er een profiel nodig is.")
+        sugg.insert(0, f"De aanvraag noemt {x}, maar daarvoor geldt geen actief uitbraakprofiel: de cijfers en "
+                       f"regels van dit advies gaan daar niet over. Kijk wat de webstap vond.{hint}")
     if bad:
         sugg.insert(0, f"QA faalde: {bad}. Controleer de cijfers voor verzending.")
     if r["issues"]:
