@@ -8,6 +8,16 @@ from pathlib import Path
 
 import olefile
 
+from . import outbreak
+
+GENERIC_TERMS = ["outbreak", "uitbraak", "épidémie"]
+
+
+def _outbreak_words() -> re.Pattern:
+    """Words that mean the traveller wrote about an outbreak: generic ones and every active profile's."""
+    terms = [t for s in outbreak.active() for t in s.match_terms] + GENERIC_TERMS
+    return re.compile("|".join(re.escape(t) for t in terms), re.I)
+
 
 def _get(ole, stream: str):
     for suf, enc in (("001F", "utf-16-le"), ("001E", "cp1252")):
@@ -52,9 +62,8 @@ def parse_msg(path: str | Path, attach_dir: str | Path | None = None) -> dict:
         "body": body,
         "attachments": atts,
         # only the traveller's own request counts, not the forwarding note of Team Actueel
-        "traveller_mentions_outbreak": bool(re.search(r"ebola|bundibugyo|outbreak|uitbraak|épidémie",
-                                                      _original_request(body) + " ".join(a["text"] or "" for a in atts),
-                                                      re.I)),
+        "traveller_mentions_outbreak": bool(_outbreak_words().search(
+            _original_request(body) + " ".join(a["text"] or "" for a in atts))),
         "emails_in_thread": sorted(set(e.lower() for e in emails if e)),
     }
 
@@ -104,8 +113,7 @@ def parse_request(path: str | Path) -> dict:
     return {"subject": (m.get("subject") if m else None) or path.stem, "sender": m.get("from") if m else None,
             "recipients": rec, "body": body, "attachments": [],
             "sent_to_ugent_address": any(r["email"].lower().startswith("steven.callens@ugent.be") for r in rec),
-            "traveller_mentions_outbreak": bool(re.search(r"ebola|bundibugyo|outbreak|uitbraak|épidémie",
-                                                          _original_request(body), re.I)),
+            "traveller_mentions_outbreak": bool(_outbreak_words().search(_original_request(body))),
             "emails_in_thread": sorted(set(e.lower() for e in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", body)))}
 
 

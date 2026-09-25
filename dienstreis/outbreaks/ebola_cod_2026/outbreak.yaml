@@ -1,0 +1,80 @@
+# Ebola, Bundibugyo virus (BVD), Democratic Republic of the Congo, 2026.
+#
+# Everything the code applies to this outbreak. The windows, the verdict per category, the flag
+# texts and the conditions are clinical judgements: change them deliberately, and note why in
+# FEATURES.md. A changed line here changes every advice that follows.
+id: ebola_cod_2026
+active: true
+name_nl: Ebola (Bundibugyo-virus)
+countries: [COD]                       # ISO3 codes of the countries its figures cover
+match_terms: [ebola, bundibugyo]       # words in a request mail that point to this outbreak
+unit: gezondheidszone                  # what one row of the figures is, as the letter names it
+
+windows:                               # days, counted back from the last report date
+  active: 21                           # a case this recent makes a zone active (A, and D/E around it)
+  clear: 42                            # twice the incubation period: longer without a case is C
+
+metric_epsg: 32735                     # UTM 35S: metres for distances across the DRC
+
+adapter:                               # where the figures come from (data.py)
+  type: inrb
+  repo: https://github.com/INRB-UMIE/Ebola_DRC_2026.git
+  raw: https://raw.githubusercontent.com/INRB-UMIE/Ebola_DRC_2026/main/
+  cache_dir: inrb                      # folder in the data cache
+  daily:                               # refreshed every 6 hours
+    cases: data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_cases__daily.csv
+    deaths: data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_deaths__daily.csv
+    national_cases: data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_cases__daily.csv
+    national_deaths: data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_deaths__daily.csv
+    aliases: data/aliases.csv
+  shapes: data/shapefiles/DRC_Health_zones   # .shp .shx .dbf .prj .cpg, refreshed every 30 days
+
+# Per category: the label in the table, the verdict for that stop, and how it weighs in the
+# verdict for the whole trip (afraden > voorwaardelijk > geen_bezwaar; the strictest stop wins).
+categories:
+  A: {label: "getroffen zone, recent geval (<= 21 d)", verdict: afraden, level: afraden}
+  B: {label: "getroffen zone, laatste geval 22-42 d", verdict: voorwaardelijk, level: voorwaardelijk}
+  # C counts as geen_bezwaar for the trip although the stop itself is voorwaardelijk: that is how
+  # the rules have worked since 0.1.0. Open question in FEATURES.md (F-011).
+  C: {label: "getroffen zone, > 42 d zonder geval", verdict: voorwaardelijk, level: geen_bezwaar}
+  D: {label: "vrije zone, grenst aan actieve zone", verdict: voorwaardelijk, level: voorwaardelijk}
+  E: {label: "vrije zone in provincie met actieve transmissie", verdict: voorwaardelijk, level: voorwaardelijk}
+  F: {label: "niet getroffen", verdict: geen bezwaar, level: geen_bezwaar}
+  X: {label: "buiten de DRC", verdict: zie landnotitie, level: geen_bezwaar}
+
+overall:                               # the verdict for the whole trip, per level
+  afraden: niet goedkeuren in huidige vorm (minstens een luik af te raden)
+  voorwaardelijk: voorwaardelijk, met go/no-go dichter bij vertrek
+  geen_bezwaar: geen ebola-gerelateerd bezwaar
+
+outside_note: buiten DRC               # flag for a stop outside the figures when advisories.yaml has no note
+
+flags:                                 # facts the letter must weigh; they never change a category
+  family: "verblijf bij familie: blootstelling via zorg voor zieken en begrafenissen"
+  long_stay_nights: 14
+  rising_new14: 5                      # new cases in 14 days that make a zone "stijgend"
+
+conditions:                            # the numbered conditions of the reply skeleton, in order
+  # the first line is about the country, not the disease: it moves to config/countries.yaml (F-011)
+  - Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
+  - Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
+  - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
+  - Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
+
+sources:
+  national: INSP                       # the national figures, as the skeleton names them without ECDC
+  ecdc: https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda
+  who:                                 # the latest Disease Outbreak News item whose title matches all of these
+    label: DRC Ebola
+    title: [ebola, "congo|DRC"]
+  mail:                                # in sources.txt, between WHO and CDC
+    - ["ECDC, epidemiologische update", "https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda"]
+    - ["INRB-UMIE, INSP-situatierapporten per gezondheidszone", "https://github.com/INRB-UMIE/Ebola_DRC_2026"]
+    - ["INSP/RDC, situatierapporten", "https://insp.cd/"]
+
+figures:                               # {asof} is the last report date, dd-mm-yyyy
+  map_title: "Ebola (Bundibugyo-virus), DRC: situatie per gezondheidszone langs het reisschema"
+  legend_title: Bevestigde BVD-gevallen per gezondheidszone
+  map_credit: "Onafhankelijke kaart. Gevallen per gezondheidszone: INSP/RDC situatierapporten, verwerkt door INRB-UMIE (github.com/INRB-UMIE/Ebola_DRC_2026), data tot {asof}. Zonegrenzen: INRB/GRID3."
+  epicurve_title: "Ebola (Bundibugyo-virus), DRC: epidemiecurve uit officiële cumulatieve cijfers, tot {asof}"
+  epicurve_source: "INSP/RDC nationale cumulatieve reeks via INRB-UMIE; per rapportdatum, niet per symptoomdatum."

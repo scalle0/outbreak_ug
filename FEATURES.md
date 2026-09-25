@@ -7,7 +7,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
 | F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | gevraagd | 2026-09-25 |
 | F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | gevraagd | 2026-09-25 |
-| F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | bezig | 2026-09-25 |
+| F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | klaar | 2026-09-25 |
 | F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
 | F-008 | Kaart sneller: elk advies ruim een minuut korter | klaar | 2026-09-22 |
 | F-007 | Regels kunnen overrulen, met vastgelegde reden | klaar | 2026-09-22 |
@@ -35,12 +35,27 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 - **Gevraagd:** 2026-09-25 — "A lot of the question come for ebola, but we should be able to add in messages from other diseases and countries"; keuze: meerdere uitbraken per advies
 - **Status:** gevraagd
 - **Plan:** elke halte krijgt een landcode (`places.csv` of Natural Earth op `ADM0_A3`); een uitbraak geldt als een halte in een van haar landen ligt of binnen `radius_km` van een actieve zone. Per uitbraak een risicotabel, kaart en curve; het strengste oordeel wint. Landfeiten (FOD, pretravelregel) in `config/countries.yaml`, los van de CDC-niveaus die per ziekte gelden. Een reis zonder bekende uitbraak krijgt een advies op landniveau zonder kaart; een ziekte in de mail zonder profiel wordt bovenaan gemeld, nooit gelezen als "geen uitbraak".
+- **Bronnenregister per land** (2026-09-25): "when identifying new diseases or countries a source database could be made not to repeat the same exercise again and again (for example the shp files of the country, the trusted sources of the government, most important news outlets, and the international bodies...)". Wordt de landlaag van deze feature: een bestand per land in plaats van alleen FOD-links, met grenzen (bron en niveau, de bestanden zelf in de cache), de betrouwbare overheidsbronnen (ministerie, nationaal volksgezondheidsinstituut), de nieuwsmedia die de webstap mag gebruiken, taal, FOD-pagina's en pretravelregel, elk met een `verified`-datum. Daarnaast een korte lijst internationale instanties die voor elk land gelden (WHO, ECDC, CDC, Africa CDC, ITG, Sciensano). De webstap leest het register in plaats van telkens opnieuw te zoeken, en stelt nieuwe bronnen voor die de arts bevestigt, zoals nu al bij de reisadviezen.
 - **Open:** is een reis waarvan de zwaarste halte C is (meer dan 42 dagen zonder geval) bedoeld als "geen bezwaar" voor de hele reis? Zo werkt het nu, terwijl de halte zelf "voorwaardelijk" zegt. Routeringsstraal standaard 500 km?
 
 ## F-010 · Generieke kern: ebola wordt het eerste uitbraakprofiel
 - **Gevraagd:** 2026-09-25 — "I thought we had made this repo non diseases specific. [...] Can we rebuild this? What would be your advice?"
-- **Status:** bezig
-- **Plan:** herstructureren, niet herschrijven. Wat ebola-specifiek is (databron, vensters, oordeel per categorie, voorwaarden, bronnen, kaartteksten, promptpassages) verhuist naar `dienstreis/outbreaks/ebola_cod_2026/`; de code leest het daar. Eerst goldenbestanden van de huidige uitvoer vastleggen, zodat bewezen is dat de uitvoer byte voor byte gelijk blijft.
+- **Status:** klaar (2026-09-25)
+- **Gebouwd:**
+  - `dienstreis/outbreak.py`: een uitbraakprofiel (`OutbreakSpec`) wordt gelezen en gecontroleerd voor het gebruikt wordt; een onbruikbaar profiel wordt geweigerd met alle problemen tegelijk. `fill` zet de passages van het profiel in de prompts waar `{{uitbraak:<naam>}}` staat.
+  - `dienstreis/outbreaks/ebola_cod_2026/`: `outbreak.yaml` (databron, landen, vensters 21/42, oordeel per categorie en gewicht in het reisoordeel, eindoordelen, vlagteksten en drempels, voorwaarden, ECDC- en WHO-bron, teksten op kaart en curve), `prompt.md` (acht passages uit `reply.md` en `web.md`, letterlijk) en `zone_overrides.csv` (verhuisd uit `config/`).
+  - `data.load` kiest de adapter uit het profiel (enkel `inrb` voorlopig) en geeft de reeksen aan een gedeelde `derive`; ECDC en WHO worden gelezen met de URL en titelpatronen van het profiel; een bron die het profiel niet noemt, telt niet als onbereikbaar. `risk`, `mail`, `figures`, `pipeline`, `geo`, `msg` en `llm` halen uit het profiel wat ze vroeger zelf wisten.
+  - Tests: `test_golden.py` (de uitvoer van de vier voorbeeldreizen en de drie prompts, vastgelegd voor de herstructurering) en `test_outbreak.py` (profielen, passages, bronnen).
+- **Bewezen:** alle goldens byte voor byte gelijk, regressietests ongewijzigd groen, 150+ tests groen. Figuren: de vier epicurves en twee van de vier kaarten byte voor byte gelijk; op de andere twee verschuiven enkele labels een paar pixels. Dat gebeurt ook tussen twee runs van dezelfde code, dus het komt niet van de herstructurering (zie Voorstellen).
+- **Beslissingen:**
+  - Herstructureren in plaats van een nieuwe repo: ongeveer 60 procent van de code (mail lezen, de drie modelstappen, controles, overrules, archief, log, widget) is al ziekte-onafhankelijk (Steven, 2026-09-25).
+  - Volgorde: eerst de generieke kern, dan routering en meerdere uitbraken, dan de cijfertabel en mpox, dan casusvragen (Steven, 2026-09-25).
+  - Klinische parameters staan in het profiel en worden door de arts bevestigd; de code verzint ze niet.
+  - `Nom` en `PROVINCE` blijven de kolomnamen die een adapter levert: hernoemen tijdens de herstructurering zou de tests aanpassen die de herstructurering net moeten bewaken.
+  - `advisories.yaml` blijft in deze stap ongewijzigd, net als de FOD-links in `mail.py` en de pretravelregel in de voorwaarden: dat zijn landfeiten, geen ziektefeiten, en ze verhuizen in F-011 naar het bronnenregister per land.
+  - De valkuilen uit `reply.md` zijn als een blok naar het ebolaprofiel verhuisd. Welke ervan voor elke ziekte gelden, blijkt pas naast een tweede profiel; dan worden ze gesplitst, met een nagekeken diff.
+  - De kolom `new21` is weg: ze werd berekend en nergens gelezen.
+  - De bewaarde kaartcontouren dragen nu het id van de uitbraak in hun naam. De eerste run na de update bouwt ze eenmalig opnieuw op (ongeveer anderhalve minuut).
 - **Beslissingen:**
   - Herstructureren in plaats van een nieuwe repo: ongeveer 60 procent van de code (mail lezen, de drie modelstappen, controles, overrules, archief, log, widget) is al ziekte-onafhankelijk (Steven, 2026-09-25).
   - Volgorde: eerst de generieke kern, dan routering en meerdere uitbraken, dan de cijfertabel en mpox, dan casusvragen (Steven, 2026-09-25).
@@ -143,4 +158,5 @@ Een fout gevonden en hersteld: de mail schreef "het laatste geval dateert van va
 Aandachtspunt, geen fout: de mail telde 1 642 woorden. De cijfercontrole bewijst dat een getal ergens uit de invoer komt, niet dat het waar is; cijfers die uit de webstap komen (het aantal gehospitaliseerden, de cholera-aantallen, de WHO-cijfers van DON617) zijn zo betrouwbaar als de webpagina die het model gelezen heeft. Het veld `checked_how` in `web.json` zegt of de pagina zelf gelezen is of enkel een zoekresultaat.
 
 ## Voorstellen (nog niet gevraagd)
+- Kaarten reproduceerbaar maken. Twee runs van dezelfde code op dezelfde gegevens plaatsen enkele labels een paar pixels anders (gezien op de kaarten Yangambi en Haut-Uele, 2026-09-25); zones, kleuren en route zijn gelijk. adjustText zet zelf een vaste seed en `PYTHONHASHSEED=0` helpt niet, dus de oorzaak zit elders. Zolang dat zo is, kunnen de kaarten niet mee in de goldentests.
 - Een echte `.msg` als testfixture. De OLE-parser in `msg.py` wordt nu enkel handmatig getest; `.eml` en `.txt` zitten wel in de tests. Een `.msg` maken vraagt Outlook, en een bestaande aanvraag committen vraagt eerst een beslissing over anonimisering.

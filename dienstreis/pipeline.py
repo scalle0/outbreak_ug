@@ -1,6 +1,6 @@
 """The deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA.
 
-Everything here is arithmetic on the itinerary and the INSP figures; no model is involved. Kept
+Everything here is arithmetic on the itinerary and the outbreak's figures; no model is involved. Kept
 apart from cli.py so that `advies` can call it without importing the argument parser, and so that
 the boundary between "calculated" and "written by a model" is visible in the imports.
 """
@@ -16,13 +16,18 @@ def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:40]
 
 
-def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False) -> dict:
-    """Deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA. Returns summary."""
+def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False,
+            spec=None) -> dict:
+    """Deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA. Returns summary.
+
+    `spec` is the outbreak profile to assess the trip against (default: the default profile).
+    """
     from . import data, figures, log, mail, risk
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    ob = data.load(refresh=refresh, asof=asof)
-    src = data.sources_snapshot(asof)
+    ob = data.load(refresh=refresh, asof=asof, spec=spec)
+    spec = ob.spec
+    src = data.sources_snapshot(asof, spec=spec)
     ecdc, who = src["ecdc"], src["who"]
     rs = risk.assess(trip, ob)
     tab = risk.table(rs)
@@ -37,13 +42,12 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     sub = (f"{trip.get('traveller', '')}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
            f"{last.year if last else ''}. Nationaal: {mail.n(epi['last_total'])} gevallen, "
            f"{mail.n(epi['last_deaths'])} overlijdens (data tot {ob.asof:%d-%m-%Y})")
-    mp = figures.itinerary_map(rs, ob, "Ebola (Bundibugyo-virus), DRC: situatie per gezondheidszone langs het reisschema",
-                               sub, str(out / f"kaart_{tag}.png"))
+    mp = figures.itinerary_map(rs, ob, spec.figures["map_title"], sub, str(out / f"kaart_{tag}.png"))
 
     redirect = bool(trip.get("sent_to_ugent_address", False))
     skel = mail.skeleton(trip, rs, epi, ecdc, redirect)
     (out / "reply_skeleton.txt").write_text(skel, encoding="utf-8")
-    (out / "sources.txt").write_text(mail.sources_block(), encoding="utf-8")
+    (out / "sources.txt").write_text(mail.sources_block(spec), encoding="utf-8")
 
     adv = risk.advisories()
     age = (date.today() - adv["verified"]).days if isinstance(adv["verified"], date) else None
@@ -52,7 +56,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
           "ecdc": ecdc, "who": who,
           "who_days_old": who.get("days_old"),
           "sources_unreachable": [k for k, v in src.items() if not v.get("ok")
-                                  and v.get("reason") != "asof run"],
+                                  and v.get("reason") not in ("asof run", data.NOT_CONFIGURED)],
           "unmatched_zone_names": ob.unmatched,
           "advisories_verified_days_ago": age, "advisories_stale": age is None or age > 14,
           "advisories_source": adv.get("_source", "package"),
@@ -62,8 +66,8 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
           "overrules_count": len(risk.overrides(rs, trip))}
     summary = {"asof": str(ob.asof.date()), "overall": risk.overall(rs, trip),
                "rule_overall": risk.rule_overall(rs), "overrides": risk.overrides(rs, trip), "epi": epi,
-               "stops": [{**{k: v for k, v in r.__dict__.items() if k not in ("lat", "lon")},
-                          "verdict": r.verdict, "label": risk.LABEL[r.category]} for r in rs],
+               "stops": [{**{k: v for k, v in r.__dict__.items() if k not in ("lat", "lon", "spec")},
+                          "verdict": r.verdict, "label": r.outbreak_spec.label(r.category)} for r in rs],
                "qa": qa, "files": sorted(str(p) for p in out.iterdir()),
                "who": who, "map": mp["path"], "epicurve": str(out / f"epicurve_{ob.asof:%Y%m%d}.png"),
                "departure": str(first or ""), "table": tab.drop(columns=["signalen"]).to_string(index=False)}

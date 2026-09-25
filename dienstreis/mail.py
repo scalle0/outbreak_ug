@@ -1,14 +1,16 @@
 """Reply skeleton to Team Actueel (Dutch), HTML copy widget, sources and output checks.
 
 The skeleton contains only facts and the rule-based verdict per stop. Paragraphs that need
-judgement are marked [[CLAUDE: ...]] and must be written (or deleted) before sending.
+judgement are marked [[CLAUDE: ...]] and must be written (or deleted) before sending. What is
+about the disease (the zone unit, the conditions, the outbreak sources) comes from its profile.
 """
 from __future__ import annotations
 
 import html
 import re
 
-from .risk import LABEL, StopRisk, overall, overrides, rule_overall
+from . import outbreak
+from .risk import StopRisk, overrides, rule_overall, spec_of
 
 MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september",
           "oktober", "november", "december"]
@@ -25,12 +27,13 @@ def n(x: int) -> str:
 
 
 def leg_paragraph(i: int, r: StopRisk) -> str:
+    spec = r.outbreak_spec
     when = f" ({d(r.start)} tot {d(r.end)})" if r.start else ""
     head = f"{i}. {r.place}{when}: "
     if r.category == "X":
-        return head + f"buiten de DRC; {'; '.join(r.flags)}."
+        return head + f"{spec.label('X')}; {'; '.join(r.flags)}."
     parts = []
-    zone_txt = f"gezondheidszone {r.zone}" if r.zone and r.zone.lower() != r.place.lower() else "de gezondheidszone"
+    zone_txt = f"{spec.unit} {r.zone}" if r.zone and r.zone.lower() != r.place.lower() else f"de {spec.unit}"
     if r.category == "A":
         parts.append(f"af te raden. {zone_txt.capitalize()} telt {n(r.cases)} bevestigde gevallen "
                      f"({n(r.deaths)} overlijdens), waarvan {r.new14} in de laatste 14 dagen")
@@ -65,6 +68,7 @@ def _override_hint(rs: list[StopRisk], trip: dict) -> str:
 
 
 def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bool) -> str:
+    spec = spec_of(rs)
     who = trip.get("traveller", "de reiziger")
     wk = list(epi["weekly_cases_last4_full_weeks"].values())
     lines = ["Beste An,", "",
@@ -74,19 +78,15 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bo
     lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
     tot = ecdc if ecdc.get("ok") else {"cases": epi["last_total"], "deaths": epi["last_deaths"], "data_until": None}
     lines += ["",
-              f"Stand van zaken ({'ECDC, data tot ' + tot['data_until'] if tot.get('data_until') else 'INSP'}): "
+              f"Stand van zaken ({'ECDC, data tot ' + tot['data_until'] if tot.get('data_until') else spec.sources['national']}): "
               f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent). "
               f"Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}.",
               "",
               f"[[CLAUDE: profiel en context van {who}: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. "
               "Enkel wat het oordeel verandert.]]", "",
-              "Voorwaarden:",
-              "1. Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.",
-              "2. Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, "
-              "geen begrafenissen, geen bushmeat.",
-              "3. [[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]",
-              "4. Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.",
-              "", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", "",
+              "Voorwaarden:"]
+    lines += [f"{i}. {c}" for i, c in enumerate(spec.conditions, start=1)]
+    lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", "",
               "In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.", ""]
     if redirect:
         lines += ["Voor verdere correspondentie kan u mij best bereiken via steven.callens@uzgent.be.", ""]
@@ -111,8 +111,13 @@ def check_text(txt: str) -> list[str]:
 
 # numbers written out in the reply: "7 672" and "7.672" are the same number as "7672"
 _NUMBER = re.compile(r"\d+(?:[ \u00a0.,]\d{3})*(?:,\d+)?")
-# day numbers, the rule windows (14/21/42 days) and percentages are always allowed
-_ALWAYS_OK = {str(n) for n in range(0, 32)} | {"42", "100"}
+# day numbers, 14 (the count of new cases), 100 (percentages) and the outbreak's own rule windows
+# (for Ebola 21 and 42 days) are always allowed
+_ALWAYS_OK = {str(n) for n in range(0, 32)} | {"100"}
+
+
+def _always_ok(specs=None) -> set[str]:
+    return _ALWAYS_OK | {str(w) for s in (specs or [outbreak.default()]) for w in s.windows.values()}
 
 
 def _numbers(txt: str) -> set[str]:
@@ -124,23 +129,23 @@ def _numbers(txt: str) -> set[str]:
     return out
 
 
-def unknown_numbers(txt: str, sources: list[str]) -> list[str]:
+def unknown_numbers(txt: str, sources: list[str], specs=None) -> list[str]:
     """Numbers in the reply that appear in none of the facts it was written from.
 
     The model rewrites the whole letter, so every case count, death count and interval passes
     through it. check_text catches style, not arithmetic: this is what stops an invented figure
     from going out in a signed medical advice. Reported, never silently corrected.
     """
-    allowed = set(_ALWAYS_OK)
+    allowed = _always_ok(specs)
     for s in sources:
         allowed |= _numbers(s)
     bad = sorted(_numbers(txt) - allowed, key=lambda x: (-len(x), x))
     return [f"onbekend getal '{b}': komt niet voor in de berekende gegevens" for b in bad]
 
 
-def check_reply(txt: str, sources: list[str], numbers: bool = True) -> list[str]:
+def check_reply(txt: str, sources: list[str], numbers: bool = True, specs=None) -> list[str]:
     """Blocking checks: style, and every number traceable to the calculated facts."""
-    return check_text(txt) + (unknown_numbers(txt, sources) if numbers else [])
+    return check_text(txt) + (unknown_numbers(txt, sources, specs) if numbers else [])
 
 
 # the same verdict written the way a letter writes it: "af te raden", "raad ik momenteel af"
@@ -226,13 +231,16 @@ hr {{ margin:20px 0; border:none; border-top:1px solid var(--border); }} .s {{ f
 </body></html>"""
 
 
-SOURCES = [
-    ("WHO, Disease Outbreak News",
-     "https://www.who.int/emergencies/disease-outbreak-news"),
-    ("ECDC, epidemiologische update", "https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda"),
-    ("INRB-UMIE, INSP-situatierapporten per gezondheidszone", "https://github.com/INRB-UMIE/Ebola_DRC_2026"),
-    ("INSP/RDC, situatierapporten", "https://insp.cd/"),
-    ("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices"),
+def sources(spec=None) -> list[tuple[str, str]]:
+    """The links for sources.txt: WHO, the outbreak's own sources, CDC, and the FOD pages for the DRC."""
+    spec = spec or outbreak.default()
+    return ([("WHO, Disease Outbreak News", "https://www.who.int/emergencies/disease-outbreak-news")]
+            + [tuple(x) for x in spec.sources.get("mail", [])]
+            + [("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices")] + FOD_SOURCES)
+
+
+# the FOD pages are about the country, not the disease: they move to config/countries.yaml (F-011)
+FOD_SOURCES = [
     ("FOD Buitenlandse Zaken, algemene veiligheid DRC",
      "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo"),
     ("FOD Buitenlandse Zaken, laatste update DRC",
@@ -240,7 +248,8 @@ SOURCES = [
     ("FOD Buitenlandse Zaken, gezondheid en hygiene DRC",
      "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/gezondheid-en-hygiene-de-democratische-republiek-congo"),
 ]
+SOURCES = sources()
 
 
-def sources_block() -> str:
-    return "\n\n".join(f"{t}:\n{u}" for t, u in SOURCES)
+def sources_block(spec=None) -> str:
+    return "\n\n".join(f"{t}:\n{u}" for t, u in sources(spec))

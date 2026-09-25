@@ -1,8 +1,10 @@
 # dienstreis-advies
 
-Reproducible outbreak travel-risk analysis for UGent Team Actueel dienstreizen, built on the
-Ebola Bundibugyo (BVD) outbreak in the DRC, 2026. One command on your own PC turns a forwarded
-request mail into a checked Dutch reply, an itinerary map and an epidemic curve. Everything
+Reproducible outbreak travel-risk analysis for UGent Team Actueel dienstreizen. One command on
+your own PC turns a forwarded request mail into a checked Dutch reply, an itinerary map and an
+epidemic curve. What belongs to one outbreak lives in its profile under `dienstreis/outbreaks/`
+(see [Outbreak profiles](#outbreak-profiles)); the first, and so far only, profile is the Ebola
+Bundibugyo (BVD) outbreak in the DRC, 2026. Everything
 deterministic runs in Python; a language model is used only for the three steps that need
 judgement (reading the itinerary, optional web check, writing the reply).
 
@@ -54,7 +56,9 @@ LLM backends (`--llm`, or the environment variable `DIENSTREIS_LLM`):
   chat and save the JSON answer as `antwoord_<step>.json`.
 
 The prompts live in `dienstreis/prompts/` (`stops.md`, `web.md`, `reply.md`): that is where the
-clinical judgement rules, pitfalls and mail conventions are written down. Change them there, not in code.
+judgement rules and mail conventions are written down. The passages about one disease (the category
+table, its pitfalls, what the web step should look for) are in that outbreak's `prompt.md` and are
+spliced in where a prompt says `{{uitbraak:<name>}}`. Change them there, not in code.
 
 ## What the model may and may not do
 
@@ -72,6 +76,24 @@ figure. Four checks hold that line, and each one names the problem instead of co
 `out_*/llm_trace.json` keeps every prompt, answer and retry of the run, so a sentence in a sent
 advice can be traced back to what the model was given. `--no-number-check` switches the number
 check off for the rare reply where a legitimate figure trips it.
+
+## Outbreak profiles
+
+Everything that differs between outbreaks is in `dienstreis/outbreaks/<id>/`, not in the code:
+
+| file | what |
+|---|---|
+| `outbreak.yaml` | where the figures come from (`adapter`), the countries they cover, the zone unit, the rule windows, the verdict per category and how it weighs in the trip verdict, flag texts and thresholds, the conditions of the skeleton, ECDC and WHO sources, the texts on the map and the curve |
+| `prompt.md` | the passages of the prompts that are about this disease, one `<!-- uitbraak:<name> -->` section each |
+| `zone_overrides.csv` | observed zone spellings mapped to the shapefile (inrb adapter) |
+
+The windows, verdicts, conditions and flag texts are clinical judgements: the code applies them and
+invents none. A profile is checked when it is read, and refused whole with every problem named
+(`tests/test_outbreak.py`). `ebola_cod_2026/outbreak.yaml` documents every key.
+
+One adapter exists so far, `inrb`: a GitHub repository with INSP situation reports per health zone
+and the zone shapefile. More adapters, routing a trip to the outbreaks that apply to it, several
+outbreaks in one advice and case questions are planned (FEATURES.md, F-011 to F-013).
 
 ## Sources checked every run
 
@@ -226,6 +248,8 @@ most once a month. Both are now computed once and cached (`data.display_geometry
 are simplified to about 250 m: the map is 12.5 inch at 300 dpi for a country 2 000 km wide, roughly
 500 m per pixel, so finer detail cannot appear on the page. A map now takes about 20 seconds, an
 advice about 30; the first run after a new shapefile pays the one-off cost of rebuilding the outlines.
+The cached outlines carry the outbreak id in their name (since 0.3), so the first run after updating
+to 0.3 rebuilds them once, and two outbreaks never clean up each other's.
 
 **Only what is drawn is simplified.** Which health zone a place falls in, which zones border it and
 how far the nearest active zone is are all decided on the exact boundaries. `display_geometry` works
@@ -241,7 +265,7 @@ Four places, and only one of them is irreplaceable.
 | **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`), and `advisories.yaml` if the web step wrote one | gone for good. Back this up |
 | **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
 | **Per-run output** | `out_<traveller>/` where you ran the command | the reply, widget, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
-| **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/` in this repo | places, zone spellings, the FOD/CDC table, and the three prompts that hold the clinical judgement rules | it is in git |
+| **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/` in this repo | places, the FOD/CDC table, the three prompts, and per outbreak its profile, prompt passages and zone spellings | it is in git |
 
 The advice folders are the thing worth protecting: they are what later advices are checked against,
 and the only record of what was actually sent. `out_*/` is scratch, and is gitignored.
@@ -251,6 +275,10 @@ Both `.config` and `.cache` can be moved with `DIENSTREIS_CONTEXT`, `DIENSTREIS_
 
 ## Risk categories (health-zone level)
 
+The windows and verdicts below are those of the Ebola profile; another outbreak sets its own in
+its `outbreak.yaml`. For the trip as a whole the strictest stop wins, and C counts as no objection
+for the trip although the stop itself is conditional (an open question, F-011).
+
 | cat | rule | default verdict |
 |---|---|---|
 | A | zone has a new case in the last 21 days | afraden |
@@ -259,7 +287,7 @@ Both `.config` and `.cache` can be moved with `DIENSTREIS_CONTEXT`, `DIENSTREIS_
 | D | zone free, borders a zone with a case in 21 days | voorwaardelijk, re-evaluate closer to departure |
 | E | zone free, province has active zones | voorwaardelijk |
 | F | not affected | geen bezwaar |
-| X | outside the DRC | country note from `config/advisories.yaml` |
+| X | outside the area of the outbreak's figures | country note from `config/advisories.yaml` |
 
 Flags never change the category; they list what must be weighed (FOD formal advisory and its
 reason, CDC level, family stay, healthcare work, overnight stays, long stays, rising zone).
@@ -269,7 +297,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 - zone sum must equal the national INSP total for the same date (INSP downward revisions are
   kept in levels; new-case detection uses the running maximum)
 - ECDC headline parsed and compared (ok / mismatch / page changed)
-- unmatched zone spellings reported (add them to `config/zone_overrides.csv`)
+- unmatched zone spellings reported (add them to `outbreaks/<id>/zone_overrides.csv`)
 - advisories older than 14 days flagged (`config/advisories.yaml`, `verified:`)
 - map label overlaps and labels clipped by the frame, inset or legend counted (inset and legend go to corners without stops); em-dash, banned intensifiers and open placeholders block the widget
 
@@ -301,7 +329,9 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
 | `test_request_parsing.py` | reading the request mail, against an invented fixture |
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
+| `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
+| `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
 
-The pipeline and regression tests each do a full analysis against the cached data, so a complete
-run takes minutes. `pytest -q --ignore=tests/test_advies_pipeline.py --ignore=tests/test_regression.py`
+The pipeline, regression and golden tests each do a full analysis against the cached data, so a complete
+run takes minutes. `pytest -q --ignore=tests/test_advies_pipeline.py --ignore=tests/test_regression.py --ignore=tests/test_golden.py`
 runs the rest in a couple of seconds while you work.

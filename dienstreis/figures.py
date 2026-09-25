@@ -1,4 +1,7 @@
-"""Figures: itinerary map on health zones, reconstructed epidemic curve. Both check themselves."""
+"""Figures: itinerary map on the outbreak's zones, reconstructed epidemic curve. Both check themselves.
+
+Titles, legend and credit lines are the outbreak profile's (`figures` in outbreak.yaml).
+"""
 from __future__ import annotations
 
 import warnings
@@ -12,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
 
-from . import data
+from . import data, outbreak
 
 warnings.filterwarnings("ignore", message=".*geographic CRS.*")
 BLUE, RED = "#1f4e9e", "#b30000"
@@ -70,8 +73,9 @@ def _extent(rs, zones, pad=1.6, min_span=6.0, near_km=450):
 
 
 def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbours: bool = True) -> dict:
+    spec = getattr(ob, "spec", None) or outbreak.default()
     # simplified outlines for drawing only; the risk assessment used the exact boundaries
-    zones, prov = data.display_geometry(ob.zones)
+    zones, prov = data.display_geometry(ob.zones, spec=spec)
     zones["fc"] = zones.cases.map(_colour)
     countries = data.fetch_countries()
     (x0, x1, y0, y1), far = _extent(rs, zones)
@@ -124,13 +128,13 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
 
     legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(BINS)] + [
         mpatches.Patch(fc="none", ec="#000", hatch="....", label="Nieuwe gevallen laatste 14 dagen"),
-        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label="Gezondheidszone van een stop"),
+        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label=f"{spec.unit.capitalize()} van een stop"),
         Line2D([0], [0], marker="s", color=BLUE, ls=(0, (4, 3)), mfc=BLUE, mec="white", ms=8, label="Reisschema")]
     inset_corner, legend_corner = _free_corners(inside, (x0, x1, y0, y1))
     leg = ax.legend(handles=legend, loc=legend_corner, fontsize=8.3, framealpha=0.96, edgecolor="#999",
-                    title="Bevestigde BVD-gevallen per gezondheidszone", title_fontsize=8.8)
+                    title=spec.figures["legend_title"], title_fontsize=8.8)
 
-    # locator inset (whole DRC), shows far stops such as Kinshasa; placed in a corner without stops
+    # locator inset (the whole area of the figures), shows far stops such as Kinshasa; placed in a corner without stops
     axi = ax.inset_axes(CORNERS[inset_corner], zorder=20)
     countries.plot(ax=axi, color="#f4f4f4", edgecolor="#bbbbbb", linewidth=0.3)
     prov.plot(ax=axi, color="#eeeeee", edgecolor="#999999", linewidth=0.3)
@@ -152,8 +156,7 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
 
     ax.set_title(f"{title}\n{subtitle}", fontsize=11.2, pad=10)
     ax.text(0.0, -0.015,
-             f"Onafhankelijke kaart. Gevallen per gezondheidszone: INSP/RDC situatierapporten, verwerkt door INRB-UMIE "
-             f"(github.com/INRB-UMIE/Ebola_DRC_2026), data tot {ob.asof:%d-%m-%Y}. Zonegrenzen: INRB/GRID3.\n"
+             spec.figures["map_credit"].format(asof=f"{ob.asof:%d-%m-%Y}") + "\n"
              "Landgrenzen: Natural Earth. Posities van stops benaderend; route tussen stops hemelsbreed, niet de werkelijke weg.",
              fontsize=7.1, color="#444444", transform=ax.transAxes, va="top")
     fig.canvas.draw()
@@ -204,6 +207,7 @@ def _overlaps(texts, fig) -> int:
 
 
 def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
+    spec = getattr(ob, "spec", None) or outbreak.default()
     nat = ob.national.copy()
     nat["cases"] = nat.cases.cummax()
     nat["deaths"] = nat.deaths.ffill().cummax()
@@ -233,8 +237,8 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
     b.grid(axis="y", color="#e0e0e0"); b.set_axisbelow(True)
     b.text(-0.06, 1.03, "B", transform=b.transAxes, fontsize=16, fontweight="bold")
     b.xaxis.set_major_formatter(mdates.DateFormatter("%d %b")); b.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=2))
-    fig.suptitle(f"Ebola (Bundibugyo-virus), DRC: epidemiecurve uit officiële cumulatieve cijfers, tot {ob.asof:%d-%m-%Y}", fontsize=12.5)
-    src = "INSP/RDC nationale cumulatieve reeks via INRB-UMIE; per rapportdatum, niet per symptoomdatum."
+    fig.suptitle(spec.figures["epicurve_title"].format(asof=f"{ob.asof:%d-%m-%Y}"), fontsize=12.5)
+    src = spec.figures["epicurve_source"]
     if ecdc and ecdc.get("ok"):
         src += f" ECDC-controle: {ecdc['cases']:,} gevallen (data tot {ecdc['data_until']}).".replace(",", " ")
     fig.text(0.08, 0.01, src, fontsize=7.4, color="#444")

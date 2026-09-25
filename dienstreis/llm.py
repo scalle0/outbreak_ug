@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from . import outbreak
+
 PROMPTS = Path(__file__).parent / "prompts"
 DEFAULT_API_MODEL = "claude-opus-5"
 
@@ -32,13 +34,14 @@ class LLMError(RuntimeError):
     pass
 
 
-def load_prompt(step: str) -> str:
-    return (PROMPTS / f"{step}.md").read_text(encoding="utf-8")
+def load_prompt(step: str, specs=None) -> str:
+    """The step's instructions, with the passages about the outbreak taken from its profile."""
+    return outbreak.fill((PROMPTS / f"{step}.md").read_text(encoding="utf-8"), specs)
 
 
-def build_prompt(step: str, inputs: dict) -> str:
+def build_prompt(step: str, inputs: dict, specs=None) -> str:
     """Instruction file for the step followed by the inputs as clearly delimited JSON blocks."""
-    parts = [load_prompt(step), "", "# Invoer", ""]
+    parts = [load_prompt(step, specs), "", "# Invoer", ""]
     for k, v in inputs.items():
         body = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, indent=1, default=str)
         parts += [f"<{k}>", body, f"</{k}>", ""]
@@ -202,10 +205,11 @@ def trace_of(backend: Backend) -> list[dict]:
 
 
 def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web: bool = False,
-             repair: bool = False) -> dict:
+             repair: bool = False, specs=None) -> dict:
     """One step. `repair` marks a second pass over the same step after the checks rejected it,
-    so the trace tells a repair round apart from a retry on unusable JSON."""
-    prompt = build_prompt(step, inputs)
+    so the trace tells a repair round apart from a retry on unusable JSON. `specs` are the outbreak
+    profiles whose passages go into the instructions (default: the default profile)."""
+    prompt = build_prompt(step, inputs, specs)
     last = None
     for attempt in range(2):
         t0 = time.time()
@@ -223,6 +227,6 @@ def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web
         except (LLMError, json.JSONDecodeError) as e:
             last = str(e)
         entry["geweigerd"] = last
-        prompt = build_prompt(step, inputs) + f"\n\nJe vorige antwoord was onbruikbaar ({last}). " \
+        prompt = build_prompt(step, inputs, specs) + f"\n\nJe vorige antwoord was onbruikbaar ({last}). " \
                                                 "Geef enkel het JSON-object met alle gevraagde velden."
     raise LLMError(f"stap {step}: {last}")
