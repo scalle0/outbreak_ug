@@ -1,0 +1,17 @@
+# Zambia: everything that is the same whatever the disease. Not yet verified: the web step looks up
+# the FOD pages, the advisory, the border measures and trusted sources, and offers them for you to confirm.
+iso3: ZMB
+name_nl: Zambia
+name_en: Zambia
+letter_nl: Zambia
+neighbours: [AGO, BWA, COD, MOZ, MWI, NAM, TZA, ZWE]
+verified: null
+
+fod: {pages: [], default: null, regions: {}}
+cdc: {}
+pretravel: null
+government: []
+news: []
+
+measures:                              # entry and exit measures tied to an outbreak elsewhere, as last verified
+  - {outbreak: ebola_cod_2026, text: "no cases reported", verified: 2026-09-22, source: advisories.yaml (0.2)}

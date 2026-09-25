@@ -1,0 +1,16 @@
+# Central African Republic: everything that is the same whatever the disease. Not yet verified: the web step looks up
+# the FOD pages, the advisory, the border measures and trusted sources, and offers them for you to confirm.
+iso3: CAF
+name_nl: Centraal-Afrikaanse Republiek
+name_en: Central African Republic
+letter_nl: de Centraal-Afrikaanse Republiek
+neighbours: [CMR, COD, COG, SDN, SSD, TCD]
+verified: null
+
+fod: {pages: [], default: null, regions: {}}
+cdc: {}
+pretravel: null
+government: []
+news: []
+
+measures: []                           # entry and exit measures tied to an outbreak elsewhere, as last verified

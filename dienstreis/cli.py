@@ -146,7 +146,7 @@ def main(argv=None):
     v.add_argument("--web", action="store_true", help=argparse.SUPPRESS)   # standaard aan sinds 0.3
     v.add_argument("--yes", action="store_true", help="reisschema niet laten bevestigen (stopt wel bij fouten)")
     v.add_argument("--apply-web", action="store_true",
-                   help="wijzigingen uit --web zonder vragen overnemen in de lokale advisories.yaml")
+                   help="wijzigingen uit de webstap zonder vragen overnemen in het lokale landenregister")
     v.add_argument("--no-number-check", action="store_true",
                    help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")

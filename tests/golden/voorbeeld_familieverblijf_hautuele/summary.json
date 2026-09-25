@@ -1,5 +1,6 @@
 {
  "asof": "2026-09-19",
+ "outbreak": "ebola_cod_2026",
  "overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
  "rule_overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
  "overrides": [],
@@ -248,6 +249,7 @@
   "who_days_old": null,
   "sources_unreachable": [],
   "unmatched_zone_names": [],
+  "advisories_unverified": [],
   "far_stops_in_inset": [
    "Kinshasa"
   ],

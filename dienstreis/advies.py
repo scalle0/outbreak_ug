@@ -3,7 +3,7 @@
     1 read the request (.msg/.eml/.txt, or a folder with all its mails)  deterministic
     2 itinerary from the mail -> stops.yaml, user confirms       LLM (stops)
     3 data, risk per stop, map, epicurve, skeleton, QA           deterministic
-    4 optional: advisories and news not yet in the data          LLM with web access (web)
+    4 optional: advisories, border measures and news not yet in the data   LLM with web access (web)
     5 reply mail and notes for Steven                            LLM (reply)
     6 text checks (em-dash, banned words, placeholders), one repair round, widget,
       log, context line, browser, optional Outlook draft         deterministic
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from . import archive, llm, log, mail, risk
+from . import archive, countries, llm, log, mail, outbreak
 from . import trip as trip_mod
 from .pipeline import _slug, analyse, log_row
 from .msg import parse_request
@@ -117,30 +117,37 @@ def _history(trip: dict) -> list[dict]:
     return rows[-15:]
 
 
-def maybe_apply_web(webd: dict, apply_web: bool) -> None:
-    """Show advisory changes found online; on confirmation write a newer local advisories table.
+def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEFAULT) -> None:
+    """Show what the web step found that the country registry does not hold; on confirmation keep it locally.
 
-    Overwriting a travel advisory is a judgement, not a confirmation of something already shown:
-    it changes the FOD and CDC flags of every later advice. So this asks even under --yes, unless
-    --apply-web says otherwise.
+    Overwriting a travel advisory or a border measure is a judgement, not a confirmation of something
+    already shown: it changes the flags of every later advice. So this asks even under --yes, unless
+    --apply-web says otherwise. Accepting also records that the countries were checked today, so a
+    country stops being "never verified" once you have seen what was found for it.
     """
-    changed = [a for a in webd.get("advisories", []) if a.get("changed")]
     for n in webd.get("news", []):
         print(f"  nieuws {n.get('date')}: {n.get('item')} ({n.get('url')})")
-    if not changed:
-        print("  reisadviezen: geen wijzigingen gevonden")
+    changed = [a for a in webd.get("advisories", []) if a.get("changed")]
+    measures = [m for m in webd.get("measures", []) if m.get("changed")]
+    found = [x for x in webd.get("sources", []) if x.get("country") and x.get("url")]
+    checked = sorted({a["country"] for a in webd.get("advisories", []) if a.get("country")})
+    first = [i for i in checked if countries.age_days(countries.load(i)) is None]
+    if not (changed or measures or found or first):
+        print("  landenregister: geen wijzigingen gevonden")
         return
     for a in changed:
-        print(f"  WIJZIGING {a['province']}: FOD {a.get('fod')} ({a.get('fod_reason')}), CDC {a.get('cdc')}  [{a.get('source')}]")
-    if apply_web or input("Deze wijzigingen lokaal overnemen in advisories.yaml? [j/n]: ").strip().lower().startswith("j"):
-        adv = {k: v for k, v in risk.advisories().items() if k != "_source"}
-        for a in changed:
-            adv.setdefault("provinces", {})[a["province"]] = {"fod": a.get("fod"), "fod_reason": a.get("fod_reason"),
-                                                              "cdc": a.get("cdc")}
-        adv["verified"] = date.today()
-        risk.LOCAL_ADVISORIES.parent.mkdir(parents=True, exist_ok=True)
-        risk.LOCAL_ADVISORIES.write_text(yaml.safe_dump(adv, allow_unicode=True, sort_keys=False), encoding="utf-8")
-        print(f"  bewaard in {risk.LOCAL_ADVISORIES} (zet het ook in de repo als het blijvend is)")
+        print(f"  WIJZIGING {a.get('country')} {a.get('region') or '(heel het land)'}: FOD {a.get('fod')} "
+              f"({a.get('fod_reason')}), CDC {a.get('cdc')}  [{a.get('source')}]")
+    for m in measures:
+        print(f"  GRENS {m.get('country')}: {m.get('text')} ({m.get('date')})  [{m.get('source')}]")
+    for x in found:
+        print(f"  BRON {x['country']} ({x.get('kind')}): {x.get('name')}  {x['url']}")
+    if first:
+        print(f"  voor het eerst nagekeken: {', '.join(first)}")
+    if apply_web or input("Dit lokaal overnemen in het landenregister? [j/n]: ").strip().lower().startswith("j"):
+        for c in countries.apply_web(webd, outbreak_id).values():
+            countries.save_local(c)
+        print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
 
 
 def _soft_notes(reply: str, overall: str | None) -> list[str]:
@@ -216,9 +223,12 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     bad = [k for k in ("zone_sum_matches_national",) if not qa[k]]
     if qa.get("ecdc_matches") is False:
         bad.append("ecdc_matches")
-    if qa.get("advisories_stale"):
+    if qa.get("advisories_unverified"):
+        print(f"  let op: reisadviezen voor {', '.join(qa['advisories_unverified'])} nog nooit nagekeken; "
+              f"de webstap zoekt ze op en stelt ze voor")
+    elif qa.get("advisories_stale"):
         print(f"  let op: reisadviezen {qa['advisories_verified_days_ago']} dagen oud; "
-              f"de webstap werkt ze bij, of pas advisories.yaml aan")
+              f"de webstap werkt ze bij, of pas het landenregister aan")
     who = qa.get("who") or {}
     if who.get("ok"):
         print(f"  WHO: {who.get('item')} ({who.get('date')}, {who.get('days_old')} dagen oud)")
@@ -232,14 +242,21 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
 
     webd = {}
     if web:
-        _say("Reisadviezen (FOD, CDC), WHO en nieuws op het web")
+        _say("Reisadviezen (FOD, CDC), grensmaatregelen, WHO en nieuws op het web")
+        spec = outbreak.load(summary.get("outbreak"))
         provs = sorted({s["province"] for s in summary["stops"] if s.get("province")})
+        trip_iso = list(dict.fromkeys(s["country"] for s in summary["stops"] if s.get("country")))
+        # countries on the trip that border an outbreak country: their border measures are checked every run
+        border = [i for i in trip_iso if i not in spec.countries and set(countries.neighbours(i)) & set(spec.countries)]
+        landen = {i: countries.for_prompt(countries.load(i) or countries.blank(i))
+                  for i in dict.fromkeys(trip_iso + spec.countries)}
         webd = llm.ask_json(be, "web", {"vandaag": date.today().isoformat(), "provincies": provs,
-                                        "huidige_tabel": {k: v for k, v in risk.advisories().items() if k != "_source"},
+                                        "landen": landen, "buurlanden": border,
+                                        "internationaal": countries.international(),
                                         "who_laatste_don": summary["qa"].get("who"),
                                         "reisschema": summary["table"]},
                             required=["advisories", "news", "who"], web=True)
-        maybe_apply_web(webd, apply_web)
+        maybe_apply_web(webd, apply_web, spec.id)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     _say("Mail schrijven")

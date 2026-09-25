@@ -8,43 +8,23 @@ Categories (zone level, relative to the data date). The windows come from the ou
   D  zone vrij, maar grenst aan een zone met een geval binnen `active` dagen
   E  zone vrij, provincie heeft een geval binnen `active` dagen
   F  niet getroffen, geen actieve zone in de provincie
-  X  buiten het gebied van de cijfers -> landnotitie uit advisories.yaml
+  X  buiten het gebied van de cijfers -> grensmaatregelen van dat land uit het register
 The verdict per category, and how it weighs in the verdict for the whole trip, are in the profile
-too (`categories`, `overall`): they are clinical judgements, not code.
+too (`categories`, `overall`): they are clinical judgements, not code. FOD and CDC levels come
+from the country registry (countries.py), per province where it has one.
 """
 from __future__ import annotations
 
-import os
-
 from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
 
 import pandas as pd
-import yaml
 
-from . import geo, outbreak
+from . import countries, geo, outbreak
 
-CONFIG = Path(__file__).parent / "config"
 # the default profile's verdicts and labels, under the names the rest of the package and the tests use
 VERDICT = {c: outbreak.default().verdict(c) for c in outbreak.CATEGORIES}
 LABEL = {c: outbreak.default().label(c) for c in outbreak.CATEGORIES}
-
-
-LOCAL_ADVISORIES = Path(os.environ.get("DIENSTREIS_ADVISORIES",
-                                     Path.home() / ".config" / "dienstreis" / "advisories.yaml"))
-
-
-def advisories() -> dict:
-    """Package table, or the local copy when that one was verified more recently (see `dienstreis advies --web`)."""
-    pkg = yaml.safe_load(open(CONFIG / "advisories.yaml", encoding="utf-8"))
-    pkg["_source"] = "package"
-    if LOCAL_ADVISORIES.exists():
-        loc = yaml.safe_load(open(LOCAL_ADVISORIES, encoding="utf-8"))
-        if loc and str(loc.get("verified", "")) > str(pkg.get("verified", "")):
-            loc["_source"] = str(LOCAL_ADVISORIES)
-            return loc
-    return pkg
 
 
 @dataclass
@@ -94,7 +74,15 @@ def _norm_prov(p: str | None) -> str | None:
     return None if p is None else p.replace("é", "e").replace("É", "E")
 
 
-def assess_stop(stop: dict, zones, adv: dict, profile: dict, spec=None) -> StopRisk:
+def _country_flags(r: StopRisk) -> None:
+    if r.fod == "formeel_afgeraden":
+        r.flags.append(f"FOD raadt provincie formeel af ({r.fod_reason})" if r.province
+                       else f"FOD raadt het land formeel af ({r.fod_reason})")
+    if r.cdc and r.cdc >= 3:
+        r.flags.append(f"CDC niveau {r.cdc}")
+
+
+def assess_stop(stop: dict, zones, profile: dict, spec=None) -> StopRisk:
     spec = spec or outbreak.default()
     active, clear = spec.windows["active"], spec.windows["clear"]
     fl = spec.flags
@@ -105,10 +93,17 @@ def assess_stop(stop: dict, zones, adv: dict, profile: dict, spec=None) -> StopR
                  transit_only=bool(stop.get("transit_only", False)), lat=loc["lat"], lon=loc["lon"],
                  country=loc["country"], spec=spec)
     z = geo.zone_of(zones, r.lat, r.lon, metric=spec.metric_epsg)
+    if z is not None and r.country is None and len(spec.countries) == 1:
+        r.country = spec.countries[0]              # a stop given by lat/lon inside the figures
+    land = countries.load(r.country)
     if z is None:
         r.category = "X"
-        r.flags.append(adv.get("countries", {}).get(r.country or "", {}).get("note", spec.outside_note))
+        ms = countries.measures(land, spec.id)
+        r.flags.append("; ".join(m["text"] for m in ms) if ms else spec.outside_note)
         r.nearest_active = geo.nearest_active(zones, r.lat, r.lon, max_days=active, metric=spec.metric_epsg)
+        r.fod, r.fod_reason = countries.fod(land)
+        r.cdc = countries.cdc(land, spec.id)
+        _country_flags(r)
         return r
     r.zone, r.province = z.Nom, _norm_prov(z.PROVINCE)
     r.cases, r.deaths, r.new14 = int(z.cases), int(z.deaths), int(z.new14)
@@ -137,14 +132,11 @@ def assess_stop(stop: dict, zones, adv: dict, profile: dict, spec=None) -> StopR
     else:
         r.category = "F"
 
-    pa = adv["provinces"].get(r.province, adv["default"])
-    r.fod, r.fod_reason, r.cdc = pa["fod"], pa.get("fod_reason"), pa["cdc"]
+    r.fod, r.fod_reason = countries.fod(land, r.province)
+    r.cdc = countries.cdc(land, spec.id, r.province)
 
     # flags: facts that Claude must weigh, never automatic verdict changes
-    if r.fod == "formeel_afgeraden":
-        r.flags.append(f"FOD raadt provincie formeel af ({r.fod_reason})")
-    if r.cdc and r.cdc >= 3:
-        r.flags.append(f"CDC niveau {r.cdc}")
+    _country_flags(r)
     if r.category in "ABDE" and (r.lodging or profile.get("lodging")) == "family":
         r.flags.append(fl["family"])
     if r.category in "ABDE" and profile.get("healthcare_work"):
@@ -177,9 +169,8 @@ def _apply_override(r: StopRisk, o: dict | None) -> StopRisk:
 
 
 def assess(trip: dict, ob) -> list[StopRisk]:
-    adv = advisories()
     spec = getattr(ob, "spec", None) or outbreak.default()
-    return [assess_stop(s, ob.zones, adv, trip.get("profile", {}), spec) for s in trip["stops"]]
+    return [assess_stop(s, ob.zones, trip.get("profile", {}), spec) for s in trip["stops"]]
 
 
 def spec_of(rs: list[StopRisk]) -> outbreak.OutbreakSpec:

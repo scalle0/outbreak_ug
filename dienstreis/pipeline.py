@@ -22,7 +22,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
 
     `spec` is the outbreak profile to assess the trip against (default: the default profile).
     """
-    from . import data, figures, log, mail, risk
+    from . import countries, data, figures, log, mail, risk
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     ob = data.load(refresh=refresh, asof=asof, spec=spec)
@@ -47,10 +47,14 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     redirect = bool(trip.get("sent_to_ugent_address", False))
     skel = mail.skeleton(trip, rs, epi, ecdc, redirect)
     (out / "reply_skeleton.txt").write_text(skel, encoding="utf-8")
-    (out / "sources.txt").write_text(mail.sources_block(spec), encoding="utf-8")
+    trip_iso = list(dict.fromkeys(r.country for r in rs if r.country))
+    (out / "sources.txt").write_text(mail.sources_block(spec, trip_iso), encoding="utf-8")
 
-    adv = risk.advisories()
-    age = (date.today() - adv["verified"]).days if isinstance(adv["verified"], date) else None
+    # advisories are per country now: name the ones nobody has checked instead of hiding them in one date
+    reg = {i: countries.load(i) for i in trip_iso}
+    ages = {i: countries.age_days(c) for i, c in reg.items()}
+    unverified = [i for i in trip_iso if ages.get(i) is None]
+    age = max((a for a in ages.values() if a is not None), default=None)
     qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"],
           "ecdc_matches": (ecdc.get("cases") == epi["last_total"]) if ecdc.get("ok") else None,
           "ecdc": ecdc, "who": who,
@@ -58,13 +62,15 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
           "sources_unreachable": [k for k, v in src.items() if not v.get("ok")
                                   and v.get("reason") not in ("asof run", data.NOT_CONFIGURED)],
           "unmatched_zone_names": ob.unmatched,
-          "advisories_verified_days_ago": age, "advisories_stale": age is None or age > 14,
-          "advisories_source": adv.get("_source", "package"),
+          "advisories_verified_days_ago": age,
+          "advisories_stale": bool(unverified) or age is None or age > countries.STALE_DAYS,
+          "advisories_unverified": unverified,
+          "advisories_source": {i: c["_source"] for i, c in reg.items() if c},
           "map_label_overlaps": mp["label_overlaps"], "map_labels_clipped": mp.get("labels_clipped", 0),
           "far_stops_in_inset": mp["far_stops_in_inset"],
           "skeleton_issues": mail.check_text(skel),
           "overrules_count": len(risk.overrides(rs, trip))}
-    summary = {"asof": str(ob.asof.date()), "overall": risk.overall(rs, trip),
+    summary = {"asof": str(ob.asof.date()), "outbreak": spec.id, "overall": risk.overall(rs, trip),
                "rule_overall": risk.rule_overall(rs), "overrides": risk.overrides(rs, trip), "epi": epi,
                "stops": [{**{k: v for k, v in r.__dict__.items() if k not in ("lat", "lon", "spec")},
                           "verdict": r.verdict, "label": r.outbreak_spec.label(r.category)} for r in rs],

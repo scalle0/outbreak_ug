@@ -50,4 +50,4 @@ niveau per provincie voor ebola
 WHO-situatierapport over de DRC
 
 <!-- uitbraak:nieuws -->
-Nieuws van de laatste 14 dagen dat nog niet in de data kan zitten: nieuwe provincie of zone, mediagemelde gevallen langs het reisschema, grensmaatregelen, maatregelen op luchthavens, wijzigingen in de 21-dagenregels van derde landen. Enkel betrouwbare bronnen (INSP, WHO, ECDC, CDC, Actualite.cd, Radio Okapi, Reuters, AP).
+Nieuws van de laatste 14 dagen dat nog niet in de data kan zitten: nieuwe provincie of zone, mediagemelde gevallen langs het reisschema, grensmaatregelen, maatregelen op luchthavens, wijzigingen in de 21-dagenregels van derde landen. Enkel betrouwbare bronnen: die in `landen` en `internationaal`; een andere bron alleen als je zegt waarom je ze vertrouwt.

@@ -47,16 +47,14 @@ overall:                               # the verdict for the whole trip, per lev
   voorwaardelijk: voorwaardelijk, met go/no-go dichter bij vertrek
   geen_bezwaar: geen ebola-gerelateerd bezwaar
 
-outside_note: buiten DRC               # flag for a stop outside the figures when advisories.yaml has no note
+outside_note: buiten DRC               # flag for a stop outside the figures when its country has no measure recorded
 
 flags:                                 # facts the letter must weigh; they never change a category
   family: "verblijf bij familie: blootstelling via zorg voor zieken en begrafenissen"
   long_stay_nights: 14
   rising_new14: 5                      # new cases in 14 days that make a zone "stijgend"
 
-conditions:                            # the numbered conditions of the reply skeleton, in order
-  # the first line is about the country, not the disease: it moves to config/countries.yaml (F-011)
-  - Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
+conditions:                            # the numbered conditions of the reply skeleton, after the pretravel line
   - Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
   - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
   - Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.

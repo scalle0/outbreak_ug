@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from dienstreis import advies, archive, data, llm, log, pipeline, risk
+from dienstreis import advies, archive, countries, data, llm, log, pipeline
 
 HERE = Path(__file__).parent
 GOLDEN = HERE / "golden"
@@ -76,7 +76,7 @@ def _norm_prompt(p: str) -> str:
     p = _text(p)
     p = re.sub(r"<vandaag>\n[^\n]*\n</vandaag>", "<vandaag>\nVANDAAG\n</vandaag>", p)
     p = re.sub(r'"advisories_verified_days_ago": [^,\n]*', '"advisories_verified_days_ago": X', p)
-    p = re.sub(r'"advisories_source": "[^"]*"', '"advisories_source": "X"', p)
+    p = re.sub(r'"advisories_source": ("[^"]*"|\{[^}]*\})', '"advisories_source": "X"', p)
     p = re.sub(r'"path": "[^"]*?([^"\\/]+)"', r'"path": "\1"', p)     # the run's temp folder
     for k in LABEL_COUNTS:
         p = re.sub(rf'"{k}": \d+', f'"{k}": X', p)
@@ -85,9 +85,14 @@ def _norm_prompt(p: str) -> str:
 
 @pytest.fixture(scope="module")
 def frozen():
-    """Frozen advisories and a data cache that is read, never refreshed, for the whole module."""
+    """Frozen advisories and a data cache that is read, never refreshed, for the whole module.
+
+    The advisories are frozen through the 0.2 table (tests/golden/advisories.yaml, verified 2099), so
+    this also keeps reading that old local file working; no local country registry is used.
+    """
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(risk, "LOCAL_ADVISORIES", GOLDEN / "advisories.yaml")
+        mp.setattr(countries, "LEGACY", GOLDEN / "advisories.yaml")
+        mp.setattr(countries, "LOCAL", GOLDEN / "geen_lokaal_register")
         mp.setattr(data, "_stale", lambda *a, **k: False)
         yield mp
 

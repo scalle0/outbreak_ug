@@ -36,7 +36,7 @@ What happens:
 | 1 | Python | read the .msg, or every mail in the request's folder in the order they were sent (attachments included) |
 | 2 | LLM | itinerary from the mail -> `stops.yaml`; shown in the terminal, you confirm or edit it in Notepad |
 | 3 | Python | INRB/INSP data, health zone per stop, category A-F, map, epicurve, ECDC cross-check, reply skeleton |
-| 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories and news not yet in the data; changes are offered for a local `advisories.yaml` |
+| 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories, border measures of neighbouring countries and news not yet in the data; changes and new sources are offered for the local country registry |
 | 5 | LLM | reply to An and notes for you, using `context.md` and the earlier advices for the same destinations |
 | 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, widget in the browser, Outlook draft with map and epicurve (never sent), log line, context line, archived advice, `llm_trace.json` |
 
@@ -103,6 +103,34 @@ One adapter exists so far, `inrb`: a GitHub repository with INSP situation repor
 and the zone shapefile. More adapters, routing a trip to the outbreaks that apply to it, several
 outbreaks in one advice and case questions are planned (FEATURES.md, F-011 to F-013).
 
+## Country source registry
+
+What is the same about a country whatever the disease lives in `dienstreis/countries/<ISO3>.yaml`,
+so a new outbreak in a known country, or a known outbreak reaching a new country, does not start
+the search for sources again:
+
+| key | what |
+|---|---|
+| `fod` | the FOD Buitenlandse Zaken pages, the advisory for the country and per province, with the reason (security or health) |
+| `cdc` | the CDC Travel Health Notice level, per outbreak profile, for the country and per province |
+| `pretravel` | what the pretravel condition of the letter names (yellow fever, malaria) |
+| `government`, `news` | trusted national sources and the news outlets the web step may rely on |
+| `neighbours` | land borders; a trip through a country bordering an outbreak country gets its border measures checked |
+| `measures` | entry and exit measures tied to an outbreak (closed border, screening, quarantine), each with the date it was verified and its source |
+| `verified` | when the advisories were last checked against the live pages; `null` means never |
+
+`_international.yaml` lists the bodies that apply everywhere (WHO, WHO AFRO, ECDC, US CDC, Africa
+CDC, ITG, Sciensano, Departement Zorg, Reuters, AP). The registry starts with the DRC and its nine
+neighbours; for the neighbours only the name, the borders and the notes of the old advisories
+table are filled in, and the web step looks up the rest.
+
+The web step reads the registry, checks it against the live pages, and offers what differs: a
+changed advisory, a border measure, a new FOD page or source. What you accept is written to
+`%USERPROFILE%\.config\dienstreis\countries\<ISO3>.yaml`, which wins while it is verified more
+recently than the file in the repo; accepting also records that the countries were checked today.
+A country nobody has checked yet is named in the console and in `qa.advisories_unverified`. The
+`advisories.yaml` of 0.2, if you still have one, is read while it is newer than the registry.
+
 ## Sources checked every run
 
 | source | how | when |
@@ -111,6 +139,7 @@ outbreaks in one advice and case questions are planned (FEATURES.md, F-011 to F-
 | ECDC epidemiological update | page parsed, compared with the INSP national total | every run |
 | WHO Disease Outbreak News | read from the WHO JSON API: latest DRC Ebola item, its date and age | every run |
 | FOD Buitenlandse Zaken, US CDC | read in the web step; they are prose pages, and "formally advised against for security reasons" means something different from "for health reasons" | every run, `--no-web` to skip |
+| border measures of neighbouring countries | read in the web step for every country on the trip that borders an outbreak country: closed border, screening, quarantine or entry ban for travellers from the outbreak country | every run, `--no-web` to skip |
 
 A source that cannot be reached never stops an advice: it fails soft and shows up in the QA block
 under `sources_unreachable`, and in the notes. A run with `--asof` skips the live sources
@@ -162,7 +191,8 @@ an answer back. `--no-web` stops the model searching the open web. Decide delibe
 goes into `context.md`; it is the richest personal data in the system and it goes out with every reply.
 
 Local files (never in the repo): `%USERPROFILE%\.config\dienstreis\context.md`, `advice_log.csv`,
-optional `advisories.yaml` (used when verified more recently than the packaged table), and the
+`countries\<ISO3>.yaml` for what you accepted from the web step (used when verified more recently than the
+registry in the repo), and the
 `out_<traveller>/` folders. Data cache: `%USERPROFILE%\.cache\dienstreis` (`dienstreis data` shows
 its size, `dienstreis data --reset-cache` empties it).
 
@@ -270,10 +300,10 @@ Four places, and only one of them is irreplaceable.
 
 | | where | what | if you lose it |
 |---|---|---|---|
-| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`), and `advisories.yaml` if the web step wrote one | gone for good. Back this up |
+| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`), and `countries/<ISO3>.yaml` for the web-step findings you accepted | gone for good. Back this up |
 | **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
 | **Per-run output** | `out_<traveller>/` where you ran the command | the reply, widget, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
-| **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/` in this repo | places, the FOD/CDC table, the three prompts, and per outbreak its profile, prompt passages and zone spellings | it is in git |
+| **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/`, `dienstreis/countries/` in this repo | places, the three prompts, per outbreak its profile, prompt passages and zone spellings, and per country its sources, advisories and border measures | it is in git |
 
 The advice folders are the thing worth protecting: they are what later advices are checked against,
 and the only record of what was actually sent. `out_*/` is scratch, and is gitignored.
@@ -294,7 +324,7 @@ its `outbreak.yaml`. For the trip as a whole the strictest stop wins.
 | D | zone free, borders a zone with a case in 21 days | voorwaardelijk, re-evaluate closer to departure |
 | E | zone free, province has active zones | voorwaardelijk |
 | F | not affected | geen bezwaar |
-| X | outside the area of the outbreak's figures | country note from `config/advisories.yaml` |
+| X | outside the area of the outbreak's figures | the country's border measures for this outbreak, from the registry |
 
 Flags never change the category; they list what must be weighed (FOD formal advisory and its
 reason, CDC level, family stay, healthcare work, overnight stays, long stays, rising zone).
@@ -305,7 +335,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
   kept in levels; new-case detection uses the running maximum)
 - ECDC headline parsed and compared (ok / mismatch / page changed)
 - unmatched zone spellings reported (add them to `outbreaks/<id>/zone_overrides.csv`)
-- advisories older than 14 days flagged (`config/advisories.yaml`, `verified:`)
+- advisories older than 14 days, or never checked, flagged per country (`countries/<ISO3>.yaml`, `verified:`)
 - map label overlaps and labels clipped by the frame, inset or legend counted (inset and legend go to corners without stops); em-dash, banned intensifiers and open placeholders block the widget
 
 ## Known limits
@@ -313,8 +343,8 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 - Zone-level deaths sum below the national total: INSP books some treatment-centre deaths as
   "à ventiler" (not yet assigned to a zone). Use national deaths for totals.
 - Place coordinates are approximate; `config/places.csv` grows as places come up.
-- Advisories are a maintained table, not scraped: verify the live FOD and CDC pages each time,
-  or use `--web` and read what it found before accepting it.
+- Advisories and border measures are a maintained registry, not scraped: the web step checks the
+  live pages each run, and you read what it found before accepting it.
 - The checks catch invented figures, not a wrong judgement written in correct figures. You read and
   sign every advice; the checks narrow what can go wrong, they do not replace the reading.
 - Two runs of the same request give two different letters. The figures are fixed, the wording is not.
@@ -337,6 +367,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |
 | `test_request_parsing.py` | reading the request mail, against an invented fixture |
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
+| `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
 | `test_skeleton.py` | the skeleton writes zone names with their own capitals and ECDC dates with Dutch months |

@@ -22,4 +22,4 @@ dienstreis = "dienstreis.cli:main"
 packages = ["dienstreis"]
 
 [tool.setuptools.package-data]
-dienstreis = ["config/*", "prompts/*.md", "outbreaks/*/*"]
+dienstreis = ["config/*", "prompts/*.md", "outbreaks/*/*", "countries/*.yaml"]

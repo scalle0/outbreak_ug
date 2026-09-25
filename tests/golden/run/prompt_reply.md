@@ -224,6 +224,7 @@ niet goedkeuren in huidige vorm (minstens een luik af te raden)
  "unmatched_zone_names": [],
  "advisories_verified_days_ago": X,
  "advisories_stale": false,
+ "advisories_unverified": [],
  "advisories_source": "X",
  "map_label_overlaps": X,
  "map_labels_clipped": X,

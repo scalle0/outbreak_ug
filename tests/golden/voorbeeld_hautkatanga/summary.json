@@ -1,5 +1,6 @@
 {
  "asof": "2026-09-19",
+ "outbreak": "ebola_cod_2026",
  "overall": "geen ebola-gerelateerd bezwaar",
  "rule_overall": "geen ebola-gerelateerd bezwaar",
  "overrides": [],
@@ -135,6 +136,9 @@
   "who_days_old": null,
   "sources_unreachable": [],
   "unmatched_zone_names": [],
+  "advisories_unverified": [
+   "ZMB"
+  ],
   "far_stops_in_inset": [],
   "skeleton_issues": [
    "4 open [[CLAUDE]]-plaatshouder(s)"

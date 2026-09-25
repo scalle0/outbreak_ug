@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from dienstreis import advies, archive, llm, log, risk
+from dienstreis import advies, archive, countries, llm, log
 
 REQ = """Beste Steven,
 
@@ -41,7 +41,8 @@ BAD = GOOD.replace("Kinshasa kan,", "Kinshasa kan — cruciaal punt —")
 def env(tmp_path, monkeypatch):
     monkeypatch.setattr(advies, "CONTEXT", tmp_path / "context.md")
     monkeypatch.setattr(log, "LOG", tmp_path / "log.csv")
-    monkeypatch.setattr(risk, "LOCAL_ADVISORIES", tmp_path / "advisories.yaml")
+    monkeypatch.setattr(countries, "LEGACY", tmp_path / "advisories.yaml")
+    monkeypatch.setattr(countries, "LOCAL", tmp_path / "countries")
     monkeypatch.setattr(archive, "ARCHIVE", tmp_path / "adviezen")
     (tmp_path / "context.md").write_text("- 2026-09-10: Kisangani-luik Hubeau afgeraden\n", encoding="utf-8")
     req = tmp_path / "aanvraag.txt"

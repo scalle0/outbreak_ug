@@ -454,7 +454,7 @@ def sources_snapshot(asof: str | None = None, spec=None) -> dict:
     """The sources checked on every run, next to the INSP figures.
 
     ECDC and WHO are read here; FOD and CDC are prose pages that resist parsing, so they are checked
-    in the web step (prompts/web.md) and recorded in advisories.yaml with the date they were verified.
+    in the web step (prompts/web.md) and kept in the country registry with the date they were verified.
     """
     if asof:
         return {"ecdc": {"ok": False, "reason": "asof run"}, "who": {"ok": False, "reason": "asof run"}}

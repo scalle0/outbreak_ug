@@ -2,14 +2,15 @@
 
 The skeleton contains only facts and the rule-based verdict per stop. Paragraphs that need
 judgement are marked [[CLAUDE: ...]] and must be written (or deleted) before sending. What is
-about the disease (the zone unit, the conditions, the outbreak sources) comes from its profile.
+about the disease (the zone unit, the conditions, the outbreak sources) comes from its profile;
+what is about the country (FOD pages, the pretravel line) from the country registry.
 """
 from __future__ import annotations
 
 import html
 import re
 
-from . import outbreak
+from . import countries, outbreak
 from .risk import StopRisk, overrides, rule_overall, spec_of
 
 MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september",
@@ -17,7 +18,7 @@ MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augus
 EN_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september",
              "october", "november", "december"]
 FOD_TXT = {"formeel_afgeraden": "raadt de FOD alle reizen naar {p} formeel af ({r})",
-           "niet_essentieel_afgeraden": "valt {p} onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden)"}
+           "niet_essentieel_afgeraden": "valt {p} onder het algemene FOD-advies (niet-essentiële reizen naar {land} afgeraden)"}
 
 
 def d(x) -> str:
@@ -65,7 +66,7 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
         dist = f"; de dichtstbijzijnde zone met recente gevallen ({na['zone']}) ligt op circa {n(round(na['km'], -1))} km" if na else ""
         parts.append(f"geen bezwaar. Geen bevestigde gevallen in {zone_txt} of in de provincie {r.province}{dist}")
     if r.fod:
-        parts.append(FOD_TXT[r.fod].format(p=r.province, r=r.fod_reason))
+        parts.append(FOD_TXT[r.fod].format(p=r.province, r=r.fod_reason, land=countries.letter(r.country)))
     if r.cdc and r.cdc >= 2:
         parts.append(f"de CDC hanteert niveau {r.cdc}")
     return head + "; ".join(parts) + "."
@@ -99,7 +100,7 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bo
               f"[[CLAUDE: profiel en context van {who}: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. "
               "Enkel wat het oordeel verandert.]]", "",
               "Voorwaarden:"]
-    lines += [f"{i}. {c}" for i, c in enumerate(spec.conditions, start=1)]
+    lines += [f"{i}. {c}" for i, c in enumerate([pretravel_line(rs)] + spec.conditions, start=1)]
     lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", "",
               "In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.", ""]
     if redirect:
@@ -245,25 +246,22 @@ hr {{ margin:20px 0; border:none; border-top:1px solid var(--border); }} .s {{ f
 </body></html>"""
 
 
-def sources(spec=None) -> list[tuple[str, str]]:
-    """The links for sources.txt: WHO, the outbreak's own sources, CDC, and the FOD pages for the DRC."""
+def pretravel_line(rs: list[StopRisk]) -> str:
+    """The pretravel condition, with what the countries of the trip ask for (yellow fever, malaria)."""
+    notes = [p for p in dict.fromkeys((countries.load(r.country) or {}).get("pretravel") for r in rs) if p]
+    consult = f"Pretravel consult ({'; '.join(notes)})" if notes else "Pretravel consult"
+    return f"{consult} en registratie via Travellers Online."
+
+
+def sources(spec=None, iso3s: list[str] | None = None) -> list[tuple[str, str]]:
+    """The links for sources.txt: WHO, the outbreak's own sources, CDC, and the FOD pages of the trip's countries."""
     spec = spec or outbreak.default()
+    fod = [tuple(p) for i in (iso3s or spec.countries)
+           for p in (((countries.load(i) or {}).get("fod") or {}).get("pages") or [])]
     return ([("WHO, Disease Outbreak News", "https://www.who.int/emergencies/disease-outbreak-news")]
             + [tuple(x) for x in spec.sources.get("mail", [])]
-            + [("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices")] + FOD_SOURCES)
+            + [("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices")] + fod)
 
 
-# the FOD pages are about the country, not the disease: they move to config/countries.yaml (F-011)
-FOD_SOURCES = [
-    ("FOD Buitenlandse Zaken, algemene veiligheid DRC",
-     "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo"),
-    ("FOD Buitenlandse Zaken, laatste update DRC",
-     "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/laatste-update-de-democratische-republiek-congo"),
-    ("FOD Buitenlandse Zaken, gezondheid en hygiene DRC",
-     "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/gezondheid-en-hygiene-de-democratische-republiek-congo"),
-]
-SOURCES = sources()
-
-
-def sources_block(spec=None) -> str:
-    return "\n\n".join(f"{t}:\n{u}" for t, u in sources(spec))
+def sources_block(spec=None, iso3s: list[str] | None = None) -> str:
+    return "\n\n".join(f"{t}:\n{u}" for t, u in sources(spec, iso3s))
