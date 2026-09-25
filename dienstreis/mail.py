@@ -14,6 +14,8 @@ from .risk import StopRisk, overrides, rule_overall, spec_of
 
 MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september",
           "oktober", "november", "december"]
+EN_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september",
+             "october", "november", "december"]
 FOD_TXT = {"formeel_afgeraden": "raadt de FOD alle reizen naar {p} formeel af ({r})",
            "niet_essentieel_afgeraden": "valt {p} onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden)"}
 
@@ -26,6 +28,17 @@ def n(x: int) -> str:
     return f"{x:,}".replace(",", " ")
 
 
+def cap(s: str) -> str:
+    """First letter upper case, the rest as written: a zone name keeps its own capitals."""
+    return s[:1].upper() + s[1:]
+
+
+def nl_months(s: str) -> str:
+    """English month names, as the ECDC page writes its dates, in Dutch: '19 September' -> '19 september'."""
+    return re.sub(rf"\b({'|'.join(EN_MONTHS)})\b", lambda m: MONTHS[EN_MONTHS.index(m.group(1).lower())],
+                  s, flags=re.I)
+
+
 def leg_paragraph(i: int, r: StopRisk) -> str:
     spec = r.outbreak_spec
     when = f" ({d(r.start)} tot {d(r.end)})" if r.start else ""
@@ -35,17 +48,17 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
     parts = []
     zone_txt = f"{spec.unit} {r.zone}" if r.zone and r.zone.lower() != r.place.lower() else f"de {spec.unit}"
     if r.category == "A":
-        parts.append(f"af te raden. {zone_txt.capitalize()} telt {n(r.cases)} bevestigde gevallen "
+        parts.append(f"af te raden. {cap(zone_txt)} telt {n(r.cases)} bevestigde gevallen "
                      f"({n(r.deaths)} overlijdens), waarvan {r.new14} in de laatste 14 dagen")
     elif r.category in "BC":
-        parts.append(f"voorwaardelijk. {zone_txt.capitalize()} telt {n(r.cases)} gevallen, het laatste "
+        parts.append(f"voorwaardelijk. {cap(zone_txt)} telt {n(r.cases)} gevallen, het laatste "
                      f"{int(r.days_since_last)} dagen geleden")
     elif r.category == "D":
         nb = ", ".join(f"{x['zone']} ({x['cases']})" for x in r.neighbours_active[:3])
-        parts.append(f"voorwaardelijk. {zone_txt.capitalize()} heeft geen bevestigde gevallen, maar grenst "
+        parts.append(f"voorwaardelijk. {cap(zone_txt)} heeft geen bevestigde gevallen, maar grenst "
                      f"aan zones met actieve transmissie: {nb}")
     elif r.category == "E":
-        parts.append(f"voorwaardelijk. {zone_txt.capitalize()} heeft geen gevallen; de provincie {r.province} "
+        parts.append(f"voorwaardelijk. {cap(zone_txt)} heeft geen gevallen; de provincie {r.province} "
                      f"telt {n(r.province_cases)} gevallen in {r.province_active_zones} actieve zone(s)")
     else:
         na = r.nearest_active
@@ -77,8 +90,9 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bo
              "Mijn beoordeling per luik:", ""]
     lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
     tot = ecdc if ecdc.get("ok") else {"cases": epi["last_total"], "deaths": epi["last_deaths"], "data_until": None}
+    bron = f"ECDC, data tot {nl_months(tot['data_until'])}" if tot.get("data_until") else spec.sources["national"]
     lines += ["",
-              f"Stand van zaken ({'ECDC, data tot ' + tot['data_until'] if tot.get('data_until') else spec.sources['national']}): "
+              f"Stand van zaken ({bron}): "
               f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent). "
               f"Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}.",
               "",

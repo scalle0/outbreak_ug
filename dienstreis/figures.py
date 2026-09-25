@@ -16,6 +16,7 @@ import pandas as pd
 from matplotlib.lines import Line2D
 
 from . import data, outbreak
+from .mail import cap, nl_months
 
 warnings.filterwarnings("ignore", message=".*geographic CRS.*")
 BLUE, RED = "#1f4e9e", "#b30000"
@@ -128,7 +129,7 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
 
     legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(BINS)] + [
         mpatches.Patch(fc="none", ec="#000", hatch="....", label="Nieuwe gevallen laatste 14 dagen"),
-        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label=f"{spec.unit.capitalize()} van een stop"),
+        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label=f"{cap(spec.unit)} van een stop"),
         Line2D([0], [0], marker="s", color=BLUE, ls=(0, (4, 3)), mfc=BLUE, mec="white", ms=8, label="Reisschema")]
     inset_corner, legend_corner = _free_corners(inside, (x0, x1, y0, y1))
     leg = ax.legend(handles=legend, loc=legend_corner, fontsize=8.3, framealpha=0.96, edgecolor="#999",
@@ -240,7 +241,7 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
     fig.suptitle(spec.figures["epicurve_title"].format(asof=f"{ob.asof:%d-%m-%Y}"), fontsize=12.5)
     src = spec.figures["epicurve_source"]
     if ecdc and ecdc.get("ok"):
-        src += f" ECDC-controle: {ecdc['cases']:,} gevallen (data tot {ecdc['data_until']}).".replace(",", " ")
+        src += f" ECDC-controle: {ecdc['cases']:,} gevallen (data tot {nl_months(ecdc['data_until'])}).".replace(",", " ")
     fig.text(0.08, 0.01, src, fontsize=7.4, color="#444")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)

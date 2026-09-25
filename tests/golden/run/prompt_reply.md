@@ -89,7 +89,7 @@ Beste An,
 Mijn beoordeling per luik:
 
 1. Kinshasa (28 november tot 5 december): geen bezwaar. Geen bevestigde gevallen in gezondheidszone Barumbu of in de provincie Kinshasa; de dichtstbijzijnde zone met recente gevallen (Bulu) ligt op circa 870 km; valt Kinshasa onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
-2. Kisangani (6 december tot 13 december): af te raden. Gezondheidszone makiso kisangani telt 20 bevestigde gevallen (9 overlijdens), waarvan 10 in de laatste 14 dagen; raadt de FOD alle reizen naar Tshopo formeel af (veiligheidssituatie); de CDC hanteert niveau 3.
+2. Kisangani (6 december tot 13 december): af te raden. Gezondheidszone Makiso Kisangani telt 20 bevestigde gevallen (9 overlijdens), waarvan 10 in de laatste 14 dagen; raadt de FOD alle reizen naar Tshopo formeel af (veiligheidssituatie); de CDC hanteert niveau 3.
 
 Stand van zaken (INSP): 7 672 bevestigde gevallen en 3 699 overlijdens (CFR 48 procent). Nieuwe gevallen per volledige week, laatste vier weken: 569, 586, 586, 572.
 

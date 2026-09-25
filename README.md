@@ -331,6 +331,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_skeleton.py` | the skeleton writes zone names with their own capitals and ECDC dates with Dutch months |
 
 The pipeline, regression and golden tests each do a full analysis against the cached data, so a complete
 run takes minutes. `pytest -q --ignore=tests/test_advies_pipeline.py --ignore=tests/test_regression.py --ignore=tests/test_golden.py`
