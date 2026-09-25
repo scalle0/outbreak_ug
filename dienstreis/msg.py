@@ -18,12 +18,22 @@ from . import outbreak
 GENERIC_TERMS = ["outbreak", "uitbraak", "épidémie"]
 # an address ends on a domain label, never on the full stop that ends the sentence around it
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# words that point to health data about a person in the mail: ask before it goes to a model
+HEALTH_WORDS = re.compile(r"\b(quarantaine|quarantine|isolatie|isolement|isolation|gehospitaliseerd|"
+                          r"hospitalis\w*|positief getest|test\w* positief|tested positive|besmet\w*|"
+                          r"symptomen|symptômes|symptoms|diagnose|diagnostic|ziek|malade|ill)\b", re.I)
 
 
 def _outbreak_words() -> re.Pattern:
     """Words that mean the traveller wrote about an outbreak: generic ones and every active profile's."""
     terms = [t for s in outbreak.active() for t in s.match_terms] + GENERIC_TERMS
     return re.compile("|".join(re.escape(t) for t in terms), re.I)
+
+
+def health_signals(req: dict) -> list[str]:
+    """Words in the mail or its attachments that suggest health data about a person, lower case, once each."""
+    text = (req.get("body") or "") + " " + " ".join(a.get("text") or "" for a in req.get("attachments", []))
+    return sorted({m.group(1).lower() for m in HEALTH_WORDS.finditer(text)})
 
 
 def _get(ole, stream: str):

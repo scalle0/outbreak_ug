@@ -573,8 +573,9 @@ def who_snapshot(timeout: int = 40, top: int = 20, spec=None) -> dict:
                         "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
                                if link else WHO_DON_URL,
                         "days_old": (date.today() - date.fromisoformat(day)).days if day else None}
+        # read fine, nothing about this outbreak: not the same as a source that could not be reached
         return {"ok": False, "reason": f"no {who.get('label', 'matching')} item in the last {len(items)} DON entries",
-                "url": WHO_DON_URL}
+                "url": WHO_DON_URL, "none_found": True}
     except Exception as e:   # network, API change or unparseable payload
         return {"ok": False, "reason": repr(e), "url": WHO_DON_URL}
 

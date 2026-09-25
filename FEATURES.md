@@ -5,7 +5,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
-| F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
+| F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | klaar | 2026-09-25 |
 | F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | klaar | 2026-09-25 |
 | F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | klaar | 2026-09-25 |
 | F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | klaar | 2026-09-25 |
@@ -30,9 +30,18 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 ## F-013 · Casusvragen: een reiziger die al ter plaatse is
 - **Gevraagd:** 2026-09-25 — "we should be able to add in messages from other diseases and countries"; bij de keuze van aanvraagtypes: casusvragen erbij
-- **Status:** gevraagd
+- **Status:** klaar (2026-09-25)
 - **Aanleiding:** de mpox-aanvraag van 25/09 (een reiziger in quarantaine ter plaatse, geen reisschema) liep door `dienstreis advies` en kwam eruit als ebola-pretraveladvies: categorie F, "geen ebola-gerelateerd bezwaar", ebolakaart en -curve, een go/no-go-datum drie maanden in het verleden. Het model schreef zelf "Dossiermismatch" in `sugg.txt`, maar de pijplijn kon daar niets mee.
-- **Plan:** de reisschemastap geeft `type: reisadvies | casus | vraag`, te wijzigen op het bevestigingsscherm; voor casus en vraag geen kaart of curve, een eigen mail- en webprompt (ITG, Sciensano, Departement Zorg, WHO, ECDC), dezelfde controles; waarschuwing bij een go/no-go-datum in het verleden.
+- **Gebouwd:**
+  - De reisschemastap geeft `type` (`reisadvies`, `casus`, `vraag`) en voor een casus of vraag `situation`, twee of drie zinnen over de toestand zoals de mail ze beschrijft; beide staan op het bevestigingsscherm en in `stops.yaml`.
+  - Een reisadvies met een go/no-go-datum in het verleden wordt geweigerd met de vraag of het een casus is: zo liep de mail van 25/09 fout. De controle rekent met `--asof` als dat gegeven is, zodat tests niet op de kalender breken.
+  - Een casus of vraag: de cijfers van de uitbraken op de plaats als feiten (`mail.facts`), zonder kaart, curve of oordeel; een webstap die eerst officiële richtlijnen zoekt (`prompts/web_consult.md`: isolatie, terugreis, aankomst in België, contacten; ITG, Sciensano, Departement Zorg, Hoge Gezondheidsraad, WHO, ECDC) en een mail vanuit de werkgever (`prompts/consult.md`: de behandelende arts beslist, UGent adviseert, criteria in plaats van datums, niets wat tussen artsen hoort). Een vraag zonder plaats gaat naar de actieve uitbraken die haar ziekten noemen, anders `geen`.
+  - Gezondheidsgegevens: een mail met woorden als quarantaine, isolatie, ziek, besmet, symptomen of een positieve test wordt vóór de eerste modelstap getoond, en het programma vraagt toestemming. `--yes` beantwoordt die vraag niet; `--gezondheidsgegevens-ok` wel; `--llm manual` stuurt niets. Mist de woordenlijst een casus die het model wel herkent, dan komt de vraag voor de web- en mailstap, met de mededeling dat de mail al een keer verstuurd is.
+  - Archief en log: `type` en `situation`; een casus vindt eerdere adviezen over dezelfde persoon; `dienstreis zoek --type`. `dienstreis herlabel` labelt een bewaard advies opnieuw (type, uitbraken) met reden; de brief blijft, de oude labels staan in `herlabeld`, de logregel volgt.
+  - Het record en de logregel van 25/09 zijn opnieuw gelabeld als casus over mpox (met een kopie van archief en log vooraf).
+  - Tests: `test_casus.py`, met een verzonnen casusmail (`tests/fixtures/casus_mpox.txt`).
+- **Proefdraai (2026-09-25):** de verzonnen casusmail met de echte Claude Code-backend, met een tijdelijk register. De eerste run stopte: het model las de casus juist, maar liet de einddatum van een verblijf dat nog loopt leeg, en dat weigerde de reisschemacontrole. Een casus mag nu een open einddatum hebben ("sinds 30 juni"); een reis niet. De tweede run (517 s) gaf een brief die op criteria plant, bronnen en datums noemt, de drie vragen van An beantwoordt, per partij zegt wie wat doet en klinische details voor de behandelende arts in de notities houdt. Twee dingen hersteld: WHO heette "niet bereikbaar" terwijl er enkel geen recent mpox-bericht was (nu `none_found`, geen onbereikbare bron), en de webstap stelde wanda.be voor, dat in F-005 weggelaten was (nu `excluded` in `_international.yaml`: de prompts zeggen het en het register weigert zo'n bron).
+- **Open:** de echte mail van 25/09 (map `MPox`) is niet opnieuw door het model gegaan: toestemming om die gezondheidsgegevens te versturen is aan Steven. `dienstreis advies` op die map, met het antwoord op de toestemmingsvraag, maakt de vergelijking met de brief die toen vertrokken is.
 - **Beslissingen:**
   - Privacy (Steven, 2026-09-25: "Ask each time"): voor een casusmail met gezondheidsgegevens toont het programma wat er naar het model gaat en vraagt het toestemming voor het verstuurd wordt.
   - Het archiefrecord en de logregel van 25/09 (de mpox-casus, als ebolareis bewaard) worden opnieuw gelabeld als casusvraag over mpox zodra die velden bestaan; de tekst blijft zoals ze was (Steven, 2026-09-25).

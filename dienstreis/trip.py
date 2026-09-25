@@ -24,6 +24,9 @@ from . import outbreak
 PLACES = Path(__file__).parent / "config" / "places.csv"
 LODGING = {"hotel", "family", "guesthouse", "camp", "compound", "unknown"}
 CATEGORIES = set("ABCDEFX")
+# reisadvies: a planned trip; casus: a traveller already abroad (or just back) who is ill, exposed or
+# in quarantine; vraag: a general question with no trip or case
+TYPES = ("reisadvies", "casus", "vraag")
 MIN_REASON = 15
 # the DRC and its neighbours, wide enough for a stopover in Europe or southern Africa
 LAT_RANGE, LON_RANGE = (-35.0, 60.0), (-25.0, 60.0)
@@ -78,6 +81,7 @@ def _as_bool(v):
 def coerce(trip: dict) -> dict:
     """Types the deterministic core expects. Unreadable values are left alone for validate to report."""
     t = dict(trip)
+    t["type"] = str(t.get("type") or "reisadvies").strip().lower()
     if t.get("review_on") is not None:
         t["review_on"] = parse_date(t["review_on"]) or t["review_on"]
     prof = dict(t.get("profile") or {})
@@ -88,6 +92,8 @@ def coerce(trip: dict) -> dict:
     for s in t.get("stops") or []:
         s = dict(s)
         for k in DATE_KEYS:
+            if isinstance(s.get(k), str) and not s[k].strip():
+                s[k] = None                      # an empty date is no date: a case may leave `to` open
             if s.get(k) is not None:
                 s[k] = parse_date(s[k]) or s[k]
         if "transit_only" in s:
@@ -123,12 +129,16 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
     today = today or date.today()
     known = {str(p).lower() for p in known_places}
     issues: list[str] = []
+    kind = trip.get("type") or "reisadvies"
+    if kind not in TYPES:
+        issues.append(f"onbekend type '{kind}' (kies uit {', '.join(TYPES)})")
 
-    if not str(trip.get("traveller") or "").strip():
+    if not str(trip.get("traveller") or "").strip() and kind != "vraag":
         issues.append("geen reiziger in de aanvraag herkend")
     stops = trip.get("stops") or []
     if not stops:
-        issues.append("geen enkele halte herkend")
+        if kind == "reisadvies":             # a case or a question can do without a place
+            issues.append("geen enkele halte herkend")
         return issues
     lodging = (trip.get("profile") or {}).get("lodging")
     if lodging is not None and str(lodging).lower() not in LODGING:
@@ -143,6 +153,8 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
 
         start, end = s.get("from"), s.get("to")
         for k, v in (("from", start), ("to", end)):
+            if k == "to" and v is None and kind != "reisadvies":
+                continue                         # a stay that is still going on, with no end date yet
             if not isinstance(v, date):
                 issues.append(f"{tag}: datum '{k}' onleesbaar ({v!r}); verwacht JJJJ-MM-DD")
         if isinstance(start, date) and isinstance(end, date):
@@ -191,6 +203,10 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
     rv = trip.get("review_on")
     if rv is not None and not isinstance(rv, date) and str(rv).strip():
         issues.append(f"go/no-go-datum onleesbaar ({rv!r})")
+    if kind == "reisadvies" and isinstance(rv, date) and rv < today:
+        # the 25/09 mpox mail: a traveller already abroad, read as a trip with a go/no-go three months back
+        issues.append(f"go/no-go-datum {rv} ligt in het verleden: is dit een casus (de reiziger is al ter "
+                      f"plaatse)? Zet dan type: casus; anders een datum voor vertrek")
     return issues
 
 

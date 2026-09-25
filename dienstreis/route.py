@@ -100,6 +100,16 @@ def inactive_for(disease: str, trip: dict) -> list[str]:
             and any(t.lower() in d or d in t.lower() for t in s.match_terms)]
 
 
+def _names(disease: str, spec: outbreak.OutbreakSpec) -> bool:
+    d = disease.lower()
+    return any(t.lower() in d or d in t.lower() for t in spec.match_terms)
+
+
+def by_disease(mentioned: list[str]) -> list[str]:
+    """Active outbreaks a request names by disease: for a case or a question without a place."""
+    return [s.id for s in outbreak.active() if any(m and _names(m, s) for m in mentioned)]
+
+
 def unmatched_diseases(mentioned: list[str], specs: list[outbreak.OutbreakSpec]) -> list[str]:
     """Diseases the request names that no applied profile covers: they must be looked for, not assumed away."""
     terms = [t.lower() for s in specs for t in s.match_terms]

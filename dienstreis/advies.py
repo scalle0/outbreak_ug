@@ -6,6 +6,9 @@
     3 per outbreak: data, risk per stop, map, epicurve; skeleton, QA   deterministic
     4 optional: advisories, border measures and news not yet in the data   LLM with web access (web)
     5 reply mail and notes for Steven                            LLM (reply)
+    A case or a question (type casus / vraag) takes the same road without map or curve, with its
+    own web and reply prompts (web_consult, consult). A mail that looks like health data about a
+    person is only sent after the user agrees (decision 2026-09-25).
     6 text checks (em-dash, banned words, placeholders), one repair round, widget,
       log, context line, browser, optional Outlook draft         deterministic
 """
@@ -26,7 +29,7 @@ import yaml
 from . import archive, countries, data, llm, log, mail, outbreak, route
 from . import trip as trip_mod
 from .pipeline import _slug, analyse, log_row, outbreak_ids
-from .msg import parse_request
+from .msg import health_signals, parse_request
 
 CONTEXT = Path(os.environ.get("DIENSTREIS_CONTEXT", Path.home() / ".config" / "dienstreis" / "context.md"))
 
@@ -45,19 +48,46 @@ def _say(msg: str) -> None:
 
 
 def _trip_from_llm(d: dict, req: dict) -> dict:
-    keep = ("traveller", "note", "profile", "sent_to_ugent_address", "review_on", "stops")
+    keep = ("type", "traveller", "note", "situation", "profile", "sent_to_ugent_address", "review_on", "stops")
     t = {k: d[k] for k in keep if k in d}
     # whether the thread used the ugent.be address is read from the mail itself, never from the model
     t["sent_to_ugent_address"] = bool(req.get("sent_to_ugent_address")) or bool(t.get("sent_to_ugent_address"))
     return trip_mod.coerce(t)
 
 
-def _routed(trip: dict) -> list[str]:
-    """The outbreaks routing gives for the stops as they are now, ignoring what the trip names."""
+def _routed(trip: dict, mentioned=()) -> list[str]:
+    """The outbreaks routing gives for the stops as they are now, ignoring what the trip names.
+
+    A case or a question without a place gets the active outbreaks its diseases name, or `geen`.
+    """
+    if not trip.get("stops"):
+        return route.by_disease(mentioned or []) or [outbreak.NONE]
     return [sp.id for sp in route.outbreaks_for({**trip, "outbreaks": None})]
 
 
+def _consent(signals: list[str], backend: str, yes: bool, health_ok: bool, already_sent: bool = False) -> None:
+    """Ask before a mail with health data about a person goes to a model (decision 2026-09-25).
+
+    `--yes` does not answer this question: confirming an itinerary is not agreeing to send health
+    data. `--gezondheidsgegevens-ok` does, for a run without a keyboard. The manual backend sends nothing.
+    """
+    if health_ok or backend == "manual":
+        return
+    what = ("De mail ging al naar het model om het reisschema te lezen; nu gaan ook de webstap en het "
+            "schrijven van de mail erover." if already_sent else
+            f"Onderwerp, tekst en bijlagen van de mail gaan naar het model ({backend}).")
+    print(f"\n  Deze aanvraag lijkt gezondheidsgegevens over een persoon te bevatten ({', '.join(signals)}). {what}")
+    if yes:
+        raise SystemExit("Gestopt: bevestig het versturen van gezondheidsgegevens met --gezondheidsgegevens-ok, "
+                         "draai zonder --yes, of gebruik --llm manual.")
+    if not input("  Doorgaan? [j/n]: ").strip().lower().startswith("j"):
+        raise SystemExit("Gestopt op vraag van de gebruiker" + ("." if already_sent else "; er is niets verstuurd."))
+
+
 def _print_trip(trip: dict, d: dict, issues: list[str]) -> None:
+    print(f"Type: {trip.get('type') or 'reisadvies'}")
+    if trip.get("situation"):
+        print(f"Toestand: {trip['situation']}")
     print(f"Reiziger: {trip.get('traveller')}  |  {trip.get('note', '')}  |  profiel: {trip.get('profile')}")
     names = []
     for oid in trip.get("outbreaks") or []:
@@ -70,7 +100,7 @@ def _print_trip(trip: dict, d: dict, issues: list[str]) -> None:
         extra = " (transit)" if s.get("transit_only") else ""
         extra += f" [{s['lodging']}]" if s.get("lodging") else ""
         extra += f" lat/lon {s['lat']}, {s['lon']}" if "lat" in s else ""
-        print(f"  {s.get('from')} tot {s.get('to')}  {s.get('place')}{extra}")
+        print(f"  {s.get('from')} tot {s.get('to') or '(open)'}  {s.get('place')}{extra}")
     print(f"Go/no-go: {trip.get('review_on')}")
     specs = [outbreak.load(i) for i in trip.get("outbreaks") or [] if i in outbreak.ids()]
     for x in route.unmatched_diseases(d.get("diseases_mentioned") or [], specs):
@@ -82,11 +112,12 @@ def _print_trip(trip: dict, d: dict, issues: list[str]) -> None:
         print(f"  FOUT: {x}")
 
 
-def _check_trip(trip: dict) -> list[str]:
-    return trip_mod.validate(trip, known_places=_known_places())
+def _check_trip(trip: dict, today: date | None = None) -> list[str]:
+    return trip_mod.validate(trip, known_places=_known_places(), today=today)
 
 
-def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: bool = False) -> dict:
+def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: bool = False,
+                 today: date | None = None) -> dict:
     """Show the itinerary with its problems and let the user confirm, edit or stop.
 
     An itinerary with problems is never analysed: the places and dates are the input to every
@@ -96,7 +127,7 @@ def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: boo
     """
     path = out / "stops.yaml"
     path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    issues = _check_trip(trip)
+    issues = _check_trip(trip, today)
     _print_trip(trip, d, issues)
     if yes:
         if issues:
@@ -115,9 +146,9 @@ def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: boo
             edit_file(path)
             trip = trip_mod.coerce(yaml.safe_load(path.read_text(encoding="utf-8")))
             if not fixed_outbreaks and trip.get("outbreaks") == before:
-                trip["outbreaks"] = _routed(trip)
+                trip["outbreaks"] = _routed(trip, d.get("diseases_mentioned"))
             path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
-            issues = _check_trip(trip)
+            issues = _check_trip(trip, today)
             _print_trip(trip, d, issues)
         elif a.startswith("s") or a.startswith("n"):
             raise SystemExit("Gestopt; stops.yaml blijft staan in " + str(out))
@@ -129,8 +160,11 @@ def _context_text() -> str:
 
 def _history(trip: dict) -> list[dict]:
     seen, rows = set(), []
-    for s in trip.get("stops", []):
-        for r in log.history(s["place"]):
+    keys = [s["place"] for s in trip.get("stops", [])]
+    if trip.get("type") in ("casus", "vraag") and trip.get("traveller"):
+        keys.append(trip["traveller"])            # a case follows up on the same person
+    for key in keys:
+        for r in log.history(key):
             key = tuple(r.values())
             if key not in seen:
                 seen.add(key)
@@ -151,6 +185,9 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     changed = [a for a in webd.get("advisories", []) if a.get("changed")]
     measures = [m for m in webd.get("measures", []) if m.get("changed")]
     found = [x for x in webd.get("sources", []) if x.get("country") and x.get("url")]
+    for x in [x for x in found if countries.excluded(x["url"])]:
+        print(f"  BRON overgeslagen (uitgesloten): {x.get('name')}  {x['url']}")
+    found = [x for x in found if not countries.excluded(x["url"])]
     checked = sorted({a["country"] for a in webd.get("advisories", []) if a.get("country")})
     first = [i for i in checked if countries.age_days(countries.load(i)) is None]
     tables = {sp.id: sp for sp in specs if sp.adapter.get("type") == "table"}
@@ -180,30 +217,30 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
         print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
 
 
-def _soft_notes(reply: str, overall: str | None, specs=None) -> list[str]:
+def _soft_notes(reply: str, overall: str | None, specs=None, coverage: bool = True) -> list[str]:
     """Things worth one more try but never worth refusing a correct reply over."""
     specs = specs or []
-    limit = mail.MAX_WORDS + 100 * max(0, len(specs) - 1)       # room for each further outbreak
+    limit = mail.MAX_WORDS + 100 * max(0, len(specs) - 1) if coverage else mail.MAX_WORDS
     return [n for n in (mail.verdict_note(reply, overall), mail.length_note(reply, limit),
-                        mail.coverage_note(reply, specs)) if n]
+                        mail.coverage_note(reply, specs) if coverage else None) if n]
 
 
 def write_reply(backend, inputs: dict, sources: list[str], overall: str | None = None,
-                numbers: bool = True, specs=None) -> dict:
+                numbers: bool = True, specs=None, step: str = "reply", coverage: bool = True) -> dict:
     """Write the reply, check it against the facts it came from, and allow one repair round.
 
     `issues` blocks the widget (style, invented numbers); `notes` only warns (the rule verdict not
     coming back in the letter). Both drive the repair round.
     """
-    d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], specs=specs)
+    d = llm.ask_json(backend, step, inputs, required=["reply", "suggestions"], specs=specs)
     issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
-    notes = _soft_notes(d["reply"], overall, specs)
+    notes = _soft_notes(d["reply"], overall, specs, coverage)
     if issues or notes:   # one repair round with the concrete problems
         _say("Controle faalt (" + "; ".join(issues + notes) + "), herstelronde")
         inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + notes}
-        d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], repair=True, specs=specs)
+        d = llm.ask_json(backend, step, inputs, required=["reply", "suggestions"], repair=True, specs=specs)
         issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
-        notes = _soft_notes(d["reply"], overall, specs)
+        notes = _soft_notes(d["reply"], overall, specs, coverage)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"
     d["issues"], d["notes"] = issues, notes
     return d
@@ -258,13 +295,18 @@ def _unreachable(summary: dict) -> list[tuple[str, str]]:
 def run_advies(src: str, out: str | None = None, backend: str = "claude-code", model: str | None = None,
                yes: bool = False, web: bool = True, outlook: bool = False, asof: str | None = None,
                refresh: bool = False, open_browser: bool = True, llm_backend=None,
-               apply_web: bool = False, numbers: bool = True, uitbraken: list[str] | None = None) -> dict:
+               apply_web: bool = False, numbers: bool = True, uitbraken: list[str] | None = None,
+               health_ok: bool = False) -> dict:
     t0 = time.time()
     req = parse_request(src)
     _say(f"Aanvraag: {req.get('subject')}")
     tmp_out = Path(out or f"out_{_slug(Path(src).stem)}")
     tmp_out.mkdir(parents=True, exist_ok=True)
     be = llm_backend or llm.get_backend(backend, model, tmp_out)
+    signals = health_signals(req)
+    if signals:                                   # ask before anything about a person's health leaves
+        _consent(signals, be.name, yes, health_ok)
+    consented = bool(signals) or health_ok or be.name == "manual"
 
     _say(f"Reisschema uit de mail ({be.name})")
     req_in = {k: req.get(k) for k in ("subject", "sender", "body", "sent_to_ugent_address",
@@ -287,11 +329,15 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         if hasattr(be, "workdir"):
             be.workdir = outp   # the backend must not keep working in the renamed folder
     # which outbreaks apply: named on the command line, or routed from the countries of the stops
-    trip["outbreaks"] = list(uitbraken) if uitbraken else _routed(trip)
-    trip = confirm_trip(trip, d, outp, yes, fixed_outbreaks=bool(uitbraken))
+    trip["outbreaks"] = list(uitbraken) if uitbraken else _routed(trip, d.get("diseases_mentioned"))
+    today = date.fromisoformat(asof) if asof else None
+    trip = confirm_trip(trip, d, outp, yes, fixed_outbreaks=bool(uitbraken), today=today)
+    kind = trip.get("type") or "reisadvies"
+    if kind != "reisadvies" and not consented:    # the model called it a case: ask before the next steps
+        _consent([kind], be.name, yes, health_ok, already_sent=True)
 
-    _say("Analyse (data, zones, kaart, curve)")
-    summary = analyse(trip, outp, refresh=refresh, asof=asof)
+    _say("Analyse (data, zones, kaart, curve)" if kind == "reisadvies" else "Cijfers voor de plaats (geen kaart of curve)")
+    summary = analyse(trip, outp, refresh=refresh, asof=asof, draw=kind == "reisadvies")
     ids = outbreak_ids(summary)
     specs = [outbreak.load(i) for i in ids]
     unmatched = route.unmatched_diseases(d.get("diseases_mentioned") or [], specs)
@@ -343,17 +389,25 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
                   for i in dict.fromkeys(trip_iso + home)}
         who_in = (summary["qa"].get("who") if len(ids) == 1 else
                   {i: o.get("who") for i, o in summary["outbreaks"].items()})
-        web_in = {"vandaag": date.today().isoformat(),
-                  "uitbraken": [{"id": sp.id, "naam": sp.name} for sp in specs], "provincies": provs,
-                  "landen": landen, "buurlanden": border,
-                  "internationaal": countries.international(),
-                  "who_laatste_don": who_in, "reisschema": summary["table"]}
+        if kind == "reisadvies":
+            web_in = {"vandaag": date.today().isoformat(),
+                      "uitbraken": [{"id": sp.id, "naam": sp.name} for sp in specs], "provincies": provs,
+                      "landen": landen, "buurlanden": border,
+                      "internationaal": countries.international(),
+                      "who_laatste_don": who_in, "reisschema": summary["table"]}
+        else:                                     # a case or a question: guidance first, then the place
+            web_in = {"vandaag": date.today().isoformat(), "type": kind, "casus": trip.get("situation"),
+                      "vragen": d.get("questions_from_an") or [],
+                      "uitbraken": [{"id": sp.id, "naam": sp.name} for sp in specs], "landen": landen,
+                      "internationaal": countries.international(), "who_laatste_don": who_in}
         if unmatched:
             web_in["ziekten_zonder_profiel"] = unmatched
         tabellen = _tables_for_web(specs)
         if tabellen:
             web_in["tabellen"] = tabellen
-        webd = llm.ask_json(be, "web", web_in, required=["advisories", "news", "who"], web=True, specs=specs)
+        webd = llm.ask_json(be, "web" if kind == "reisadvies" else "web_consult", web_in,
+                            required=["advisories", "news", "who"] if kind == "reisadvies" else ["guidance", "news"],
+                            web=True, specs=specs)
         maybe_apply_web(webd, apply_web, ids[0], specs)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
@@ -377,10 +431,19 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
             for i, o in summary["outbreaks"].items() if i != ids[0]]
     if unmatched:
         inputs["ziekten_zonder_profiel"] = unmatched
+    if kind != "reisadvies":                      # a case letter: facts, not a trip skeleton or a verdict
+        inputs = {"vandaag": inputs["vandaag"], "type": kind, "casus": trip.get("situation"),
+                  "feiten": inputs["skelet"],
+                  **{k: v for k, v in inputs.items() if k not in ("vandaag", "skelet", "regel_oordeel", "overrules",
+                                                                   "regel_oordeel_zonder_overrule")}}
     # every number in the mail must come from one of these; see mail.unknown_numbers
-    sources = [inputs["skelet"], json.dumps(summary, ensure_ascii=False, default=str),
+    sources = [(outp / "reply_skeleton.txt").read_text(encoding="utf-8"), json.dumps(summary, ensure_ascii=False, default=str),
                json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
-    r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs)
+    if kind == "reisadvies":
+        r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs)
+    else:
+        r = write_reply(be, inputs, sources, overall=None, numbers=numbers, specs=specs, step="consult",
+                        coverage=False)
 
     (outp / "reply.txt").write_text(r["reply"], encoding="utf-8")
     sugg = list(r.get("suggestions", []))

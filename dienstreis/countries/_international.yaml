@@ -13,3 +13,5 @@ bodies:
 news:
   - {name: Reuters, url: "https://www.reuters.com"}
   - {name: AP, url: "https://apnews.com"}
+excluded:                              # sources the clinician does not want used or proposed
+  - {domain: wanda.be, reason: "op vraag van Steven weggelaten (F-005, 2026-09-22)"}

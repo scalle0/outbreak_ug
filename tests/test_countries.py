@@ -161,3 +161,12 @@ def test_a_finding_about_a_disease_without_a_profile_is_kept_under_the_run(monke
     assert uga["cdc"]["ebola_cod_2026"]["default"] == 2 and "dengue (Level 1)" not in uga["cdc"]
     m = countries.measures(uga, "ebola_cod_2026")
     assert [x["text"] for x in m] == ["screening"] and m[0]["about"] == "mpox en ebola"
+
+
+def test_an_excluded_source_never_enters_the_registry(capsys):
+    """wanda.be was dropped on request (F-005); the web step proposed it anyway in a live run."""
+    assert countries.excluded("https://www.wanda.be/nl/a-z-index/mpox") and not countries.excluded("https://www.itg.be")
+    webd = {"sources": [{"country": "UGA", "kind": "overheid", "name": "Wanda", "url": "https://www.wanda.be/x"}]}
+    assert "UGA" not in countries.apply_web(webd, "ebola_cod_2026")
+    advies.maybe_apply_web(webd, apply_web=True)
+    assert "overgeslagen" in capsys.readouterr().out and not countries.LOCAL.exists()

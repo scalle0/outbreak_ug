@@ -51,6 +51,8 @@ def save(trip: dict, summary: dict, reply: str, *, request: str = "",
         "advised_on": day.isoformat(),
         "outbreaks": ids,
         "countries": list(dict.fromkeys(s.get("country") for s in stops if s.get("country"))),
+        "type": trip.get("type") or "reisadvies",
+        "situation": trip.get("situation") or "",
         "traveller": trip.get("traveller", ""),
         "note": trip.get("note", ""),
         "departure": summary.get("departure", ""),
@@ -90,6 +92,7 @@ def all_advices(root: Path | None = None) -> list[dict]:
         r["dir"] = str(f.parent)
         r.setdefault("outbreaks", BEFORE_03)
         r.setdefault("countries", [])
+        r.setdefault("type", "reisadvies")
         out.append(r)
     return sorted(out, key=lambda r: r.get("advised_on", ""), reverse=True)
 
@@ -108,14 +111,16 @@ def _matches(r: dict, term: str) -> bool:
 
 
 def search(term: str = "", *, since: date | None = None, until: date | None = None,
-           verdict: str = "", overruled: bool | None = None, outbreak: str = "", limit: int = 50,
-           root: Path | None = None) -> list[dict]:
+           verdict: str = "", overruled: bool | None = None, outbreak: str = "", kind: str = "",
+           limit: int = 50, root: Path | None = None) -> list[dict]:
     """Advices matching a place, zone, province, country, outbreak, traveller or note, newest first."""
     out = []
     for r in all_advices(root):
         if term and not _matches(r, term):
             continue
         if outbreak and outbreak not in r.get("outbreaks", []):
+            continue
+        if kind and r.get("type") != kind:
             continue
         if verdict and verdict.lower() not in str(r.get("overall", "")).lower():
             continue
@@ -141,13 +146,36 @@ def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = N
     wanted = {str(s.get("place", "")).lower() for s in summary.get("stops", [])}
     wanted |= {str(s.get("zone", "")).lower() for s in summary.get("stops", []) if s.get("zone")}
     wanted |= {str(s.get("province", "")).lower() for s in summary.get("stops", []) if s.get("province")}
+    if trip.get("traveller"):                    # a case follows up on the same person
+        wanted.add(str(trip["traveller"]).lower())
     wanted.discard("")
     hits = []
     for r in all_advices(root):
-        here = {str(x).lower() for x in r.get("places", []) + r.get("zones", []) + r.get("provinces", [])}
+        here = {str(x).lower() for x in r.get("places", []) + r.get("zones", []) + r.get("provinces", [])
+                + [r.get("traveller", "")]}
         if here & wanted:
-            hits.append({k: r[k] for k in ("advised_on", "traveller", "outbreaks", "places", "zones", "overall",
+            hits.append({k: r[k] for k in ("advised_on", "traveller", "type", "outbreaks", "places", "zones", "overall",
                                            "rule_overall", "overrides", "review_on", "reply")
                          if k in r})
     hits.sort(key=lambda h: not (set(h.get("outbreaks", [])) & mine))     # stable: newest first within
     return hits[:limit]
+
+
+def relabel(folder: Path, *, kind: str | None = None, outbreaks: list[str] | None = None, reason: str,
+            today: date | None = None) -> dict:
+    """Correct what an archived advice was about, keeping what it said and what it was filed as.
+
+    For an advice filed under the wrong kind or outbreak, such as the mpox case of 25/09 that the
+    0.2 tool filed as an Ebola trip. The letter and the figures are never touched; the record gains
+    `herlabeld` with the date, the reason and the old labels, and the log row follows.
+    """
+    f = Path(folder) / "advies.json"
+    r = json.loads(f.read_text(encoding="utf-8"))
+    was = {"type": r.get("type", "reisadvies"), "outbreaks": r.get("outbreaks", BEFORE_03)}
+    if kind:
+        r["type"] = kind
+    if outbreaks is not None:
+        r["outbreaks"] = list(outbreaks)
+    r.setdefault("herlabeld", []).append({"op": (today or date.today()).isoformat(), "reden": reason, "was": was})
+    f.write_text(json.dumps(r, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    return r

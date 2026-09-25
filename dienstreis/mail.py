@@ -42,7 +42,7 @@ def nl_months(s: str) -> str:
 
 def leg_paragraph(i: int, r: StopRisk) -> str:
     spec = r.outbreak_spec
-    when = f" ({d(r.start)} tot {d(r.end)})" if r.start else ""
+    when = (f" ({d(r.start)} tot {d(r.end)})" if r.start and r.end else f" (sinds {d(r.start)})" if r.start else "")
     head = f"{i}. {r.place}{when}: "
     if r.category == "X":
         extra = []                               # a formal FOD advisory and CDC >= 3 are flags already
@@ -102,10 +102,23 @@ def _stand(rs: list[StopRisk], epi: dict, ecdc: dict, named: bool) -> str:
             + weeks)
 
 
+def facts(rs: list[StopRisk], epi: dict | None, ecdc: dict, others=()) -> str:
+    """For a case or a question: the figures of the outbreaks at the place, without a trip's verdicts or conditions."""
+    lines = ["Feiten uit de cijfers (achtergrond bij een casus of vraag, geen reisadvies):", ""]
+    for x, e, c in [(rs, epi, ecdc)] + list(others):
+        if x:
+            lines += [f"{spec_of(x).name}:"] + [leg_paragraph(i + 1, r) for i, r in enumerate(x)] + [""]
+    lines += [_stand(x, e, c, named=True) for x, e, c in [(rs, epi, ecdc)] + list(others) if e and x]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redirect: bool,
-             others=(), overrides: list[dict] | None = None) -> str:
+             others=(), overrides: list[dict] | None = None, kind: str = "reisadvies") -> str:
     """The reply skeleton. `rs`, `epi`, `ecdc` are the strictest outbreak's; `others` holds
-    (stops, epi, ecdc) for every further outbreak that applies. `epi` is None without figures."""
+    (stops, epi, ecdc) for every further outbreak that applies. `epi` is None without figures.
+    A case or a question gets the facts only: its letter follows prompts/consult.md."""
+    if kind != "reisadvies":
+        return facts(rs, epi, ecdc, others)
     spec = spec_of(rs)
     who = trip.get("traveller", "de reiziger")
     rule = rule_overall(rs) if not others else "; ".join(

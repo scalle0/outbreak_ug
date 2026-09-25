@@ -129,7 +129,27 @@ and nothing advised against, and counts as stale after 60 days. Being active, it
 Ebola on every trip through the DRC or a neighbouring country. A profile can be kept in concept with
 `active: false`: routing then skips it, a request naming its disease gets a note pointing to it, and
 `--uitbraak <id>` uses it on purpose. `dienstreis uitbraken` lists the profiles with their state,
-countries and neighbours. Case questions are planned (F-013).
+countries and neighbours.
+
+## Case questions
+
+Not every mail is a planned trip. The itinerary step says what a request is (`type` in `stops.yaml`,
+shown on the itinerary screen, yours to correct):
+
+| type | what | road |
+|---|---|---|
+| `reisadvies` | a trip that has not started | as above: rules, map, curve, verdict |
+| `casus` | a traveller already abroad or just back, ill, exposed or in quarantine | the figures for the place as background, no map or curve, no verdict; a web step that looks up official guidance first (isolation, return travel, what arrival in Belgium requires, contacts: ITG, Sciensano, Departement Zorg, Hoge Gezondheidsraad, WHO, ECDC); a letter written from the employer's side (the treating doctor decides, UGent advises, criteria rather than dates) |
+| `vraag` | a general question | as a case; without a place it goes to the outbreaks its diseases name |
+
+A trip whose go/no-go date already lies in the past is refused with the question whether it is a
+case: that is how the mpox mail of 25/09 went wrong, filed as an Ebola trip with a go/no-go three
+months back. The prompts are `prompts/web_consult.md` and `prompts/consult.md`; the itinerary step
+adds `situation`, two or three sentences on the case as the mail describes it.
+
+`dienstreis herlabel <advice folder> --type casus --uitbraak <id> --reden "..."` corrects what an
+archived advice was filed as. The letter and the figures stay as they were; the record keeps the old
+labels, the date and the reason, and the log row follows.
 
 What a profile may set beyond the Ebola keys: `case_words` (how the letter names what the figures
 count), `windows.recent` (days over which new cases are counted, default 14), `flags.rising_recent`,
@@ -257,6 +277,14 @@ destinations** and the calculated figures are sent to Anthropic under your own s
 `--llm manual` keeps the machine offline: it writes the prompt to a file and waits for you to paste
 an answer back. `--no-web` stops the model searching the open web. Decide deliberately what
 goes into `context.md`; it is the richest personal data in the system and it goes out with every reply.
+
+**Health data about a person.** A mail that looks like it carries health data about someone
+(quarantaine, isolatie, ziek, besmet, symptomen, a positive test, ...) is shown as such before
+anything is sent, and the program asks. `--yes` does not answer that question: confirming an
+itinerary is not agreeing to send health data. `--gezondheidsgegevens-ok` does, for a run without a
+keyboard; `--llm manual` sends nothing. When the words are missed but the model reads the mail as a
+case, the question comes before the web and mail steps, and says the mail already went out once to
+read the itinerary.
 
 Local files (never in the repo): `%USERPROFILE%\.config\dienstreis\context.md`, `advice_log.csv`,
 `countries\<ISO3>.yaml` for what you accepted from the web step (used when verified more recently than the
@@ -435,6 +463,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
 | `test_table_adapter.py` | the hand-kept table: the same fields as any adapter, national totals, unknown names, the local copy, rows accepted from the web step, an old table and an empty one |
 | `test_mpox.py` | the mpox profile on its seeded WHO table: the one unmatched zone, the counts, the example trips, and a letter that says "vermoede en bevestigde gevallen" |
+| `test_casus.py` | case questions: a go/no-go in the past asks whether it is a case, nothing leaves without consent (not even under `--yes`), the case road without figures, a question routed by disease, relabelling an archived advice |
 | `test_route.py` | which outbreaks apply: outbreak country, neighbouring country, none; a stop's country from the map, including the France and South Sudan code traps; overrides that must name their outbreak |
 | `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the skeleton covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |

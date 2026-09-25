@@ -209,7 +209,8 @@ def _overlaps(texts, fig) -> int:
     return sum(1 for i in range(len(boxes)) for j in range(i + 1, len(boxes)) if boxes[i].overlaps(boxes[j]))
 
 
-def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
+def epicurve(ob, out: str | None, ecdc: dict | None = None, draw: bool = True) -> dict:
+    """National curve and its numbers. `draw=False` gives the numbers only (a case letter has no figures)."""
     spec = getattr(ob, "spec", None) or outbreak.default()
     nat = ob.national.copy()
     nat["cases"] = nat.cases.cummax()
@@ -222,6 +223,11 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
                 "last_deaths": int(last.deaths) if pd.notna(last.deaths) else 0,
                 "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
     last_full = inc.index[-1] if nat.index[-1] >= inc.index[-1] else inc.index[-2]
+    if not draw:
+        recent = inc.loc[:last_full].tail(4)
+        return {"path": None, "weekly_cases_last4_full_weeks": {f"{d:%d-%m}": int(v) for d, v in recent.cases.items()},
+                "last_total": int(last.cases), "last_deaths": int(last.deaths),
+                "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
 
     fig, (a, b) = plt.subplots(2, 1, figsize=(11, 8.6), dpi=300, sharex=True, gridspec_kw={"height_ratios": [1.1, 1]})
     a.plot(nat.index, nat.cases, color="#333333", lw=2, label=f"{cap(spec.case_words['cases'])} (cumulatief)")

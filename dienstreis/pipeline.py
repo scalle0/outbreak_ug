@@ -20,7 +20,8 @@ def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:40]
 
 
-def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str | None, multi: bool) -> dict:
+def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str | None, multi: bool,
+                draw: bool = True) -> dict:
     """One outbreak: its figures, the risk per stop, and its map and curve (file names carry its id when
     there are several). A profile without figures (`geen`) gives the stops at country level only."""
     from . import data, figures, mail, outbreak, risk
@@ -36,7 +37,9 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
             r.flags.append(f"geen cijfers voor {spec.name}: de tabel is leeg")
     sfx = f"_{spec.id}" if multi else ""
     epi = mp = curve = None
-    if ob is not None:
+    if ob is not None and not draw:        # a case letter: the numbers, no figures
+        epi = figures.epicurve(ob, None, src["ecdc"], draw=False)
+    elif ob is not None:
         curve = out / f"epicurve{sfx}_{ob.asof:%Y%m%d}.png"
         epi = figures.epicurve(ob, str(curve), src["ecdc"])
         if not epi.get("path"):
@@ -47,11 +50,12 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
                f"{last.year if last else ''}. Nationaal: {mail.n(epi['last_total'])} gevallen, "
                f"{mail.n(epi['last_deaths'])} overlijdens (data tot {ob.asof:%d-%m-%Y})")
         mp = figures.itinerary_map(rs, ob, spec.figures["map_title"], sub, str(out / f"kaart_{tag}{sfx}.png"))
+
     ecdc, who = src["ecdc"], src["who"]
     qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"] if ob is not None else None,
           "ecdc_matches": (ecdc.get("cases") == epi["last_total"]) if ecdc.get("ok") and epi else None,
           "ecdc": ecdc, "who": who, "who_days_old": who.get("days_old"),
-          "sources_unreachable": [k for k, v in src.items() if not v.get("ok")
+          "sources_unreachable": [k for k, v in src.items() if not v.get("ok") and not v.get("none_found")
                                   and v.get("reason") not in ("asof run", data.NOT_CONFIGURED)],
           "unmatched_zone_names": ob.unmatched if ob is not None else [],
           "map_label_overlaps": mp["label_overlaps"] if mp else 0,
@@ -81,7 +85,7 @@ def _stops(rs) -> list[dict]:
 
 
 def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False,
-            spec=None, specs=None) -> dict:
+            spec=None, specs=None, draw: bool = True) -> dict:
     """Deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA. Returns summary.
 
     `spec` or `specs` name the outbreaks to assess the trip against; by default those of the trip
@@ -94,7 +98,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     specs = [spec] if spec else list(specs or route.outbreaks_for(trip))
     multi = len(specs) > 1
     tag = _slug(trip.get("traveller", "trip"))
-    parts = [_assess_one(trip, s, out, tag, refresh, asof, multi) for s in specs]
+    parts = [_assess_one(trip, s, out, tag, refresh, asof, multi, draw) for s in specs]
     order = {lv: i for i, lv in enumerate(outbreak.LEVELS)}
     parts.sort(key=lambda p: order.get(p["level"], len(order)))       # strictest first, stable
     main, others = parts[0], parts[1:]
@@ -122,7 +126,8 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
 
     redirect = bool(trip.get("sent_to_ugent_address", False))
     skel = mail.skeleton(trip, main["rs"], main["epi"], main["qa"]["ecdc"], redirect,
-                         others=[(p["rs"], p["epi"], p["qa"]["ecdc"]) for p in others], overrides=overrides)
+                         others=[(p["rs"], p["epi"], p["qa"]["ecdc"]) for p in others], overrides=overrides,
+                         kind=trip.get("type") or "reisadvies")
     (out / "reply_skeleton.txt").write_text(skel, encoding="utf-8")
     trip_iso = list(dict.fromkeys(r.country for r in main["rs"] if r.country))
     (out / "sources.txt").write_text(mail.sources_block(main["spec"], trip_iso, [p["spec"] for p in others]),
@@ -151,9 +156,11 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
                "stops": _stops(main["rs"]),
                "qa": qa, "files": sorted(str(p) for p in out.iterdir()),
                "who": main["who"], "map": main["map"]["path"] if main["map"] else None, "epicurve": main["curve"],
-               "departure": str(first or ""), "table": tab.drop(columns=["signalen"]).to_string(index=False),
+               "departure": str(first or ""),
+               "table": tab.drop(columns=["signalen"], errors="ignore").to_string(index=False),
                "overall_level": outbreak.strictest(p["level"] for p in parts if p["level"]),
-               "attachments": [x for p in parts for x in ((p["map"] or {}).get("path"), p["curve"]) if x]}
+               "attachments": [x for p in parts for x in ((p["map"] or {}).get("path"), p["curve"]) if x],
+               "type": trip.get("type") or "reisadvies"}
     if multi:
         summary["outbreaks"] = {
             p["spec"].id: {"name": p["spec"].name,
@@ -162,7 +169,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
                            "overrides": [{**o, "outbreak": p["spec"].id} for o in p["overrides"]],
                            "epi": p["epi"], "stops": _stops(p["rs"]), "qa": p["qa"], "who": p["who"],
                            "map": (p["map"] or {}).get("path"), "epicurve": p["curve"],
-                           "table": p["tab"].drop(columns=["signalen"]).to_string(index=False)}
+                           "table": p["tab"].drop(columns=["signalen"], errors="ignore").to_string(index=False)}
             for p in parts}
     (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     if log_it:
@@ -186,4 +193,5 @@ def log_row(trip: dict, summary: dict, review_on: str | None = None,
                 "review_on": str(review_on or trip.get("review_on") or ""), "note": trip.get("note", ""),
                 "overrules": "; ".join(f"{o['scope']}: {o['van']} -> {o['naar']} ({o['reason']})"
                                        for o in summary.get("overrides", [])),
-                "advice_dir": advice_dir, "outbreaks": " ".join(outbreak_ids(summary))})
+                "advice_dir": advice_dir, "outbreaks": " ".join(outbreak_ids(summary)),
+                "type": summary.get("type") or "reisadvies"})

@@ -179,7 +179,8 @@ def test_an_old_log_gets_the_new_column_once(tmp_path):
                  encoding="utf-8")
     log.append({"advised_on": "2026-09-25", "traveller": "Reiziger P", "outbreaks": "geen"}, path=p)
     rows = p.read_text(encoding="utf-8").splitlines()
-    assert rows[0] == ",".join(log.FIELDS) and rows[1].endswith(",ebola_cod_2026") and rows[2].endswith(",geen")
+    assert rows[0] == ",".join(log.FIELDS)
+    assert rows[1].endswith(",ebola_cod_2026,reisadvies") and rows[2].endswith(",geen,")
 
 
 def test_an_old_archive_record_reads_as_ebola(tmp_path):

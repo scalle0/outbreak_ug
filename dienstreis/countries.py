@@ -85,6 +85,14 @@ def international() -> dict:
     return _read(ROOT / "_international.yaml")
 
 
+def excluded(url: str | None) -> bool:
+    """A source the clinician does not want used (`excluded` in _international.yaml), by domain."""
+    from urllib.parse import urlparse
+    host = (urlparse(url or "").hostname or "").lower()
+    return any(host == x["domain"] or host.endswith("." + x["domain"])
+               for x in international().get("excluded") or [])
+
+
 def ids() -> list[str]:
     return sorted(p.stem for p in ROOT.glob("*.yaml") if not p.stem.startswith("_"))
 
@@ -231,7 +239,7 @@ def apply_web(webd: dict, outbreak_id: str, today: date | None = None) -> dict[s
                 else {})}
             for m in ms]
     for s in webd.get("sources", []):
-        if not (s.get("country") and s.get("url")):
+        if not (s.get("country") and s.get("url")) or excluded(s["url"]):
             continue
         c = entry(s["country"])
         if s.get("kind") == "fod":

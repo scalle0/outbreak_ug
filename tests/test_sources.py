@@ -93,3 +93,14 @@ def test_unreachable_source_reaches_the_notes(tmp_path, monkeypatch):
                             llm_backend=fake, web=False)
     assert "who" in res["summary"]["qa"]["sources_unreachable"]
     assert any("WHO" in s and "niet bereikbaar" in s for s in res["suggestions"])
+
+
+def test_nothing_found_is_not_unreachable(monkeypatch, tmp_path):
+    """A live run reported WHO 'niet bereikbaar' when it had only found no item about the outbreak."""
+    from datetime import date as _date
+    from dienstreis import pipeline
+    monkeypatch.setattr(data.requests, "get", lambda *a, **k: R({"value": [DON["value"][0]]}))
+    assert data.who_snapshot()["none_found"] is True
+    monkeypatch.setattr(data, "who_snapshot", lambda *a, **k: {"ok": False, "reason": "no item", "none_found": True})
+    trip = {"traveller": "R", "stops": [{"place": "Addis Ababa", "from": _date(2026, 11, 1), "to": _date(2026, 11, 5)}]}
+    assert pipeline.analyse(trip, tmp_path / "out")["qa"]["sources_unreachable"] == []

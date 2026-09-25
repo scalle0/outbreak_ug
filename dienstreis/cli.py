@@ -71,7 +71,16 @@ def cmd_advies(a):
     run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, outlook=a.outlook,
                asof=a.asof, refresh=a.refresh, open_browser=not a.no_open, apply_web=a.apply_web,
                web=not a.no_web,
-               numbers=not a.no_number_check, uitbraken=a.uitbraak)
+               numbers=not a.no_number_check, uitbraken=a.uitbraak, health_ok=a.gezondheidsgegevens_ok)
+
+
+def cmd_herlabel(a):
+    from . import archive, log
+    r = archive.relabel(Path(a.dir), kind=a.type, outbreaks=a.uitbraak, reason=a.reden)
+    in_log = log.relabel(a.dir, {k: v for k, v in (("type", a.type),
+                                                   ("outbreaks", " ".join(a.uitbraak) if a.uitbraak else None)) if v})
+    print(f"{a.dir}: type {r.get('type')}, uitbraken {', '.join(r.get('outbreaks', []))}"
+          + ("; logregel aangepast" if in_log else "; geen logregel gevonden"))
 
 
 def cmd_uitbraken(a):
@@ -104,7 +113,7 @@ def cmd_zoek(a):
     rows = archive.search(a.term or "", verdict=a.oordeel or "",
                           since=_d.fromisoformat(a.sinds) if a.sinds else None,
                           until=_d.fromisoformat(a.tot) if a.tot else None,
-                          overruled=True if a.overruled else None, outbreak=a.uitbraak or "",
+                          overruled=True if a.overruled else None, outbreak=a.uitbraak or "", kind=a.type or "",
                           limit=a.limit)
     if not rows:
         print("Geen advies gevonden.")
@@ -167,6 +176,8 @@ def main(argv=None):
                    help="wijzigingen uit de webstap zonder vragen overnemen in het lokale landenregister")
     v.add_argument("--uitbraak", action="append", metavar="ID",
                    help="beoordeel tegen deze uitbraak (herhaalbaar); standaard volgt het uit de landen van de reis")
+    v.add_argument("--gezondheidsgegevens-ok", action="store_true",
+                   help="een aanvraag met gezondheidsgegevens over een persoon zonder vragen naar het model sturen")
     v.add_argument("--no-number-check", action="store_true",
                    help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")
@@ -184,6 +195,12 @@ def main(argv=None):
     r.add_argument("--uitbraak", action="append", metavar="ID", help="beoordeel tegen deze uitbraak (herhaalbaar)")
     r.set_defaults(f=cmd_run)
     ub = s.add_parser("uitbraken", help="de uitbraakprofielen, met hun landen en buurlanden"); ub.set_defaults(f=cmd_uitbraken)
+    hl = s.add_parser("herlabel", help="een bewaard advies opnieuw labelen (type, uitbraken), met reden")
+    hl.add_argument("dir", help="de map van het advies in het archief")
+    hl.add_argument("--type", choices=["reisadvies", "casus", "vraag"])
+    hl.add_argument("--uitbraak", action="append", metavar="ID")
+    hl.add_argument("--reden", required=True)
+    hl.set_defaults(f=cmd_herlabel)
     c = s.add_parser("check", help="controle van een mailtekst of widget"); c.add_argument("file"); c.set_defaults(f=cmd_check)
     w = s.add_parser("widget", help="HTML-widget uit afgewerkte mailtekst"); w.add_argument("text"); w.add_argument("--suggestions"); w.add_argument("--out", required=True); w.add_argument("--title", default="Reply Team Actueel"); w.set_defaults(f=cmd_widget)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
@@ -193,6 +210,7 @@ def main(argv=None):
     z.add_argument("--oordeel", help="filter op het eindoordeel, bv. afraden")
     z.add_argument("--overruled", action="store_true", help="enkel adviezen waarin een regel overruled is")
     z.add_argument("--uitbraak", metavar="ID", help="enkel adviezen over deze uitbraak")
+    z.add_argument("--type", choices=["reisadvies", "casus", "vraag"], help="enkel adviezen van dit type")
     z.add_argument("--vol", action="store_true", help="de volledige mailtekst tonen")
     z.add_argument("--limit", type=int, default=50)
     z.set_defaults(f=cmd_zoek)
