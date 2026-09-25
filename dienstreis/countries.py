@@ -23,6 +23,8 @@ from pathlib import Path
 
 import yaml
 
+from . import outbreak
+
 ROOT = Path(__file__).parent / "countries"
 LOCAL = Path(os.environ.get("DIENSTREIS_COUNTRIES", Path.home() / ".config" / "dienstreis" / "countries"))
 LEGACY = Path(os.environ.get("DIENSTREIS_ADVISORIES", Path.home() / ".config" / "dienstreis" / "advisories.yaml"))
@@ -151,8 +153,18 @@ def check(c: dict, iso3: str) -> list[str]:
 
 
 def blank(iso3: str) -> dict:
-    """A new entry for a country the registry does not know yet."""
-    return {"iso3": iso3, "name_nl": iso3, "name_en": iso3, "letter_nl": iso3, "neighbours": [], "verified": None,
+    """A new entry for a country the registry does not know yet: names and land neighbours from the map.
+
+    The neighbours matter: without them an outbreak in this country would never reach a trip next door.
+    """
+    try:
+        from . import route
+        known = route.describe(iso3)
+    except Exception:                    # no map in the cache and no network: the code will do
+        known = {}
+    name = known.get("name_nl") or iso3
+    return {"iso3": iso3, "name_nl": name, "name_en": known.get("name_en") or iso3, "letter_nl": name,
+            "neighbours": known.get("neighbours") or [], "verified": None,
             "fod": {"pages": [], "default": None, "regions": {}}, "cdc": {}, "pretravel": None,
             "government": [], "news": [], "measures": []}
 
@@ -174,6 +186,11 @@ def apply_web(webd: dict, outbreak_id: str, today: date | None = None) -> dict[s
     """
     today = today or date.today()
     out: dict[str, dict] = {}
+    ids = set(outbreak.ids())
+
+    def which(x: dict) -> str:
+        """The profile a finding belongs to: a known id, else the outbreak of this run."""
+        return x["outbreak"] if x.get("outbreak") in ids else outbreak_id
 
     def entry(iso3: str) -> dict:
         if iso3 not in out:
@@ -194,22 +211,24 @@ def apply_web(webd: dict, outbreak_id: str, today: date | None = None) -> dict[s
             else:
                 f["default"] = level
         if a.get("cdc") is not None:
-            x = c.setdefault("cdc", {}).setdefault(outbreak_id, {"default": None, "regions": {}})
+            x = c.setdefault("cdc", {}).setdefault(which(a), {"default": None, "regions": {}})
             if region:
                 x.setdefault("regions", {})[region] = a["cdc"]
             else:
                 x["default"] = a["cdc"]
         c["verified"] = today
-    found: dict[str, list[dict]] = {}
+    found: dict[tuple[str, str], list[dict]] = {}
     for m in webd.get("measures", []):
         if m.get("country") and m.get("text"):
-            found.setdefault(m["country"], []).append(m)
-    for iso3, ms in found.items():
+            found.setdefault((m["country"], which(m)), []).append(m)
+    for (iso3, ob), ms in found.items():
         if not any(m.get("changed") for m in ms):
             continue
         c = entry(iso3)
-        c["measures"] = [m for m in c.get("measures") or [] if m.get("outbreak") != outbreak_id] + [
-            {"outbreak": outbreak_id, "text": m["text"], "verified": m.get("date") or today, "source": m.get("source")}
+        c["measures"] = [m for m in c.get("measures") or [] if m.get("outbreak") != ob] + [
+            {"outbreak": ob, "text": m["text"], "verified": m.get("date") or today, "source": m.get("source"),
+             **({"about": m.get("about") or m.get("outbreak")} if (m.get("about") or m.get("outbreak")) not in (None, ob)
+                else {})}
             for m in ms]
     for s in webd.get("sources", []):
         if not (s.get("country") and s.get("url")):

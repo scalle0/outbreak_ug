@@ -65,6 +65,7 @@ def _norm_summary(raw: str) -> str:
     for k in ("map", "epicurve"):
         s[k] = Path(s[k]).name
     s["epi"]["path"] = Path(s["epi"]["path"]).name
+    s["attachments"] = [Path(a).name for a in s.get("attachments", [])]
     for k in ("advisories_verified_days_ago", "advisories_stale", "advisories_source"):
         s["qa"].pop(k, None)                           # depend on the day the test runs
     for k in LABEL_COUNTS:                             # depend on where the labels land

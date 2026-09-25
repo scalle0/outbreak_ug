@@ -45,7 +45,13 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
     when = f" ({d(r.start)} tot {d(r.end)})" if r.start else ""
     head = f"{i}. {r.place}{when}: "
     if r.category == "X":
-        return head + f"{spec.label('X')}; {'; '.join(r.flags)}."
+        extra = []                               # a formal FOD advisory and CDC >= 3 are flags already
+        if r.fod == "niet_essentieel_afgeraden":
+            land = countries.letter(r.country)
+            extra.append(FOD_TXT[r.fod].format(p=land, r=r.fod_reason, land=land))
+        if r.cdc == 2:
+            extra.append("de CDC hanteert niveau 2")
+        return head + "; ".join([spec.label("X")] + r.flags + extra) + "."
     parts = []
     zone_txt = f"{spec.unit} {r.zone}" if r.zone and r.zone.lower() != r.place.lower() else f"de {spec.unit}"
     if r.category == "A":
@@ -72,8 +78,8 @@ def leg_paragraph(i: int, r: StopRisk) -> str:
     return head + "; ".join(parts) + "."
 
 
-def _override_hint(rs: list[StopRisk], trip: dict) -> str:
-    ov = overrides(rs, trip)
+def _override_hint(rs: list[StopRisk], trip: dict, ov: list[dict] | None = None) -> str:
+    ov = overrides(rs, trip) if ov is None else ov
     if not ov:
         return ""
     parts = "; ".join(f"{o['scope']}: {o['van']} -> {o['naar']} ({o['reason']})" for o in ov)
@@ -81,28 +87,46 @@ def _override_hint(rs: list[StopRisk], trip: dict) -> str:
             f"en zeg kort waarom, zonder de regelcategorie te noemen.")
 
 
-def skeleton(trip: dict, rs: list[StopRisk], epi: dict, ecdc: dict, redirect: bool) -> str:
+def _stand(rs: list[StopRisk], epi: dict, ecdc: dict, named: bool) -> str:
+    """The national situation in one sentence: total with its date and source, and the full weeks."""
     spec = spec_of(rs)
-    who = trip.get("traveller", "de reiziger")
     wk = list(epi["weekly_cases_last4_full_weeks"].values())
-    lines = ["Beste An,", "",
-             f"[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. "
-             f"Regel-uitkomst: {rule_overall(rs)}.{_override_hint(rs, trip)}]]", "",
-             "Mijn beoordeling per luik:", ""]
-    lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
     tot = ecdc if ecdc.get("ok") else {"cases": epi["last_total"], "deaths": epi["last_deaths"], "data_until": None}
     bron = f"ECDC, data tot {nl_months(tot['data_until'])}" if tot.get("data_until") else spec.sources["national"]
-    lines += ["",
-              f"Stand van zaken ({bron}): "
-              f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent). "
-              f"Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}.",
-              "",
-              f"[[CLAUDE: profiel en context van {who}: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. "
+    label = f"Stand van zaken {spec.name}" if named else "Stand van zaken"
+    return (f"{label} ({bron}): "
+            f"{n(tot['cases'])} bevestigde gevallen en {n(tot['deaths'])} overlijdens (CFR {epi['cfr']:.0f} procent). "
+            f"Nieuwe gevallen per volledige week, laatste vier weken: {', '.join(n(x) for x in wk)}.")
+
+
+def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redirect: bool,
+             others=(), overrides: list[dict] | None = None) -> str:
+    """The reply skeleton. `rs`, `epi`, `ecdc` are the strictest outbreak's; `others` holds
+    (stops, epi, ecdc) for every further outbreak that applies. `epi` is None without figures."""
+    spec = spec_of(rs)
+    who = trip.get("traveller", "de reiziger")
+    rule = rule_overall(rs) if not others else "; ".join(
+        f"{spec_of(x).name}: {rule_overall(x)}" for x in [rs] + [o[0] for o in others])
+    lines = ["Beste An,", "",
+             f"[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. "
+             f"Regel-uitkomst: {rule}.{_override_hint(rs, trip, overrides)}]]", "",
+             "Mijn beoordeling per luik:", ""]
+    lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
+    for o_rs, _, _ in others:                    # a further outbreak: only the stops where it matters
+        legs = [leg_paragraph(i + 1, r) for i, r in enumerate(o_rs) if r.category not in "FX"]
+        lines += ["", f"Voor {spec_of(o_rs).name}:"] + (legs or ["geen bezwaar op de haltes van dit reisschema."])
+    stand = [_stand(x, e, c, named=bool(others)) for x, e, c in [(rs, epi, ecdc)] + list(others) if e]
+    lines += [""] + (stand + [""] if stand else [])
+    lines += [f"[[CLAUDE: profiel en context van {who}: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. "
               "Enkel wat het oordeel verandert.]]", "",
               "Voorwaarden:"]
-    lines += [f"{i}. {c}" for i, c in enumerate([pretravel_line(rs)] + spec.conditions, start=1)]
-    lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", "",
-              "In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.", ""]
+    conds = list(dict.fromkeys(spec.conditions + [c for o in others for c in spec_of(o[0]).conditions]))
+    lines += [f"{i}. {c}" for i, c in enumerate([pretravel_line(rs)] + conds, start=1)]
+    figs = sum(1 for e in [epi] + [o[1] for o in others] if e)
+    attach = [] if not figs else [
+        "In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve." if figs == 1
+        else "In bijlage de kaarten met het reisschema en de bijgewerkte epidemiecurves.", ""]
+    lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", ""] + attach
     if redirect:
         lines += ["Voor verdere correspondentie kan u mij best bereiken via steven.callens@uzgent.be.", ""]
     lines += ["Met vriendelijke groet,", "Steven Callens"] + (["steven.callens@uzgent.be"] if redirect else [])
@@ -200,6 +224,16 @@ def length_note(txt: str, limit: int = MAX_WORDS) -> str | None:
             f"kort in en zet wat wegvalt in de notities")
 
 
+def coverage_note(txt: str, specs) -> str | None:
+    """With several outbreaks, warn when the reply does not name one of them. Never blocking."""
+    if len(specs) < 2:
+        return None
+    missing = [sp.name for sp in specs if sp.match_terms
+               and not any(re.search(rf"\b{re.escape(t)}", txt, re.I) for t in sp.match_terms)]
+    return (f"de mail noemt {', '.join(missing)} niet, terwijl die uitbraak voor deze reis geldt; bedoeld of niet?"
+            if missing else None)
+
+
 def verdict_note(txt: str, overall: str | None) -> str | None:
     """Warn when the rule verdict does not come back in the letter at all.
 
@@ -253,15 +287,16 @@ def pretravel_line(rs: list[StopRisk]) -> str:
     return f"{consult} en registratie via Travellers Online."
 
 
-def sources(spec=None, iso3s: list[str] | None = None) -> list[tuple[str, str]]:
-    """The links for sources.txt: WHO, the outbreak's own sources, CDC, and the FOD pages of the trip's countries."""
+def sources(spec=None, iso3s: list[str] | None = None, others=()) -> list[tuple[str, str]]:
+    """The links for sources.txt: WHO, the outbreaks' own sources, CDC, and the FOD pages of the trip's countries."""
     spec = spec or outbreak.default()
     fod = [tuple(p) for i in (iso3s or spec.countries)
            for p in (((countries.load(i) or {}).get("fod") or {}).get("pages") or [])]
-    return ([("WHO, Disease Outbreak News", "https://www.who.int/emergencies/disease-outbreak-news")]
-            + [tuple(x) for x in spec.sources.get("mail", [])]
-            + [("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices")] + fod)
+    own = [tuple(x) for sp in [spec, *others] for x in sp.sources.get("mail", [])]
+    return list(dict.fromkeys([("WHO, Disease Outbreak News", "https://www.who.int/emergencies/disease-outbreak-news")]
+                              + own + [("US CDC, Travel Health Notices", "https://wwwnc.cdc.gov/travel/notices")]
+                              + fod))
 
 
-def sources_block(spec=None, iso3s: list[str] | None = None) -> str:
-    return "\n\n".join(f"{t}:\n{u}" for t, u in sources(spec, iso3s))
+def sources_block(spec=None, iso3s: list[str] | None = None, others=()) -> str:
+    return "\n\n".join(f"{t}:\n{u}" for t, u in sources(spec, iso3s, others))

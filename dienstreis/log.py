@@ -8,13 +8,34 @@ from pathlib import Path
 
 LOG = Path(os.environ.get("DIENSTREIS_LOG", Path.home() / ".config" / "dienstreis" / "advice_log.csv"))
 FIELDS = ["advised_on", "traveller", "departure", "stops", "categories", "overall", "review_on",
-          "note", "overrules", "advice_dir"]
+          "note", "overrules", "advice_dir", "outbreaks"]
+
+
+def _upgrade(path: Path) -> None:
+    """Rewrite a log written before a column was added, so every row has every column.
+
+    New columns only ever go at the end. Rows from before 0.3 were all about the Ebola outbreak.
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        r = csv.DictReader(f)
+        if r.fieldnames == FIELDS or not r.fieldnames:
+            return
+        rows = list(r)
+    for row in rows:
+        row.setdefault("outbreaks", "")
+        row["outbreaks"] = row["outbreaks"] or "ebola_cod_2026"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows({k: row.get(k, "") for k in FIELDS} for row in rows)
 
 
 def append(row: dict, path: Path | None = None) -> Path:
     path = path or LOG
     path.parent.mkdir(parents=True, exist_ok=True)
     new = not path.exists()
+    if not new:
+        _upgrade(path)
     with open(path, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         if new:

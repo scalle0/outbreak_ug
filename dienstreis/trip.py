@@ -19,6 +19,8 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
+from . import outbreak
+
 PLACES = Path(__file__).parent / "config" / "places.csv"
 LODGING = {"hotel", "family", "guesthouse", "camp", "compound", "unknown"}
 CATEGORIES = set("ABCDEFX")
@@ -98,16 +100,22 @@ def coerce(trip: dict) -> dict:
                     pass
         if isinstance(s.get("place"), str):
             s["place"] = s["place"].strip()
-        if isinstance(s.get("override"), dict):
-            o = dict(s["override"])
-            if isinstance(o.get("category"), str):
-                o["category"] = o["category"].strip().upper()
-            if isinstance(o.get("reason"), str):
-                o["reason"] = o["reason"].strip()
-            s["override"] = o
+        if isinstance(s.get("override"), (dict, list)):
+            s["override"] = (_coerce_override(s["override"]) if isinstance(s["override"], dict)
+                             else [_coerce_override(o) if isinstance(o, dict) else o for o in s["override"]])
         stops.append(s)
     t["stops"] = stops
+    if isinstance(t.get("outbreaks"), str):
+        t["outbreaks"] = [t["outbreaks"]]
     return t
+
+
+def _coerce_override(o: dict) -> dict:
+    o = dict(o)
+    for k in ("category", "reason", "outbreak"):
+        if isinstance(o.get(k), str):
+            o[k] = o[k].strip().upper() if k == "category" else o[k].strip()
+    return o
 
 
 def validate(trip: dict, *, known_places, today: date | None = None) -> list[str]:
@@ -160,7 +168,7 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
         sl = s.get("lodging")
         if sl is not None and str(sl).lower() not in LODGING:
             issues.append(f"{tag}: onbekende verblijfsvorm '{sl}'")
-        issues += _check_override(s.get("override"), tag)
+        issues += _check_stop_overrides(s.get("override"), tag, trip.get("outbreaks") or [])
 
     # the year is the classic failure: a trip from December into March crosses into the next year
     dates = [d for s in stops for d in (s.get("from"), s.get("to")) if isinstance(d, date)]
@@ -176,9 +184,31 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
             issues.append(f"laatste datum {last} ligt meer dan drie jaar in de toekomst; "
                           f"controleer de jaartallen")
     issues += _check_override(trip.get("override"), "overrule van het eindoordeel", overall=True)
+    known_ids = set(outbreak.ids())
+    for oid in trip.get("outbreaks") or []:
+        if oid not in known_ids:
+            issues.append(f"onbekende uitbraak '{oid}' in outbreaks (bekend: {', '.join(sorted(known_ids))})")
     rv = trip.get("review_on")
     if rv is not None and not isinstance(rv, date) and str(rv).strip():
         issues.append(f"go/no-go-datum onleesbaar ({rv!r})")
+    return issues
+
+
+def _check_stop_overrides(o, tag: str, outbreaks: list[str]) -> list[str]:
+    """One overrule, or a list of them; with several outbreaks each must say which one it sets aside."""
+    if o is None:
+        return []
+    items = o if isinstance(o, list) else [o]
+    issues = [x for it in items for x in _check_override(it, tag)]
+    named = [it.get("outbreak") for it in items if isinstance(it, dict)]
+    if len(outbreaks) > 1 and not all(named):
+        issues.append(f"{tag}: er gelden meerdere uitbraken ({', '.join(outbreaks)}); zeg in de overrule "
+                      f"welke ze opzij zet (outbreak: ...)")
+    for oid in named:
+        if oid and outbreaks and oid not in outbreaks:
+            issues.append(f"{tag}: overrule voor '{oid}', maar die uitbraak geldt niet voor deze reis")
+    if len(named) != len(set(named)):
+        issues.append(f"{tag}: meer dan een overrule voor dezelfde uitbraak")
     return issues
 
 
@@ -206,7 +236,7 @@ def _check_override(o, tag: str, overall: bool = False) -> list[str]:
             issues.append(f"{tag}: geef 'category' (een van {' '.join(sorted(CATEGORIES))})")
         elif cat not in CATEGORIES:
             issues.append(f"{tag}: onbekende categorie '{cat}' (kies uit {' '.join(sorted(CATEGORIES))})")
-    unknown = set(o) - {"category", "reason", "verdict"}
+    unknown = set(o) - {"category", "reason", "verdict", "outbreak"}
     if unknown:
         issues.append(f"{tag}: onbekende sleutel(s) in override: {', '.join(sorted(unknown))}")
     return issues

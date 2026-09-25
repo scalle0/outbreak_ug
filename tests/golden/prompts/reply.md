@@ -18,6 +18,8 @@ De categorie is een vertrekpunt, geen eindoordeel. Weeg de signalen (`signalen`/
 
 De echte risico's voor een reiziger zonder zorgcontact zijn vaak operationeel: koorts (ook malaria) in een getroffen zone betekent isolatie als verdacht geval, wachten op PCR, gemiste vluchten; evacuatie is moeilijk; exitscreening en 21-dagenregels van derde landen. Er is geen goedgekeurd vaccin, geen bewezen behandeling of profylaxe tegen BDBV; lokale vaccinatie van eerstelijnswerkers is experimenteel en niet voor reizigers. 
 
+Gelden er meerdere uitbraken voor dit reisschema, dan staat de strengste bovenaan in de invoer en elke andere in `andere_uitbraken`, met dezelfde velden. Het kernoordeel volgt de strengste; de mail noemt elke uitbraak, en een uitbraak die geen enkel luik raakt krijgt hoogstens een halve zin. Noemt de aanvraag een ziekte waarvoor geen profiel bestaat (`ziekten_zonder_profiel`), zeg dan in de mail dat de cijfers daar niet over gaan en wat de webstap erover vond.
+
 ## Consistentie met eerdere adviezen
 
 `context` bevat Stevens eigen notities (eerdere adviezen, open toezeggingen) en `geschiedenis` de logregels voor dezelfde plaatsen. Het nieuwe advies is consistent met eerdere adviezen, of zegt expliciet waarom het afwijkt ("de situatie is sinds ... veranderd"). Een achterhaalde eigen inschatting corrigeer je openlijk. Als een toezegging (bv. een update rond een datum) samenvalt met deze aanvraag, combineer.

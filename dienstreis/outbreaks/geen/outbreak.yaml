@@ -1,0 +1,26 @@
+# No outbreak profile applies to the trip: the advice is written at country level.
+#
+# Not an outbreak. Routing falls back to it only when no active profile covers a country on the
+# trip or one of its neighbours, and a request mail never matches it. There are no figures, so
+# every stop is X; what the letter rests on is the country registry (FOD, CDC, border measures)
+# and what the web step finds, which must include a search for an outbreak at the destination.
+id: geen
+active: false
+name_nl: geen gekende uitbraak
+adapter: {type: none}
+
+categories:
+  X: {label: "geen uitbraakprofiel van toepassing", verdict: landniveau, level: geen_bezwaar}
+
+overall:                               # no rules apply: the verdict is the clinician's, from the country facts
+  afraden: geen uitbraakprofiel van toepassing; oordeel op landniveau
+  voorwaardelijk: geen uitbraakprofiel van toepassing; oordeel op landniveau
+  geen_bezwaar: geen uitbraakprofiel van toepassing; oordeel op landniveau
+
+outside_note: geen uitbraakprofiel voor dit land; of er een uitbraak loopt, zegt de webstap
+
+conditions:
+  - "[[CLAUDE: voorwaarden die uit de landfeiten of de webstap volgen, of schrappen]]"
+
+sources:
+  mail: []

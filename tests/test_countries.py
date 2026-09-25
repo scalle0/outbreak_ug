@@ -140,3 +140,24 @@ def test_a_stop_in_a_neighbouring_country_carries_its_border_measures():
 def test_a_stop_in_a_country_without_measures_gets_the_profiles_note():
     r = risk.assess_stop({"place": "Addis Ababa"}, _zones(), {}, outbreak.default())
     assert r.category == "X" and r.flags == [outbreak.default().outside_note]
+
+
+def test_a_new_country_gets_its_names_and_neighbours(monkeypatch):
+    """Without neighbours an outbreak there would never reach a trip next door (live run, Kenya, 2026-09-25)."""
+    from dienstreis import route
+    monkeypatch.setattr(route, "describe", lambda iso3: {"name_nl": "Kenia", "name_en": "Kenya",
+                                                         "neighbours": ["ETH", "SOM", "SSD", "TZA", "UGA"]})
+    out = countries.apply_web({"advisories": [{"country": "KEN", "region": None, "fod": None, "cdc": 1}]}, "geen")
+    ken = out["KEN"]
+    assert (ken["name_nl"], ken["letter_nl"], ken["neighbours"]) == ("Kenia", "Kenia", ["ETH", "SOM", "SSD", "TZA", "UGA"])
+    assert countries.check(ken, "KEN") == []
+
+
+def test_a_finding_about_a_disease_without_a_profile_is_kept_under_the_run(monkeypatch):
+    """The model keyed a measure to 'mpox en ebola'; no profile has that id, so no advice would ever find it."""
+    webd = {"advisories": [{"country": "UGA", "region": None, "cdc": 2, "outbreak": "dengue (Level 1)"}],
+            "measures": [{"country": "UGA", "outbreak": "mpox en ebola", "text": "screening", "changed": True}]}
+    uga = countries.apply_web(webd, "ebola_cod_2026")["UGA"]
+    assert uga["cdc"]["ebola_cod_2026"]["default"] == 2 and "dengue (Level 1)" not in uga["cdc"]
+    m = countries.measures(uga, "ebola_cod_2026")
+    assert [x["text"] for x in m] == ["screening"] and m[0]["about"] == "mpox en ebola"

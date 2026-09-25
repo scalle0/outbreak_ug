@@ -11,6 +11,10 @@ One folder per advice under ~/.config/dienstreis/adviezen/JJJJ-MM-DD_reiziger/:
     summary.json  the calculated figures behind it
 These are colleagues' travel details. They stay on the machine; `search` reads them, and only the
 hits for the same destinations go to the model.
+
+Every record names the outbreaks it was assessed against and the countries of the trip. A record
+from before 0.3 has neither and is read as an Ebola advice, which is what it was; the file itself
+is never rewritten.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from pathlib import Path
 
 ARCHIVE = Path(os.environ.get("DIENSTREIS_ARCHIVE",
                               Path.home() / ".config" / "dienstreis" / "adviezen"))
+BEFORE_03 = ["ebola_cod_2026"]      # the only outbreak an advice could be about before profiles existed
 
 
 def _slug(s: str) -> str:
@@ -41,8 +46,11 @@ def save(trip: dict, summary: dict, reply: str, *, request: str = "",
     d.mkdir(parents=True, exist_ok=True)
 
     stops = summary.get("stops", [])
+    ids = list(summary.get("outbreaks") or []) or ([summary["outbreak"]] if summary.get("outbreak") else [])
     record = {
         "advised_on": day.isoformat(),
+        "outbreaks": ids,
+        "countries": list(dict.fromkeys(s.get("country") for s in stops if s.get("country"))),
         "traveller": trip.get("traveller", ""),
         "note": trip.get("note", ""),
         "departure": summary.get("departure", ""),
@@ -80,6 +88,8 @@ def all_advices(root: Path | None = None) -> list[dict]:
         except (OSError, json.JSONDecodeError):
             continue
         r["dir"] = str(f.parent)
+        r.setdefault("outbreaks", BEFORE_03)
+        r.setdefault("countries", [])
         out.append(r)
     return sorted(out, key=lambda r: r.get("advised_on", ""), reverse=True)
 
@@ -91,17 +101,21 @@ def _matches(r: dict, term: str) -> bool:
         " ".join(str(p) for p in r.get("places", [])),
         " ".join(str(z) for z in r.get("zones", [])),
         " ".join(str(p) for p in r.get("provinces", [])),
+        " ".join(str(p) for p in r.get("outbreaks", [])),
+        " ".join(str(p) for p in r.get("countries", [])),
     )).lower()
     return t in hay
 
 
 def search(term: str = "", *, since: date | None = None, until: date | None = None,
-           verdict: str = "", overruled: bool | None = None, limit: int = 50,
+           verdict: str = "", overruled: bool | None = None, outbreak: str = "", limit: int = 50,
            root: Path | None = None) -> list[dict]:
-    """Advices matching a place, zone, province, traveller or note, newest first."""
+    """Advices matching a place, zone, province, country, outbreak, traveller or note, newest first."""
     out = []
     for r in all_advices(root):
         if term and not _matches(r, term):
+            continue
+        if outbreak and outbreak not in r.get("outbreaks", []):
             continue
         if verdict and verdict.lower() not in str(r.get("overall", "")).lower():
             continue
@@ -120,8 +134,10 @@ def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = N
     """Earlier advices for the same places or zones, trimmed for the prompt that writes the mail.
 
     The reply text is kept: that is the point. What the previous advice *said* is what a new one
-    can contradict, and a one-line log row cannot show that.
+    can contradict, and a one-line log row cannot show that. Advices about the same outbreak come
+    first; within that, the newest.
     """
+    mine = set(summary.get("outbreaks") or []) or {summary.get("outbreak")}
     wanted = {str(s.get("place", "")).lower() for s in summary.get("stops", [])}
     wanted |= {str(s.get("zone", "")).lower() for s in summary.get("stops", []) if s.get("zone")}
     wanted |= {str(s.get("province", "")).lower() for s in summary.get("stops", []) if s.get("province")}
@@ -130,7 +146,8 @@ def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = N
     for r in all_advices(root):
         here = {str(x).lower() for x in r.get("places", []) + r.get("zones", []) + r.get("provinces", [])}
         if here & wanted:
-            hits.append({k: r[k] for k in ("advised_on", "traveller", "places", "zones", "overall",
+            hits.append({k: r[k] for k in ("advised_on", "traveller", "outbreaks", "places", "zones", "overall",
                                            "rule_overall", "overrides", "review_on", "reply")
                          if k in r})
+    hits.sort(key=lambda h: not (set(h.get("outbreaks", [])) & mine))     # stable: newest first within
     return hits[:limit]

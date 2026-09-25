@@ -35,7 +35,7 @@ What happens:
 |---|---|---|
 | 1 | Python | read the .msg, or every mail in the request's folder in the order they were sent (attachments included) |
 | 2 | LLM | itinerary from the mail -> `stops.yaml`; shown in the terminal, you confirm or edit it in Notepad |
-| 3 | Python | INRB/INSP data, health zone per stop, category A-F, map, epicurve, ECDC cross-check, reply skeleton |
+| 3 | Python | per outbreak that applies (see [Which outbreaks apply](#which-outbreaks-apply)): its data, zone per stop, category A-F, map, epicurve, ECDC cross-check; then one reply skeleton |
 | 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories, border measures of neighbouring countries and news not yet in the data; changes and new sources are offered for the local country registry |
 | 5 | LLM | reply to An and notes for you, using `context.md` and the earlier advices for the same destinations |
 | 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, widget in the browser, Outlook draft with map and epicurve (never sent), log line, context line, archived advice, `llm_trace.json` |
@@ -100,8 +100,32 @@ invents none. A profile is checked when it is read, and refused whole with every
 (`tests/test_outbreak.py`). `ebola_cod_2026/outbreak.yaml` documents every key.
 
 One adapter exists so far, `inrb`: a GitHub repository with INSP situation reports per health zone
-and the zone shapefile. More adapters, routing a trip to the outbreaks that apply to it, several
-outbreaks in one advice and case questions are planned (FEATURES.md, F-011 to F-013).
+and the zone shapefile. A hand-kept table per outbreak and case questions are planned (FEATURES.md,
+F-012, F-013). `dienstreis uitbraken` lists the profiles with their countries and neighbours.
+
+## Which outbreaks apply
+
+An outbreak applies to a trip when a stop lies in one of its countries or in a country that borders
+one: borders with an outbreak country are closed or screened, so those countries are checked, and
+their border measures come from the country registry. There is no distance radius. A stop's country
+comes from `config/places.csv`, or for a stop given by lat/lon from the Natural Earth outlines.
+
+The outcome is written into `stops.yaml` as `outbreaks: [ebola_cod_2026]` and shown on the itinerary
+screen. After you edit the itinerary it is worked out again, unless you changed `outbreaks` yourself
+or named them with `--uitbraak ID` (repeatable) on `advies` or `run`.
+
+- **Several outbreaks**: each is assessed on its own figures, with its own map and curve (file names
+  carry the outbreak id). The strictest leads the letter and the summary; the others follow in the
+  skeleton under "Voor <ziekte>:", listing only the stops where they matter, and reach the mail step
+  as `andere_uitbraken`. `summary.json` keeps every outbreak under `outbreaks`. The length warning
+  allows 100 words more per further outbreak, and a reply that does not name one of them gets a note.
+- **None applies**: the advice is written at country level with the profile `geen`. There are no
+  figures, map or curve; every stop carries its country's FOD and CDC advice and border measures, and
+  the web step is told to look for an outbreak at the destination first, because "no profile" does
+  not mean "no outbreak".
+- **A disease the request names without a profile** (the itinerary step lists `diseases_mentioned`):
+  it is flagged on the itinerary screen and at the top of the notes, and the web and mail steps are
+  told to look for it and say that the figures do not cover it.
 
 ## Country source registry
 
@@ -159,6 +183,17 @@ stops:
 override: {verdict: goedkeuren mits compound, reason: ...}   # optional, for the whole trip
 ```
 
+With several outbreaks, an override says which one it sets aside, and a stop can carry one per
+outbreak:
+
+```yaml
+    override:
+      - {outbreak: ebola_cod_2026, category: C, reason: ...}
+      - {outbreak: mpox_cod_2026, category: F, reason: ...}
+```
+
+The verdict override for the whole trip stays one, over all outbreaks.
+
 A reason is required. What the rules said is kept next to what you decided: the risk table gains a
 `regel_cat` column, `summary.json` keeps `rule_overall` and `overrides`, the log line and the
 archived advice record it, and the step that writes the mail is told a rule was set aside and why,
@@ -175,7 +210,8 @@ full, so a contradiction with what you said last time is visible while the lette
 rather than after it is sent.
 
 ```bash
-dienstreis zoek Kisangani            # on place, zone, province, traveller or note
+dienstreis zoek Kisangani            # on place, zone, province, country, outbreak, traveller or note
+dienstreis zoek --uitbraak ebola_cod_2026   # only advices about that outbreak
 dienstreis zoek --overruled --vol    # advices where a rule was set aside, with the full text
 dienstreis zoek --sinds 2026-08-01 --oordeel afraden
 ```
@@ -254,6 +290,7 @@ traveller: Reiziger D
 profile: {lodging: family, healthcare_work: false}
 sent_to_ugent_address: false        # from `dienstreis msg`: adds the uzgent.be redirect line
 review_on: 2026-11-01               # logged with --log, listed by `dienstreis due`
+outbreaks: [ebola_cod_2026]         # optional: set by routing in `advies`; left out, `run` routes itself
 stops:
   - {place: Kinshasa,  from: 2026-11-28, to: 2026-12-06}
   - {place: Kisangani, from: 2026-12-06, to: 2026-12-14}
@@ -266,8 +303,8 @@ stops:
 | file | content |
 |---|---|
 | `risk.csv`, `risk.md` | per stop: health zone, category A-F/X, rule verdict, cases, new in 14 d, days since last case, active neighbours, nearest active zone, FOD and CDC level, flags |
-| `kaart_*.png` | health-zone choropleth, hatching for new cases (14 d), stop zones outlined, route, locator inset for far stops, label-overlap checked |
-| `epicurve_*.png` | cumulative cases/deaths and weekly incidence from the national INSP series |
+| `kaart_*.png` | health-zone choropleth, hatching for new cases (14 d), stop zones outlined, route, locator inset for far stops, label-overlap checked; one per outbreak with figures, the id in the name when there are several |
+| `epicurve_*.png` | cumulative cases/deaths and weekly incidence from the national series; one per outbreak with figures |
 | `reply_skeleton.txt` | Dutch reply with fact-based paragraph per stop and `[[CLAUDE: ...]]` placeholders |
 | `sources.txt` | URLs to paste into the mail |
 | `summary.json` | everything above as data, plus QA |
@@ -364,6 +401,8 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_cache.py` | what is fetched and when, with git and requests replaced |
 | `test_sources.py` | WHO and ECDC, including every way they can fail |
 | `test_display_geometry.py` | the map's simplified outlines never reach the zone lookup |
+| `test_route.py` | which outbreaks apply: outbreak country, neighbouring country, none; a stop's country from the map, including the France and South Sudan code traps; overrides that must name their outbreak |
+| `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the skeleton covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |
 | `test_request_parsing.py` | reading the request mail, against an invented fixture |
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |

@@ -20,7 +20,7 @@ from datetime import date
 
 import pandas as pd
 
-from . import countries, geo, outbreak
+from . import countries, geo, outbreak, route
 
 # the default profile's verdicts and labels, under the names the rest of the package and the tests use
 VERDICT = {c: outbreak.default().verdict(c) for c in outbreak.CATEGORIES}
@@ -84,7 +84,7 @@ def _country_flags(r: StopRisk) -> None:
 
 def assess_stop(stop: dict, zones, profile: dict, spec=None) -> StopRisk:
     spec = spec or outbreak.default()
-    active, clear = spec.windows["active"], spec.windows["clear"]
+    active, clear = spec.windows.get("active"), spec.windows.get("clear")     # none without figures
     fl = spec.flags
     loc = geo.locate(stop["place"], stop.get("lat"), stop.get("lon"))
     s, e = stop.get("from"), stop.get("to")
@@ -92,15 +92,18 @@ def assess_stop(stop: dict, zones, profile: dict, spec=None) -> StopRisk:
     r = StopRisk(place=stop["place"], start=s, end=e, nights=nights, lodging=stop.get("lodging"),
                  transit_only=bool(stop.get("transit_only", False)), lat=loc["lat"], lon=loc["lon"],
                  country=loc["country"], spec=spec)
-    z = geo.zone_of(zones, r.lat, r.lon, metric=spec.metric_epsg)
+    z = geo.zone_of(zones, r.lat, r.lon, metric=spec.metric_epsg) if zones is not None else None
+    if r.country is None:                          # a stop given by lat/lon: the map knows its country
+        r.country = route.country_of(stop)
     if z is not None and r.country is None and len(spec.countries) == 1:
-        r.country = spec.countries[0]              # a stop given by lat/lon inside the figures
+        r.country = spec.countries[0]              # inside the figures but on no land outline (a lake)
     land = countries.load(r.country)
     if z is None:
         r.category = "X"
         ms = countries.measures(land, spec.id)
         r.flags.append("; ".join(m["text"] for m in ms) if ms else spec.outside_note)
-        r.nearest_active = geo.nearest_active(zones, r.lat, r.lon, max_days=active, metric=spec.metric_epsg)
+        if zones is not None:
+            r.nearest_active = geo.nearest_active(zones, r.lat, r.lon, max_days=active, metric=spec.metric_epsg)
         r.fod, r.fod_reason = countries.fod(land)
         r.cdc = countries.cdc(land, spec.id)
         _country_flags(r)
@@ -147,7 +150,19 @@ def assess_stop(stop: dict, zones, profile: dict, spec=None) -> StopRisk:
         r.flags.append(f"lang verblijf (>= {fl['long_stay_nights']} nachten) in risicogebied")
     if r.new14 >= fl["rising_new14"]:
         r.flags.append(f"stijgend in de zone: {r.new14} nieuwe gevallen in 14 dagen")
-    return _apply_override(r, stop.get("override"))
+    return _apply_override(r, override_for(stop.get("override"), spec.id))
+
+
+def override_for(o, outbreak_id: str) -> dict | None:
+    """The overrule of a stop that applies to this outbreak.
+
+    A stop carries one overrule, or a list of them, each naming its outbreak. An overrule without
+    `outbreak` applies when it is the only one; trip.validate refuses it when several outbreaks apply.
+    """
+    items = [x for x in (o if isinstance(o, list) else [o]) if isinstance(x, dict)]
+    mine = [x for x in items if x.get("outbreak") == outbreak_id]
+    general = [x for x in items if not x.get("outbreak")]
+    return (mine or general or [None])[0]
 
 
 def _apply_override(r: StopRisk, o: dict | None) -> StopRisk:
@@ -168,9 +183,11 @@ def _apply_override(r: StopRisk, o: dict | None) -> StopRisk:
     return r
 
 
-def assess(trip: dict, ob) -> list[StopRisk]:
-    spec = getattr(ob, "spec", None) or outbreak.default()
-    return [assess_stop(s, ob.zones, trip.get("profile", {}), spec) for s in trip["stops"]]
+def assess(trip: dict, ob=None, spec=None) -> list[StopRisk]:
+    """Every stop against one outbreak: its figures `ob`, or none for a profile without figures."""
+    spec = spec or getattr(ob, "spec", None) or outbreak.default()
+    zones = ob.zones if ob is not None else None
+    return [assess_stop(s, zones, trip.get("profile", {}), spec) for s in trip["stops"]]
 
 
 def spec_of(rs: list[StopRisk]) -> outbreak.OutbreakSpec:

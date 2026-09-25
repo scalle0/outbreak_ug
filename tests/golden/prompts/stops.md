@@ -12,7 +12,8 @@ Regels:
 - `healthcare_work: true` enkel als de reiziger in een zorginstelling of labo werkt of met patiënten of stalen in contact komt.
 - Tegenstrijdigheden (bv. een einddatum in An's samenvatting die afwijkt van het formulier, 3/1/27 versus 2027-03-01) zet je in `contradictions`. Kies in het schema de lezing die het best past bij het formulier van de reiziger zelf en zeg welke je koos.
 - `questions_from_an`: elke expliciete vraag of verzoek van An, letterlijk samengevat.
-- `missing_info`: wat nodig is voor een goed advies en ontbreekt (vervoer tussen de stops, aard van het werk, verzekering, ebolaplan).
+- `missing_info`: wat nodig is voor een goed advies en ontbreekt (vervoer tussen de stops, aard van het werk, verzekering, uitbraakplan).
+- `diseases_mentioned`: elke ziekte of uitbraak die de aanvraag noemt (bv. ebola, mpox, cholera), zoals ze er staat; leeg als er geen genoemd wordt. Welke uitbraken gelden, volgt uit de landen van het reisschema; dit veld vangt wat daar niet uit volgt.
 - `review_on`: de go/no-go-datum, een week voor vertrek uit België. Eenmaal de reiziger vertrokken is, kan UGent een luik nog moeilijk tegenhouden; latere controles ter plaatse komen hoogstens bovenop deze datum.
 - `traveller`: naam zoals in de aanvraag. `note`: aard van de reis in een paar woorden (veldwerk, congres, labo).
 
@@ -32,6 +33,7 @@ Antwoord uitsluitend met dit JSON-object:
   ],
   "work_nature": "…",
   "transport": "…",
+  "diseases_mentioned": ["…"],
   "questions_from_an": ["…"],
   "contradictions": ["…"],
   "missing_info": ["…"]

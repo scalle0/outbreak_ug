@@ -2,7 +2,8 @@
 
     1 read the request (.msg/.eml/.txt, or a folder with all its mails)  deterministic
     2 itinerary from the mail -> stops.yaml, user confirms       LLM (stops)
-    3 data, risk per stop, map, epicurve, skeleton, QA           deterministic
+      and the outbreaks that apply to it (routing)               deterministic
+    3 per outbreak: data, risk per stop, map, epicurve; skeleton, QA   deterministic
     4 optional: advisories, border measures and news not yet in the data   LLM with web access (web)
     5 reply mail and notes for Steven                            LLM (reply)
     6 text checks (em-dash, banned words, placeholders), one repair round, widget,
@@ -22,9 +23,9 @@ from pathlib import Path
 
 import yaml
 
-from . import archive, countries, llm, log, mail, outbreak
+from . import archive, countries, llm, log, mail, outbreak, route
 from . import trip as trip_mod
-from .pipeline import _slug, analyse, log_row
+from .pipeline import _slug, analyse, log_row, outbreak_ids
 from .msg import parse_request
 
 CONTEXT = Path(os.environ.get("DIENSTREIS_CONTEXT", Path.home() / ".config" / "dienstreis" / "context.md"))
@@ -51,14 +52,29 @@ def _trip_from_llm(d: dict, req: dict) -> dict:
     return trip_mod.coerce(t)
 
 
+def _routed(trip: dict) -> list[str]:
+    """The outbreaks routing gives for the stops as they are now, ignoring what the trip names."""
+    return [sp.id for sp in route.outbreaks_for({**trip, "outbreaks": None})]
+
+
 def _print_trip(trip: dict, d: dict, issues: list[str]) -> None:
     print(f"Reiziger: {trip.get('traveller')}  |  {trip.get('note', '')}  |  profiel: {trip.get('profile')}")
+    names = []
+    for oid in trip.get("outbreaks") or []:
+        try:
+            names.append(f"{oid} ({outbreak.load(oid).name})")
+        except outbreak.ProfileError:
+            names.append(f"{oid} (onbekend)")
+    print(f"Uitbraken: {', '.join(names) or '-'}")
     for s in trip.get("stops") or []:
         extra = " (transit)" if s.get("transit_only") else ""
         extra += f" [{s['lodging']}]" if s.get("lodging") else ""
         extra += f" lat/lon {s['lat']}, {s['lon']}" if "lat" in s else ""
         print(f"  {s.get('from')} tot {s.get('to')}  {s.get('place')}{extra}")
     print(f"Go/no-go: {trip.get('review_on')}")
+    specs = [outbreak.load(i) for i in trip.get("outbreaks") or [] if i in outbreak.ids()]
+    for x in route.unmatched_diseases(d.get("diseases_mentioned") or [], specs):
+        print(f"  Genoemd, zonder uitbraakprofiel: {x}")
     for k, t in (("contradictions", "Tegenstrijdig"), ("missing_info", "Ontbreekt"), ("questions_from_an", "Vragen An")):
         for x in d.get(k, []):
             print(f"  {t}: {x}")
@@ -70,11 +86,13 @@ def _check_trip(trip: dict) -> list[str]:
     return trip_mod.validate(trip, known_places=_known_places())
 
 
-def confirm_trip(trip: dict, d: dict, out: Path, yes: bool) -> dict:
+def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: bool = False) -> dict:
     """Show the itinerary with its problems and let the user confirm, edit or stop.
 
     An itinerary with problems is never analysed: the places and dates are the input to every
     calculation that follows, so a wrong one produces a wrong risk table rather than an error.
+    The outbreaks follow the stops after an edit, unless the user changed them in the file or
+    named them on the command line.
     """
     path = out / "stops.yaml"
     path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -93,8 +111,11 @@ def confirm_trip(trip: dict, d: dict, out: Path, yes: bool) -> dict:
         if a.startswith("j") or a.startswith("y"):
             print("  Eerst de fouten hierboven oplossen; kies [b]ewerken.")
         elif a.startswith("b") or a.startswith("e"):
+            before = trip.get("outbreaks")
             edit_file(path)
             trip = trip_mod.coerce(yaml.safe_load(path.read_text(encoding="utf-8")))
+            if not fixed_outbreaks and trip.get("outbreaks") == before:
+                trip["outbreaks"] = _routed(trip)
             path.write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
             issues = _check_trip(trip)
             _print_trip(trip, d, issues)
@@ -150,36 +171,53 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
         print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
 
 
-def _soft_notes(reply: str, overall: str | None) -> list[str]:
+def _soft_notes(reply: str, overall: str | None, specs=None) -> list[str]:
     """Things worth one more try but never worth refusing a correct reply over."""
-    return [n for n in (mail.verdict_note(reply, overall), mail.length_note(reply)) if n]
+    specs = specs or []
+    limit = mail.MAX_WORDS + 100 * max(0, len(specs) - 1)       # room for each further outbreak
+    return [n for n in (mail.verdict_note(reply, overall), mail.length_note(reply, limit),
+                        mail.coverage_note(reply, specs)) if n]
 
 
 def write_reply(backend, inputs: dict, sources: list[str], overall: str | None = None,
-                numbers: bool = True) -> dict:
+                numbers: bool = True, specs=None) -> dict:
     """Write the reply, check it against the facts it came from, and allow one repair round.
 
     `issues` blocks the widget (style, invented numbers); `notes` only warns (the rule verdict not
     coming back in the letter). Both drive the repair round.
     """
-    d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"])
-    issues = mail.check_reply(d["reply"], sources, numbers=numbers)
-    notes = _soft_notes(d["reply"], overall)
+    d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], specs=specs)
+    issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
+    notes = _soft_notes(d["reply"], overall, specs)
     if issues or notes:   # one repair round with the concrete problems
         _say("Controle faalt (" + "; ".join(issues + notes) + "), herstelronde")
         inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + notes}
-        d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], repair=True)
-        issues = mail.check_reply(d["reply"], sources, numbers=numbers)
-        notes = _soft_notes(d["reply"], overall)
+        d = llm.ask_json(backend, "reply", inputs, required=["reply", "suggestions"], repair=True, specs=specs)
+        issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
+        notes = _soft_notes(d["reply"], overall, specs)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"
     d["issues"], d["notes"] = issues, notes
     return d
 
 
+def _stop_view(s: dict) -> dict:
+    return {k: s.get(k) for k in ("place", "start", "end", "nights", "zone", "province", "category", "verdict",
+                                  "label", "cases", "deaths", "new14", "days_since_last", "neighbours_active",
+                                  "nearest_active", "fod", "fod_reason", "cdc", "flags", "lodging", "transit_only")}
+
+
+def _unreachable(summary: dict) -> list[tuple[str, str]]:
+    """Every source that could not be read, for every outbreak of the advice: (label, reason)."""
+    parts = summary.get("outbreaks") or {summary.get("outbreak"): {"qa": summary["qa"]}}
+    several = len(parts) > 1
+    return [(k.upper() + (f" ({oid})" if several else ""), str((o["qa"].get(k) or {}).get("reason")))
+            for oid, o in parts.items() for k in o["qa"].get("sources_unreachable", [])]
+
+
 def run_advies(src: str, out: str | None = None, backend: str = "claude-code", model: str | None = None,
                yes: bool = False, web: bool = True, outlook: bool = False, asof: str | None = None,
                refresh: bool = False, open_browser: bool = True, llm_backend=None,
-               apply_web: bool = False, numbers: bool = True) -> dict:
+               apply_web: bool = False, numbers: bool = True, uitbraken: list[str] | None = None) -> dict:
     t0 = time.time()
     req = parse_request(src)
     _say(f"Aanvraag: {req.get('subject')}")
@@ -207,10 +245,15 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
             pass
         if hasattr(be, "workdir"):
             be.workdir = outp   # the backend must not keep working in the renamed folder
-    trip = confirm_trip(trip, d, outp, yes)
+    # which outbreaks apply: named on the command line, or routed from the countries of the stops
+    trip["outbreaks"] = list(uitbraken) if uitbraken else _routed(trip)
+    trip = confirm_trip(trip, d, outp, yes, fixed_outbreaks=bool(uitbraken))
 
     _say("Analyse (data, zones, kaart, curve)")
     summary = analyse(trip, outp, refresh=refresh, asof=asof)
+    ids = outbreak_ids(summary)
+    specs = [outbreak.load(i) for i in ids]
+    unmatched = route.unmatched_diseases(d.get("diseases_mentioned") or [], specs)
     print(summary["table"])
     if summary.get("overrides"):
         print(f"Oordeel (regels): {summary['rule_overall']}")
@@ -220,7 +263,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     else:
         print(f"Oordeel (regels): {summary['overall']}")
     qa = summary["qa"]
-    bad = [k for k in ("zone_sum_matches_national",) if not qa[k]]
+    bad = [k for k in ("zone_sum_matches_national",) if qa.get(k) is False]
     if qa.get("ecdc_matches") is False:
         bad.append("ecdc_matches")
     if qa.get("advisories_unverified"):
@@ -232,9 +275,11 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     who = qa.get("who") or {}
     if who.get("ok"):
         print(f"  WHO: {who.get('item')} ({who.get('date')}, {who.get('days_old')} dagen oud)")
-    for src in qa.get("sources_unreachable", []):
-        print(f"  let op: {src.upper()} niet bereikbaar ({(qa.get(src) or {}).get('reason')}); "
-              f"die kruiscontrole ontbreekt in dit advies")
+    unreachable = _unreachable(summary)
+    for label, reason in unreachable:
+        print(f"  let op: {label} niet bereikbaar ({reason}); die kruiscontrole ontbreekt in dit advies")
+    for x in unmatched:
+        print(f"  let op: de aanvraag noemt {x}, maar daarvoor bestaat geen uitbraakprofiel")
     if qa.get("map_label_overlaps") or qa.get("map_labels_clipped"):
         print(f"  let op: kaartlabels overlappen ({qa['map_label_overlaps']}) of vallen weg ({qa.get('map_labels_clipped')}); bekijk de kaart")
     if bad:
@@ -243,27 +288,28 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     webd = {}
     if web:
         _say("Reisadviezen (FOD, CDC), grensmaatregelen, WHO en nieuws op het web")
-        spec = outbreak.load(summary.get("outbreak"))
         provs = sorted({s["province"] for s in summary["stops"] if s.get("province")})
         trip_iso = list(dict.fromkeys(s["country"] for s in summary["stops"] if s.get("country")))
+        home = list(dict.fromkeys(c for sp in specs for c in sp.countries))
         # countries on the trip that border an outbreak country: their border measures are checked every run
-        border = [i for i in trip_iso if i not in spec.countries and set(countries.neighbours(i)) & set(spec.countries)]
+        border = [i for i in trip_iso if i not in home and set(countries.neighbours(i)) & set(home)]
         landen = {i: countries.for_prompt(countries.load(i) or countries.blank(i))
-                  for i in dict.fromkeys(trip_iso + spec.countries)}
-        webd = llm.ask_json(be, "web", {"vandaag": date.today().isoformat(), "provincies": provs,
-                                        "landen": landen, "buurlanden": border,
-                                        "internationaal": countries.international(),
-                                        "who_laatste_don": summary["qa"].get("who"),
-                                        "reisschema": summary["table"]},
-                            required=["advisories", "news", "who"], web=True)
-        maybe_apply_web(webd, apply_web, spec.id)
+                  for i in dict.fromkeys(trip_iso + home)}
+        who_in = (summary["qa"].get("who") if len(ids) == 1 else
+                  {i: o.get("who") for i, o in summary["outbreaks"].items()})
+        web_in = {"vandaag": date.today().isoformat(),
+                  "uitbraken": [{"id": sp.id, "naam": sp.name} for sp in specs], "provincies": provs,
+                  "landen": landen, "buurlanden": border,
+                  "internationaal": countries.international(),
+                  "who_laatste_don": who_in, "reisschema": summary["table"]}
+        if unmatched:
+            web_in["ziekten_zonder_profiel"] = unmatched
+        webd = llm.ask_json(be, "web", web_in, required=["advisories", "news", "who"], web=True, specs=specs)
+        maybe_apply_web(webd, apply_web, ids[0])
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     _say("Mail schrijven")
-    stops_view = [{k: s.get(k) for k in ("place", "start", "end", "nights", "zone", "province", "category", "verdict",
-                                         "label", "cases", "deaths", "new14", "days_since_last", "neighbours_active",
-                                         "nearest_active", "fod", "fod_reason", "cdc", "flags", "lodging", "transit_only")}
-                  for s in summary["stops"]]
+    stops_view = [_stop_view(s) for s in summary["stops"]]
     inputs = {"vandaag": date.today().isoformat(),
               "skelet": (outp / "reply_skeleton.txt").read_text(encoding="utf-8"),
               "risico_per_stop": stops_view, "regel_oordeel": summary["overall"], "epi": summary["epi"],
@@ -275,18 +321,29 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
               "eerdere_adviezen": archive.for_trip(trip, summary),
               "overrules": summary.get("overrides", []), "regel_oordeel_zonder_overrule": summary.get("rule_overall"),
               "web": webd or "(niet gevraagd)"}
+    if len(ids) > 1:            # the strictest outbreak is above; every other one in the same shape
+        inputs["andere_uitbraken"] = [
+            {"id": i, "naam": o["name"], "regel_oordeel": o["overall"], "epi": o["epi"],
+             "risico_per_stop": [_stop_view(s) for s in o["stops"]], "overrules": o["overrides"]}
+            for i, o in summary["outbreaks"].items() if i != ids[0]]
+    if unmatched:
+        inputs["ziekten_zonder_profiel"] = unmatched
     # every number in the mail must come from one of these; see mail.unknown_numbers
     sources = [inputs["skelet"], json.dumps(summary, ensure_ascii=False, default=str),
                json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
-    r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers)
+    r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs)
 
     (outp / "reply.txt").write_text(r["reply"], encoding="utf-8")
     sugg = list(r.get("suggestions", []))
     for n in r["notes"]:
         sugg.insert(0, n)
-    for src in qa.get("sources_unreachable", []):
-        sugg.insert(0, f"{src.upper()} was niet bereikbaar tijdens deze run; die kruiscontrole "
+    for label, _ in unreachable:
+        sugg.insert(0, f"{label} was niet bereikbaar tijdens deze run; die kruiscontrole "
                        f"ontbreekt. Kijk de bron na voor verzending.")
+    for x in unmatched:
+        sugg.insert(0, f"De aanvraag noemt {x}, maar daarvoor bestaat geen uitbraakprofiel: de cijfers en "
+                       f"regels van dit advies gaan daar niet over. Kijk wat de webstap vond, en of er een "
+                       f"profiel nodig is.")
     if bad:
         sugg.insert(0, f"QA faalde: {bad}. Controleer de cijfers voor verzending.")
     if r["issues"]:
@@ -320,7 +377,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     if outlook and not r["issues"]:
         from .outlook import draft
         try:
-            draft(req, r["reply"], [summary["map"], summary["epicurve"]])
+            draft(req, r["reply"], summary.get("attachments") or [summary["map"], summary["epicurve"]])
             print("Conceptmail staat open in Outlook (niet verzonden).")
         except Exception as e:
             print(f"Outlook-concept niet gelukt ({e}); gebruik de widget.")
@@ -328,8 +385,10 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         webbrowser.open(html_path.resolve().as_uri())
 
     _say(f"Klaar in {time.time() - t0:.0f} s")
-    print(f"Widget: {html_path or '(niet gebouwd)'}\nKaart: {summary['map']}\n"
-          f"Curve: {summary['epicurve']}\nNotities:")
+    print(f"Widget: {html_path or '(niet gebouwd)'}")
+    for a in summary.get("attachments") or []:
+        print(f"Bijlage: {a}")
+    print("Notities:")
     for s in sugg:
         print(f"  - {s}")
     return {"out": str(outp), "reply": r["reply"], "suggestions": sugg, "summary": summary, "trip": trip,

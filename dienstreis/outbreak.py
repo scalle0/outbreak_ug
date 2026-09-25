@@ -12,6 +12,11 @@ a file that can be read.
     outbreaks/<id>/prompt.md           prompt passages, spliced in where a prompt says {{uitbraak:<name>}}
     outbreaks/<id>/zone_overrides.csv  observed zone spellings -> shapefile names (inrb adapter)
 
+`outbreaks/geen/` is the profile for a trip that no outbreak applies to: no figures (adapter
+`none`), every stop at country level, and prompt passages that send the web step looking for an
+outbreak first, because "no profile" must never read as "no outbreak". It is never active, so
+routing only falls back to it and a request mail never matches it.
+
 Called `spec` in the code, because `profile` already means the traveller's profile.
 """
 from __future__ import annotations
@@ -24,11 +29,15 @@ import yaml
 
 ROOT = Path(__file__).parent / "outbreaks"
 DEFAULT = "ebola_cod_2026"
+NONE = "geen"                                                  # no outbreak applies: country level
 LEVELS = ("afraden", "voorwaardelijk", "geen_bezwaar")        # strictest first
 CATEGORIES = tuple("ABCDEFX")
-ADAPTERS = ("inrb",)
+ADAPTERS = ("inrb", "none")
 REQUIRED = ("id", "active", "name_nl", "countries", "match_terms", "unit", "windows", "metric_epsg",
             "adapter", "categories", "overall", "outside_note", "flags", "conditions", "sources", "figures")
+# a profile without figures (adapter none) has no zones, windows or map
+REQUIRED_NONE = ("id", "active", "name_nl", "adapter", "categories", "overall", "outside_note", "conditions",
+                 "sources")
 _SECTION = re.compile(r"^<!-- uitbraak:(\w+) -->\n", re.M)
 _SLOT = re.compile(r"\{\{uitbraak:(\w+)\}\}")
 
@@ -39,14 +48,15 @@ class ProfileError(ValueError):
 
 def _check(cfg: dict, path: Path) -> list[str]:
     """Every problem with a profile, so a broken one is refused whole instead of failing mid-advice."""
-    miss = [k for k in REQUIRED if k not in cfg]
+    no_data = (cfg.get("adapter") or {}).get("type") == "none"
+    miss = [k for k in (REQUIRED_NONE if no_data else REQUIRED) if k not in cfg]
     if miss:
         return [f"ontbrekende sleutel(s): {', '.join(miss)}"]
     issues = []
     if cfg["id"] != path.parent.name:
         issues.append(f"id '{cfg['id']}' verschilt van de mapnaam '{path.parent.name}'")
     cats = cfg["categories"] or {}
-    for c in CATEGORIES:
+    for c in (("X",) if no_data else CATEGORIES):
         v = cats.get(c)
         if not isinstance(v, dict) or not all(v.get(k) for k in ("label", "verdict", "level")):
             issues.append(f"categorie {c}: geef label, verdict en level")
@@ -55,6 +65,8 @@ def _check(cfg: dict, path: Path) -> list[str]:
     miss = [lv for lv in LEVELS if not (cfg["overall"] or {}).get(lv)]
     if miss:
         issues.append(f"overall: geef een tekst voor {', '.join(miss)}")
+    if no_data:
+        return issues
     w = cfg["windows"] or {}
     if not (isinstance(w.get("active"), int) and isinstance(w.get("clear"), int) and 0 < w["active"] < w["clear"]):
         issues.append("windows: active en clear zijn gehele dagen, active kleiner dan clear")
@@ -89,19 +101,19 @@ class OutbreakSpec:
         self.id: str = cfg["id"]
         self.name: str = cfg["name_nl"]
         self.active: bool = bool(cfg["active"])
-        self.countries: list[str] = list(cfg["countries"])
-        self.match_terms: list[str] = list(cfg["match_terms"])
-        self.unit: str = cfg["unit"]
-        self.windows: dict[str, int] = dict(cfg["windows"])
-        self.metric_epsg: int = cfg["metric_epsg"]
+        self.countries: list[str] = list(cfg.get("countries") or [])
+        self.match_terms: list[str] = list(cfg.get("match_terms") or [])
+        self.unit: str = cfg.get("unit") or ""
+        self.windows: dict[str, int] = dict(cfg.get("windows") or {})
+        self.metric_epsg: int | None = cfg.get("metric_epsg")
         self.adapter: dict = cfg["adapter"]
         self.categories: dict[str, dict] = cfg["categories"]
         self.overall: dict[str, str] = cfg["overall"]
         self.outside_note: str = cfg["outside_note"]
-        self.flags: dict = cfg["flags"]
+        self.flags: dict = cfg.get("flags") or {}
         self.conditions: list[str] = list(cfg["conditions"])
-        self.sources: dict = cfg["sources"]
-        self.figures: dict[str, str] = cfg["figures"]
+        self.sources: dict = cfg["sources"] or {}
+        self.figures: dict[str, str] = cfg.get("figures") or {}
         self.sections = _sections(folder / "prompt.md")
 
     def __repr__(self) -> str:
@@ -118,6 +130,11 @@ class OutbreakSpec:
 
     def file(self, name: str) -> Path:
         return self.dir / name
+
+    @property
+    def has_data(self) -> bool:
+        """False for a profile without figures (adapter none): no zones, map or curve."""
+        return self.adapter.get("type") != "none"
 
 
 def ids() -> list[str]:
@@ -141,13 +158,29 @@ def active() -> list[OutbreakSpec]:
     return [s for s in (load(i) for i in ids()) if s.active]
 
 
+def none() -> OutbreakSpec:
+    return load(NONE)
+
+
+def strictest(levels) -> str | None:
+    """The strictest of some verdict levels (afraden > voorwaardelijk > geen_bezwaar), None if there are none."""
+    have = set(levels)
+    return next((lv for lv in LEVELS if lv in have), None)
+
+
 def fill(text: str, specs: list[OutbreakSpec] | None = None) -> str:
-    """Put each profile's passage where a prompt says {{uitbraak:<name>}}."""
+    """Put each profile's passage where a prompt says {{uitbraak:<name>}}.
+
+    With several outbreaks, a passage that stands on its own lines is repeated per outbreak as a
+    paragraph; a passage inside a sentence is joined with "en".
+    """
     specs = specs or [default()]
 
     def one(m: re.Match) -> str:
-        found = [s.sections[m.group(1)] for s in specs if m.group(1) in s.sections]
+        found = list(dict.fromkeys(s.sections[m.group(1)] for s in specs if m.group(1) in s.sections))
         if not found:
             raise ProfileError(f"geen passage '{m.group(1)}' in prompt.md van {', '.join(s.id for s in specs)}")
-        return "\n\n".join(found)
+        t = m.string
+        block = (m.start() == 0 or t[m.start() - 1] == "\n") and (m.end() == len(t) or t[m.end()] == "\n")
+        return ("\n\n" if block else " en ").join(found)
     return _SLOT.sub(one, text)

@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,widget,due,zoek,context}."""
+"""Command line: dienstreis {advies,msg,data,run,check,widget,due,zoek,context,uitbraken}."""
 from __future__ import annotations
 
 import argparse
@@ -44,8 +44,11 @@ def cmd_data(a):
 
 
 def cmd_run(a):
+    from . import route
     from . import trip as trip_mod
     trip = trip_mod.coerce(yaml.safe_load(open(a.stops, encoding="utf-8")))
+    if a.uitbraak:
+        trip["outbreaks"] = a.uitbraak
     issues = trip_mod.validate(trip, known_places=trip_mod.known_places())
     if issues:
         print(f"{a.stops} is niet bruikbaar:")
@@ -53,10 +56,12 @@ def cmd_run(a):
             print(f"  - {x}")
         sys.exit(1)
     out = Path(a.out or f"out_{_slug(trip.get('traveller', 'trip'))}")
+    print(f"Uitbraken: {', '.join(sp.id for sp in route.outbreaks_for(trip))}")
     s = analyse(trip, out, refresh=a.refresh, asof=a.asof, log_it=a.log)
     print(s["table"])
     print(f"\nOordeel (regels): {s['overall']}")
-    print(f"Wekelijks (laatste 4 volle weken): {s['epi']['weekly_cases_last4_full_weeks']}")
+    if s.get("epi"):
+        print(f"Wekelijks (laatste 4 volle weken): {s['epi']['weekly_cases_last4_full_weeks']}")
     print(f"QA: {json.dumps(s['qa'], default=str)}")
     print(f"Uitvoer in {out}/")
 
@@ -66,7 +71,19 @@ def cmd_advies(a):
     run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, outlook=a.outlook,
                asof=a.asof, refresh=a.refresh, open_browser=not a.no_open, apply_web=a.apply_web,
                web=not a.no_web,
-               numbers=not a.no_number_check)
+               numbers=not a.no_number_check, uitbraken=a.uitbraak)
+
+
+def cmd_uitbraken(a):
+    from . import countries, outbreak
+    for i in outbreak.ids():
+        sp = outbreak.load(i)
+        kind = "landniveau, geen cijfers" if not sp.has_data else f"cijfers: {sp.adapter['type']}"
+        state = "actief" if sp.active else "niet actief"
+        where = ", ".join(sp.countries) or "-"
+        near = sorted({n for c in sp.countries for n in countries.neighbours(c)} - set(sp.countries))
+        print(f"{i:<18} {sp.name}  [{state}; {kind}]\n{'':<18} landen: {where}"
+              + (f"; buurlanden: {', '.join(near)}" if near else ""))
 
 
 def cmd_context(a):
@@ -87,7 +104,8 @@ def cmd_zoek(a):
     rows = archive.search(a.term or "", verdict=a.oordeel or "",
                           since=_d.fromisoformat(a.sinds) if a.sinds else None,
                           until=_d.fromisoformat(a.tot) if a.tot else None,
-                          overruled=True if a.overruled else None, limit=a.limit)
+                          overruled=True if a.overruled else None, outbreak=a.uitbraak or "",
+                          limit=a.limit)
     if not rows:
         print("Geen advies gevonden.")
         return
@@ -147,6 +165,8 @@ def main(argv=None):
     v.add_argument("--yes", action="store_true", help="reisschema niet laten bevestigen (stopt wel bij fouten)")
     v.add_argument("--apply-web", action="store_true",
                    help="wijzigingen uit de webstap zonder vragen overnemen in het lokale landenregister")
+    v.add_argument("--uitbraak", action="append", metavar="ID",
+                   help="beoordeel tegen deze uitbraak (herhaalbaar); standaard volgt het uit de landen van de reis")
     v.add_argument("--no-number-check", action="store_true",
                    help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")
@@ -160,7 +180,10 @@ def main(argv=None):
     d.add_argument("--reset-cache", action="store_true",
                    help="datacache wissen; de volgende run haalt enkel wat de analyse gebruikt")
     d.set_defaults(f=cmd_data)
-    r = s.add_parser("run", help="volledige analyse voor stops.yaml"); r.add_argument("stops"); r.add_argument("--out"); r.add_argument("--refresh", action="store_true"); r.add_argument("--asof"); r.add_argument("--log", action="store_true"); r.set_defaults(f=cmd_run)
+    r = s.add_parser("run", help="volledige analyse voor stops.yaml"); r.add_argument("stops"); r.add_argument("--out"); r.add_argument("--refresh", action="store_true"); r.add_argument("--asof"); r.add_argument("--log", action="store_true")
+    r.add_argument("--uitbraak", action="append", metavar="ID", help="beoordeel tegen deze uitbraak (herhaalbaar)")
+    r.set_defaults(f=cmd_run)
+    ub = s.add_parser("uitbraken", help="de uitbraakprofielen, met hun landen en buurlanden"); ub.set_defaults(f=cmd_uitbraken)
     c = s.add_parser("check", help="controle van een mailtekst of widget"); c.add_argument("file"); c.set_defaults(f=cmd_check)
     w = s.add_parser("widget", help="HTML-widget uit afgewerkte mailtekst"); w.add_argument("text"); w.add_argument("--suggestions"); w.add_argument("--out", required=True); w.add_argument("--title", default="Reply Team Actueel"); w.set_defaults(f=cmd_widget)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
@@ -169,6 +192,7 @@ def main(argv=None):
     z.add_argument("--sinds", help="JJJJ-MM-DD"); z.add_argument("--tot", help="JJJJ-MM-DD")
     z.add_argument("--oordeel", help="filter op het eindoordeel, bv. afraden")
     z.add_argument("--overruled", action="store_true", help="enkel adviezen waarin een regel overruled is")
+    z.add_argument("--uitbraak", metavar="ID", help="enkel adviezen over deze uitbraak")
     z.add_argument("--vol", action="store_true", help="de volledige mailtekst tonen")
     z.add_argument("--limit", type=int, default=50)
     z.set_defaults(f=cmd_zoek)
