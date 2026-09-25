@@ -1,0 +1,29 @@
+Beste An,
+
+[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. Regel-uitkomst: niet goedkeuren in huidige vorm (minstens een luik af te raden).]]
+
+Mijn beoordeling per luik:
+
+1. Brazzaville (2 september tot 3 september): buiten de DRC; no cases reported.
+2. Odzala (3 september tot 10 september): buiten de DRC; no cases reported.
+3. Brazzaville (10 september tot 12 september): buiten de DRC; no cases reported.
+4. Kinshasa (12 september tot 13 september): geen bezwaar. Geen bevestigde gevallen in gezondheidszone Barumbu of in de provincie Kinshasa; de dichtstbijzijnde zone met recente gevallen (Makiso Kisangani) ligt op circa 1 220 km; valt Kinshasa onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
+5. Kisangani (13 september tot 16 september): af te raden. Gezondheidszone makiso kisangani telt 6 bevestigde gevallen (4 overlijdens), waarvan 3 in de laatste 14 dagen; raadt de FOD alle reizen naar Tshopo formeel af (veiligheidssituatie); de CDC hanteert niveau 3.
+6. Kinshasa (16 september tot 16 september): geen bezwaar. Geen bevestigde gevallen in gezondheidszone Barumbu of in de provincie Kinshasa; de dichtstbijzijnde zone met recente gevallen (Makiso Kisangani) ligt op circa 1 220 km; valt Kinshasa onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
+
+Stand van zaken (INSP): 5 514 bevestigde gevallen en 2 642 overlijdens (CFR 48 procent). Nieuwe gevallen per volledige week, laatste vier weken: 839, 540, 579, 564.
+
+[[CLAUDE: profiel en context van Reiziger A: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. Enkel wat het oordeel verandert.]]
+
+Voorwaarden:
+1. Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
+2. Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
+3. [[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]
+4. Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
+
+[[CLAUDE: antwoord op elke expliciete vraag van An]]
+
+In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.
+
+Met vriendelijke groet,
+Steven Callens

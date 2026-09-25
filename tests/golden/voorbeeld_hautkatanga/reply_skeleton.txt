@@ -1,0 +1,26 @@
+Beste An,
+
+[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. Regel-uitkomst: geen ebola-gerelateerd bezwaar.]]
+
+Mijn beoordeling per luik:
+
+1. Ndola (4 oktober tot 4 oktober): buiten de DRC; no cases reported.
+2. Sakania (4 oktober tot 10 oktober): geen bezwaar. Geen bevestigde gevallen in de gezondheidszone of in de provincie Haut-Katanga; de dichtstbijzijnde zone met recente gevallen (Kayna) ligt op circa 1 320 km; valt Haut-Katanga onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
+3. Lubumbashi (10 oktober tot 11 oktober): geen bezwaar. Geen bevestigde gevallen in de gezondheidszone of in de provincie Haut-Katanga; de dichtstbijzijnde zone met recente gevallen (Kayna) ligt op circa 1 210 km; valt Haut-Katanga onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
+
+Stand van zaken (INSP): 7 672 bevestigde gevallen en 3 699 overlijdens (CFR 48 procent). Nieuwe gevallen per volledige week, laatste vier weken: 569, 586, 586, 572.
+
+[[CLAUDE: profiel en context van Reiziger B: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. Enkel wat het oordeel verandert.]]
+
+Voorwaarden:
+1. Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
+2. Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
+3. [[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]
+4. Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
+
+[[CLAUDE: antwoord op elke expliciete vraag van An]]
+
+In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.
+
+Met vriendelijke groet,
+Steven Callens

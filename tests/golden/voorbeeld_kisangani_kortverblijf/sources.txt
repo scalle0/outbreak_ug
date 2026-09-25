@@ -1,0 +1,23 @@
+WHO, Disease Outbreak News:
+https://www.who.int/emergencies/disease-outbreak-news
+
+ECDC, epidemiologische update:
+https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda
+
+INRB-UMIE, INSP-situatierapporten per gezondheidszone:
+https://github.com/INRB-UMIE/Ebola_DRC_2026
+
+INSP/RDC, situatierapporten:
+https://insp.cd/
+
+US CDC, Travel Health Notices:
+https://wwwnc.cdc.gov/travel/notices
+
+FOD Buitenlandse Zaken, algemene veiligheid DRC:
+https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo
+
+FOD Buitenlandse Zaken, laatste update DRC:
+https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/laatste-update-de-democratische-republiek-congo
+
+FOD Buitenlandse Zaken, gezondheid en hygiene DRC:
+https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/gezondheid-en-hygiene-de-democratische-republiek-congo

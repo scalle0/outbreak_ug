@@ -4,6 +4,10 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | gevraagd | 2026-09-25 |
+| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | gevraagd | 2026-09-25 |
+| F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | gevraagd | 2026-09-25 |
+| F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | bezig | 2026-09-25 |
 | F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
 | F-008 | Kaart sneller: elk advies ruim een minuut korter | klaar | 2026-09-22 |
 | F-007 | Regels kunnen overrulen, met vastgelegde reden | klaar | 2026-09-22 |
@@ -13,6 +17,35 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-013 · Casusvragen: een reiziger die al ter plaatse is
+- **Gevraagd:** 2026-09-25 — "we should be able to add in messages from other diseases and countries"; bij de keuze van aanvraagtypes: casusvragen erbij
+- **Status:** gevraagd
+- **Aanleiding:** de mpox-aanvraag van 25/09 (een reiziger in quarantaine ter plaatse, geen reisschema) liep door `dienstreis advies` en kwam eruit als ebola-pretraveladvies: categorie F, "geen ebola-gerelateerd bezwaar", ebolakaart en -curve, een go/no-go-datum drie maanden in het verleden. Het model schreef zelf "Dossiermismatch" in `sugg.txt`, maar de pijplijn kon daar niets mee.
+- **Plan:** de reisschemastap geeft `type: reisadvies | casus | vraag`, te wijzigen op het bevestigingsscherm; voor casus en vraag geen kaart of curve, een eigen mail- en webprompt (ITG, Sciensano, Departement Zorg, WHO, ECDC), dezelfde controles; waarschuwing bij een go/no-go-datum in het verleden.
+- **Open:** privacy van casusmails (identificeerbare gezondheidsgegevens naar Anthropic): bevestigingsvraag, `--llm manual` als standaard, of pseudonimiseren. Het archiefrecord en de logregel van 25/09 staan als ebolareis; opnieuw labelen zodra de velden bestaan?
+
+## F-012 · Handmatige cijfertabel per uitbraak, mpox (DRC) als tweede profiel
+- **Gevraagd:** 2026-09-25 — keuze "hand-kept table" voor uitbraken zonder INRB-achtige databron
+- **Status:** gevraagd
+- **Plan:** eerst nagaan of er een gecureerde mpox-bron bestaat; anders een adapter `table` op een `cases.csv` per uitbraak (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), grenzen van INRB voor de DRC en geoBoundaries voor andere landen. De webstap stelt updates voor, de arts bevestigt. Een verouderde tabel wordt in de QA en bovenaan de notities gemeld.
+- **Open:** de klinische parameters van mpox (vensters, oordeel per categorie, bevestigde of vermoedelijke gevallen, zone of provincie, voorwaarden, familievlag, drempel voor "stijgend", vaccinatie in de pretravelregel) zijn een oordeel van de arts; er gaat niets live zonder zijn bevestiging. Wie houdt `cases.csv` bij, hoe vaak, en vanaf welke ouderdom is ze verouderd?
+
+## F-011 · Routering, meerdere uitbraken per advies, landniveau
+- **Gevraagd:** 2026-09-25 — "A lot of the question come for ebola, but we should be able to add in messages from other diseases and countries"; keuze: meerdere uitbraken per advies
+- **Status:** gevraagd
+- **Plan:** elke halte krijgt een landcode (`places.csv` of Natural Earth op `ADM0_A3`); een uitbraak geldt als een halte in een van haar landen ligt of binnen `radius_km` van een actieve zone. Per uitbraak een risicotabel, kaart en curve; het strengste oordeel wint. Landfeiten (FOD, pretravelregel) in `config/countries.yaml`, los van de CDC-niveaus die per ziekte gelden. Een reis zonder bekende uitbraak krijgt een advies op landniveau zonder kaart; een ziekte in de mail zonder profiel wordt bovenaan gemeld, nooit gelezen als "geen uitbraak".
+- **Open:** is een reis waarvan de zwaarste halte C is (meer dan 42 dagen zonder geval) bedoeld als "geen bezwaar" voor de hele reis? Zo werkt het nu, terwijl de halte zelf "voorwaardelijk" zegt. Routeringsstraal standaard 500 km?
+
+## F-010 · Generieke kern: ebola wordt het eerste uitbraakprofiel
+- **Gevraagd:** 2026-09-25 — "I thought we had made this repo non diseases specific. [...] Can we rebuild this? What would be your advice?"
+- **Status:** bezig
+- **Plan:** herstructureren, niet herschrijven. Wat ebola-specifiek is (databron, vensters, oordeel per categorie, voorwaarden, bronnen, kaartteksten, promptpassages) verhuist naar `dienstreis/outbreaks/ebola_cod_2026/`; de code leest het daar. Eerst goldenbestanden van de huidige uitvoer vastleggen, zodat bewezen is dat de uitvoer byte voor byte gelijk blijft.
+- **Beslissingen:**
+  - Herstructureren in plaats van een nieuwe repo: ongeveer 60 procent van de code (mail lezen, de drie modelstappen, controles, overrules, archief, log, widget) is al ziekte-onafhankelijk (Steven, 2026-09-25).
+  - Volgorde: eerst de generieke kern, dan routering en meerdere uitbraken, dan de cijfertabel en mpox, dan casusvragen (Steven, 2026-09-25).
+  - Klinische parameters staan in het profiel en worden door de arts bevestigd; de code verzint ze niet.
+  - `Nom` en `PROVINCE` blijven de kolomnamen die een adapter levert: hernoemen tijdens de herstructurering zou de tests aanpassen die de herstructurering net moeten bewaken.
 
 ## F-009 · Kortere mail aan Team Actueel
 - **Gevraagd:** 2026-09-22 — "the mail indeed has to be much shorter"

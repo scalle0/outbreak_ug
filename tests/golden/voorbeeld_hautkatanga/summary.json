@@ -1,0 +1,154 @@
+{
+ "asof": "2026-09-19",
+ "overall": "geen ebola-gerelateerd bezwaar",
+ "rule_overall": "geen ebola-gerelateerd bezwaar",
+ "overrides": [],
+ "epi": {
+  "path": "epicurve_20260919.png",
+  "weekly_cases_last4_full_weeks": {
+   "23-08": 569,
+   "30-08": 586,
+   "06-09": 586,
+   "13-09": 572
+  },
+  "last_total": 7672,
+  "last_deaths": 3699,
+  "cfr": 48.2
+ },
+ "stops": [
+  {
+   "place": "Ndola",
+   "start": "2026-10-04",
+   "end": "2026-10-04",
+   "nights": 0,
+   "lodging": null,
+   "transit_only": true,
+   "country": "ZMB",
+   "zone": null,
+   "province": null,
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1344,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "X",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": null,
+   "fod_reason": null,
+   "cdc": null,
+   "flags": [
+    "no cases reported"
+   ],
+   "verdict": "zie landnotitie",
+   "label": "buiten de DRC"
+  },
+  {
+   "place": "Sakania",
+   "start": "2026-10-04",
+   "end": "2026-10-10",
+   "nights": 6,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Sakania",
+   "province": "Haut-Katanga",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1319,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  },
+  {
+   "place": "Lubumbashi",
+   "start": "2026-10-10",
+   "end": "2026-10-11",
+   "nights": 1,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Lubumbashi",
+   "province": "Haut-Katanga",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1211,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  }
+ ],
+ "qa": {
+  "zone_sum_matches_national": true,
+  "ecdc_matches": null,
+  "ecdc": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who_days_old": null,
+  "sources_unreachable": [],
+  "unmatched_zone_names": [],
+  "map_label_overlaps": 0,
+  "map_labels_clipped": 0,
+  "far_stops_in_inset": [],
+  "skeleton_issues": [
+   "4 open [[CLAUDE]]-plaatshouder(s)"
+  ],
+  "overrules_count": 0
+ },
+ "who": {
+  "ok": false,
+  "reason": "asof run"
+ },
+ "map": "kaart_reiziger_b.png",
+ "epicurve": "epicurve_20260919.png",
+ "departure": "2026-10-04",
+ "table": "      stop        van        tot  nachten       zone    provincie cat         oordeel  gevallen  nieuw14d dagen_sinds_laatste actieve_buren dichtstbij_actief                       FOD CDC regel_cat\n     Ndola 2026-10-04 2026-10-04        0          -          ZMB   X zie landnotitie         0         0                None             -     Kayna 1344 km                         -   -         -\n   Sakania 2026-10-04 2026-10-10        6    Sakania Haut-Katanga   F    geen bezwaar         0         0                None             -     Kayna 1319 km niet_essentieel_afgeraden   2         -\nLubumbashi 2026-10-10 2026-10-11        1 Lubumbashi Haut-Katanga   F    geen bezwaar         0         0                None             -     Kayna 1211 km niet_essentieel_afgeraden   2         -"
+}
