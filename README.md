@@ -284,14 +284,13 @@ Both `.config` and `.cache` can be moved with `DIENSTREIS_CONTEXT`, `DIENSTREIS_
 ## Risk categories (health-zone level)
 
 The windows and verdicts below are those of the Ebola profile; another outbreak sets its own in
-its `outbreak.yaml`. For the trip as a whole the strictest stop wins, and C counts as no objection
-for the trip although the stop itself is conditional (an open question, F-011).
+its `outbreak.yaml`. For the trip as a whole the strictest stop wins.
 
 | cat | rule | default verdict |
 |---|---|---|
 | A | zone has a new case in the last 21 days | afraden |
 | B | zone affected, last case 22-42 days ago | voorwaardelijk, go/no-go close to departure |
-| C | zone affected, > 42 days without a case | voorwaardelijk, light conditions |
+| C | zone affected, > 42 days without a case | voorwaardelijk: drop the leg, or re-evaluate before departure |
 | D | zone free, borders a zone with a case in 21 days | voorwaardelijk, re-evaluate closer to departure |
 | E | zone free, province has active zones | voorwaardelijk |
 | F | not affected | geen bezwaar |

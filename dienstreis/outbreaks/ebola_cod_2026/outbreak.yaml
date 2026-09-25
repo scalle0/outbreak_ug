@@ -34,9 +34,9 @@ adapter:                               # where the figures come from (data.py)
 categories:
   A: {label: "getroffen zone, recent geval (<= 21 d)", verdict: afraden, level: afraden}
   B: {label: "getroffen zone, laatste geval 22-42 d", verdict: voorwaardelijk, level: voorwaardelijk}
-  # C counts as geen_bezwaar for the trip although the stop itself is voorwaardelijk: that is how
-  # the rules have worked since 0.1.0. Open question in FEATURES.md (F-011).
-  C: {label: "getroffen zone, > 42 d zonder geval", verdict: voorwaardelijk, level: geen_bezwaar}
+  # C weighs as voorwaardelijk for the trip: no objection only if the leg is dropped or re-evaluated
+  # before departure (Steven, 2026-09-25; until then C counted as geen_bezwaar, see F-011)
+  C: {label: "getroffen zone, > 42 d zonder geval", verdict: voorwaardelijk, level: voorwaardelijk}
   D: {label: "vrije zone, grenst aan actieve zone", verdict: voorwaardelijk, level: voorwaardelijk}
   E: {label: "vrije zone in provincie met actieve transmissie", verdict: voorwaardelijk, level: voorwaardelijk}
   F: {label: "niet getroffen", verdict: geen bezwaar, level: geen_bezwaar}

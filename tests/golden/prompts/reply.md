@@ -8,7 +8,7 @@ Je schrijft namens Steven Callens (diensthoofd Algemene Inwendige Ziekten en Inf
 |---|---|---|
 | A | geval in de zone in laatste 21 dagen | afraden (verblijf of overnachting); strikte transit hoogstens met voorwaarden |
 | B | laatste geval 22-42 dagen geleden | voorwaardelijk, go/no-go vlak voor vertrek |
-| C | > 42 dagen zonder geval | voorwaardelijk, lichte voorwaarden |
+| C | > 42 dagen zonder geval | voorwaardelijk: dit luik niet bezoeken, of herevalueren voor vertrek |
 | D | vrije zone die grenst aan actieve zone | voorwaardelijk, herevaluatie dichter bij vertrek |
 | E | vrije zone, provincie heeft actieve zones | voorwaardelijk |
 | F | niet getroffen | geen bezwaar, standaard voorwaarden |
