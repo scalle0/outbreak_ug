@@ -265,3 +265,20 @@ def test_a_confirmed_fiche_goes_to_the_letter_and_its_numbers_count(env):
     advies.run_advies(str(req), out=str(tmp / "out2"), yes=True, asof="2026-09-19",
                       open_browser=False, llm_backend=fake2, web=False)
     assert "<fiche>" not in fake2.prompts["reply"][0]
+
+
+def test_a_dry_run_keeps_nothing(env, monkeypatch):
+    """F-018: every step runs, the dossier is written in the run's folder, and nothing else is kept."""
+    tmp, req = env
+    before = (tmp / "context.md").read_text(encoding="utf-8")
+    fake = llm.Fake({"stops": STOPS, "reply": {"reply": GOOD, "suggestions": [],
+                                                "context_update": "2026-09-26: Reiziger T, proef"}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19", open_browser=False,
+                            llm_backend=fake, web=False, proef=True)
+    assert res["advice_dir"] is None and archive.all_advices() == [] and not log.LOG.exists()
+    assert (tmp / "context.md").read_text(encoding="utf-8") == before
+    page = (Path(res["out"]) / "dossier.html").read_text(encoding="utf-8")
+    assert "proefrun" in page and "niet in het archief" in page
+    monkeypatch.setattr("builtins.input", lambda *a: pytest.fail("a dry run asks nothing about the registry"))
+    assert advies.maybe_apply_web({"measures": [{"country": "UGA", "text": "screening", "changed": True}]},
+                                  apply_web=False, proef=True) is False

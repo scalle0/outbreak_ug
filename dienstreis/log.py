@@ -65,6 +65,23 @@ def relabel(advice_dir: str, values: dict, path: Path | None = None) -> bool:
     return hit
 
 
+def remove(advice_dir: str, path: Path | None = None) -> list[dict]:
+    """Take out the rows that point to an archived advice, and return them (to put back on restore)."""
+    path = path or LOG
+    if not path.exists():
+        return []
+    _upgrade(path)
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    gone = [r for r in rows if r.get("advice_dir") and Path(r["advice_dir"]) == Path(advice_dir)]
+    if gone:
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=FIELDS)
+            w.writeheader()
+            w.writerows({k: row.get(k, "") for k in FIELDS} for row in rows if row not in gone)
+    return gone
+
+
 def due(today: date | None = None, path: Path | None = None) -> list[dict]:
     path = path or LOG
     today = today or date.today()

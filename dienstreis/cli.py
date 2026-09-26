@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,dossier,fiche,opvolging,due,zoek,context,uitbraken,herlabel}."""
+"""Command line: dienstreis {advies,msg,data,run,check,dossier,fiche,opvolging,due,zoek,verwijder,context,uitbraken,herlabel}."""
 from __future__ import annotations
 
 import argparse
@@ -71,7 +71,8 @@ def cmd_advies(a):
     run_advies(a.file, out=a.out, backend=a.llm, model=a.model, yes=a.yes, outlook=a.outlook,
                asof=a.asof, refresh=a.refresh, open_browser=not a.no_open, apply_web=a.apply_web,
                web=not a.no_web,
-               numbers=not a.no_number_check, uitbraken=a.uitbraak, health_ok=a.gezondheidsgegevens_ok)
+               numbers=not a.no_number_check, uitbraken=a.uitbraak, health_ok=a.gezondheidsgegevens_ok,
+               proef=a.proef)
 
 
 def cmd_herlabel(a):
@@ -81,6 +82,42 @@ def cmd_herlabel(a):
                                                    ("outbreaks", " ".join(a.uitbraak) if a.uitbraak else None)) if v})
     print(f"{a.dir}: type {r.get('type')}, uitbraken {', '.join(r.get('outbreaks', []))}"
           + ("; logregel aangepast" if in_log else "; geen logregel gevonden"))
+
+
+def cmd_verwijder(a):
+    """Take advices out of the archive, the log and context.md, into a trash folder; or put them back."""
+    from . import archive, log
+    from .advies import CONTEXT
+    if a.herstel:
+        for name in a.map:
+            target, info = archive.restore(name)
+            for row in info.get("log_rows") or []:
+                log.append(row)
+            archive.add_context_lines(CONTEXT, info.get("context_lines") or [])
+            print(f"Teruggezet: {target} ({len(info.get('log_rows') or [])} logregel(s), "
+                  f"{len(info.get('context_lines') or [])} contextregel(s))")
+        return
+    folders = [archive.find(x) for x in a.map]
+    for f in folders:
+        r = json.loads((f / "advies.json").read_text(encoding="utf-8"))
+        print(f"{r.get('advised_on')}  {r.get('traveller')}  [{r.get('type', 'reisadvies')}]  "
+              f"{', '.join(map(str, r.get('places', [])))}  {r.get('overall', '')}\n    {f}")
+    if not a.ja and not input(f"Deze {len(folders)} advies/adviezen verwijderen? Ze gaan naar "
+                              f"{archive.trash_dir()} en kunnen terug met --herstel. [j/n]: ").strip().lower().startswith("j"):
+        print("Niets verwijderd.")
+        return
+    for f in folders:
+        r = json.loads((f / "advies.json").read_text(encoding="utf-8"))
+        own, candidates = archive.context_lines(r, CONTEXT)
+        drop = list(own)
+        for ln in candidates:                      # an advice of before F-018 did not keep its line
+            if not a.ja and input(f"  Deze regel uit context.md ook weghalen?\n    {ln}\n  [j/n]: ").strip().lower().startswith("j"):
+                drop.append(ln)
+        rows = log.remove(str(f))
+        archive.drop_context_lines(CONTEXT, drop)
+        dest = archive.trash(f, {"log_rows": rows, "context_lines": drop})
+        print(f"  {f.name}: naar {dest}; {len(rows)} logregel(s) en {len(drop)} contextregel(s) weg")
+    print(f"Terugzetten: dienstreis verwijder --herstel <naam>  (de mappen staan in {archive.trash_dir()})")
 
 
 def cmd_uitbraken(a):
@@ -274,6 +311,9 @@ def main(argv=None):
                    help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")
     v.add_argument("--no-open", action="store_true", help="het dossier niet in de browser openen")
+    v.add_argument("--proef", action="store_true",
+                   help="proefrun: alles loopt (ook het model), maar niets wordt bewaard: geen archief, logregel, "
+                        "contextregel, Outlook-concept of wijziging in het landenregister")
     v.add_argument("--out"); v.add_argument("--asof"); v.add_argument("--refresh", action="store_true")
     v.set_defaults(f=cmd_advies)
     x = s.add_parser("context", help="context.md openen (eerdere adviezen, open toezeggingen)")
@@ -322,6 +362,12 @@ def main(argv=None):
     op.add_argument("--uur", default="08:00", help="bij --plannen: UU:MM (standaard 08:00)")
     op.set_defaults(f=cmd_opvolging)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden (zie ook opvolging)"); u.set_defaults(f=cmd_due)
+    vw = s.add_parser("verwijder", help="adviezen uit het archief, de log en context.md halen (naar een prullenbak)")
+    vw.add_argument("map", nargs="+", help="de map van het advies, of enkel haar naam (zie dienstreis zoek)")
+    vw.add_argument("--ja", action="store_true",
+                    help="niet bevestigen; een contextregel die niet zeker bij het advies hoort, blijft dan staan")
+    vw.add_argument("--herstel", action="store_true", help="verwijderde adviezen terugzetten (naam uit de prullenbak)")
+    vw.set_defaults(f=cmd_verwijder)
     z = s.add_parser("zoek", help="eerdere adviezen zoeken op plaats, zone, provincie, reiziger of notitie")
     z.add_argument("term", nargs="?", default="")
     z.add_argument("--sinds", help="JJJJ-MM-DD"); z.add_argument("--tot", help="JJJJ-MM-DD")

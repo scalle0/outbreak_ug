@@ -313,6 +313,25 @@ dienstreis zoek --sinds 2026-08-01 --oordeel afraden
 
 Each hit shows its folder and, for an advice since F-015, a link to its dossier.
 
+**A test run, or a mistake, comes out again** with `dienstreis verwijder`: the advice leaves the
+archive for a trash folder (`%USERPROFILE%\.config\dienstreis\verwijderd\`), its log row leaves the
+log, and the line it added to `context.md` leaves that file. It always asks first, and `--herstel`
+puts all three back.
+
+```bash
+dienstreis zoek --type casus                               # find the folders (the last line of each hit)
+dienstreis verwijder 2026-09-25_student 2026-09-25_student_2   # one or several, by name or full path
+dienstreis verwijder --herstel 2026-09-25_student          # put one back
+```
+
+An advice since F-018 knows the context line it wrote. For an older one, every line of its date is
+shown and you say per line whether it goes; with `--ja` (no questions) such a line stays.
+
+**A dry run of your own:** `dienstreis advies <mail> --proef`. Everything runs as usual, the model
+included, and the run's folder with its dossier is written (the dossier says "proefrun"), but nothing
+lasting: no archive, no log row, no context line, no Outlook draft, and nothing from the web step is
+taken over into the registry, the tables or the documents. Delete the `out_*` folder when you are done.
+
 ## Follow-up: the go/no-go and travellers in the field
 
 An advice is written on the figures of one day; the go/no-go a week before departure, and the weeks a
@@ -407,7 +426,7 @@ registry in the repo), `outbreaks\<id>\` for accepted case figures and documents
 `out_<traveller>/` folders. Data cache: `%USERPROFILE%\.cache\dienstreis` (`dienstreis data` shows
 its size, `dienstreis data --reset-cache` empties it).
 
-Useful options: `--yes` (no confirmation of a clean itinerary; still stops on an unusable one),
+Useful options: `--proef` (a dry run that keeps nothing, see [Earlier advices](#earlier-advices)), `--yes` (no confirmation of a clean itinerary; still stops on an unusable one),
 `--web`, `--apply-web` (take over advisory changes found online without asking), `--no-open`,
 `--no-number-check`, `--out DIR`, `--asof YYYY-MM-DD` (freeze the data date), `--refresh` (ignore
 the 6-hour cache).
@@ -589,6 +608,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_verwijder.py` | taking advices out of the archive, the log and `context.md` into the trash and back: by name, several at once, the context line of an older advice asked line by line, nothing without a yes |
 | `test_opvolging.py` | the follow-up: which advices are followed (abroad, within 30 days, a newer advice replacing an older one, a question never), when a go/no-go is due and when it is marked done, the change per leg on the rules with an overrule kept, FOD and CDC, an outbreak that applies now, an old advice rebuilt from its summary, the report with map and curve, a quiet run, the schedule |
 | `test_llm_backend.py` | the claude-code backend with `claude` replaced: no API key reaches the call, a failure names claude's reason and not the connectors warning, an error with exit code 0 is still an error, a busy API gets one more try |
 | `test_fiche.py` | the fiche and its documents: front matter and sections, the local copy only when newer, proposals kept only after a yes and with the ids the fiche cites, a flag never applied, a draft always a concept and never over a confirmed fiche, the command with a fake model, the fiche in the dossier with its banner, links and escaping |

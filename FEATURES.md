@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-018 | Adviezen verwijderen (proefruns), en zelf een proefrun doen die niets bewaart | klaar | 2026-09-26 |
 | F-017 | Opvolging na het advies: de go/no-go-check en reizigers ter plaatse, op de actuele cijfers | klaar | 2026-09-26 |
 | F-016 | Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement | klaar | 2026-09-26 |
 | F-015 | Kort antwoord aan An, een intern dossier voor Steven, een vaste fiche per ziekte | bezig | 2026-09-26 |
@@ -21,6 +22,19 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-018 · Adviezen verwijderen, en een proefrun die niets bewaart
+- **Gevraagd:** 2026-09-26 — "I want to be able to delete previous advices (for example the last mpox advice ran three times, because I tested it), how do I delete these entries and in future, how can I do a dry run myself?"
+- **Status:** klaar (2026-09-26)
+- **Aanleiding:** de mail van 25/09 liep drie keer als proef en staat nu drie keer in het archief, de log en `context.md`. Daardoor verschijnt dezelfde student drie keer in de opvolging (F-017) en bij de eerdere adviezen voor Kinshasa.
+- **Gebouwd:**
+  - `dienstreis verwijder <map of mapnaam> ...` haalt een advies of meerdere tegelijk uit het archief, de log en `context.md`. De map gaat naar een prullenbak (`~/.config/dienstreis/verwijderd/`), met in `verwijderd.json` de weggehaalde logregels en contextregel. `dienstreis verwijder --herstel <naam>` zet alle drie terug. Het vraagt altijd eerst bevestiging; `--ja` slaat de vraag over.
+  - Een advies bewaart voortaan de regel die het aan `context.md` toevoegde (`context_line` in `advies.json`), zodat verwijderen precies die regel weghaalt. Bij een ouder advies worden de regels van zijn datum een voor een gevraagd; onder `--ja` blijven die staan.
+  - `dienstreis advies <mail> --proef` is een proefrun. Alles loopt, ook het model, en de map van de run met het dossier wordt geschreven; het dossier toont een banner "proefrun". Er komt niets in het archief, de log of `context.md`, er is geen Outlook-concept, en wat de webstap voorstelt wordt getoond maar niet overgenomen.
+  - Tests: `test_verwijder.py` (7) en een proefrun in de pijplijntest. Alle 298 tests groen.
+- **Beslissingen (uitvoering):**
+  - Een prullenbak in plaats van echt wissen: het archief is het enige verslag van wat verstuurd is, dus een vergissing moet terug te draaien zijn. Echt wissen gebeurt met de hand in `verwijderd/`.
+  - In het echte archief staan drie mpox-casussen: het advies van 25/09 uit versie 0.2 (herlabeld van ebolareis naar mpox-casus, waarschijnlijk het verstuurde), en de proefruns van 25/09 (`_2`) en 26/09. Welke weg mogen, beslist Steven; de tool verwijdert niets vanzelf.
 
 ## F-017 · Opvolging na het advies: de go/no-go-check en reizigers ter plaatse
 - **Gevraagd:** 2026-09-26 — "Make indeed a module for 1 and 2": (1) de go/no-go-check een week voor vertrek automatisch opnieuw beoordelen op de actuele cijfers, (2) reizigers die ter plaatse zijn of binnenkort vertrekken opvolgen en een zone melden die verandert.

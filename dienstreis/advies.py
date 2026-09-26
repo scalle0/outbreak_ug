@@ -174,7 +174,8 @@ def _history(trip: dict) -> list[dict]:
     return rows[-15:]
 
 
-def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEFAULT, specs=()) -> bool | None:
+def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEFAULT, specs=(),
+                    proef: bool = False) -> bool | None:
     """Show what the web step found that the country registry does not hold; on confirmation keep it locally.
 
     Overwriting a travel advisory or a border measure is a judgement, not a confirmation of something
@@ -186,7 +187,8 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     copy of the outbreak's documents list. A statement of a fiche that newer guidance contradicts
     (`fiche_flags`) is only shown: the fiche is changed by the clinician, never by the code.
 
-    Returns whether it was kept, or None when there was nothing to propose (for the dossier).
+    Returns whether it was kept, or None when there was nothing to propose (for the dossier). A dry run
+    (`proef`) shows everything and keeps nothing.
     """
     for n in webd.get("news", []):
         print(f"  nieuws {n.get('date')}: {n.get('item')} ({n.get('url')})")
@@ -226,6 +228,9 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
         what = f"vervangt {u.get('replaces')}" if u.get("action") == "nieuwere_versie" else "nieuw"
         print(f"  DOCUMENT {u['outbreak']} ({fiche.LEVELS[u['level']]}, {what}): {u.get('title')} "
               f"({u.get('org')}, {u.get('date')})  [{u['url']}]")
+    if proef:
+        print("  proefrun: niets overgenomen")
+        return False
     if apply_web or input("Dit lokaal overnemen (landenregister, cijfers, documenten)? [j/n]: ").strip().lower().startswith("j"):
         for c in countries.apply_web(webd, outbreak_id).values():
             countries.save_local(c)
@@ -365,7 +370,10 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
                yes: bool = False, web: bool = True, outlook: bool = False, asof: str | None = None,
                refresh: bool = False, open_browser: bool = True, llm_backend=None,
                apply_web: bool = False, numbers: bool = True, uitbraken: list[str] | None = None,
-               health_ok: bool = False) -> dict:
+               health_ok: bool = False, proef: bool = False) -> dict:
+    """The whole advice. `proef` is a dry run (F-018): every step runs, the model included, and the run's
+    folder with its dossier is written, but nothing lasting: no archive, no log row, no context line,
+    no Outlook draft, nothing taken over into the registry, the tables or the documents."""
     t0 = time.time()
     req = parse_request(src)
     _say(f"Aanvraag: {req.get('subject')}")
@@ -480,7 +488,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         webd = llm.ask_json(be, "web" if kind == "reisadvies" else "web_consult", web_in,
                             required=["advisories", "news", "who"] if kind == "reisadvies" else ["guidance", "news"],
                             web=True, specs=specs)
-        web_accepted = maybe_apply_web(webd, apply_web, ids[0], specs)
+        web_accepted = maybe_apply_web(webd, apply_web, ids[0], specs, proef=proef)
         (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     _say("Mail schrijven")
@@ -552,9 +560,15 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     review = r.get("review_on") or trip.get("review_on")
     # read before this advice joins the archive and the log
     earlier, history = archive.for_trip(trip, summary, with_dir=True), _history(trip)
-    advice_dir = archive.save(trip, summary, r["reply"], request=req_in["body"] or "", suggestions=sugg)
-    log_row(trip, summary, review_on=str(review or ""), advice_dir=str(advice_dir))
-    print(f"Bewaard in {advice_dir}")
+    context_line = (r.get("context_update") or "").strip()
+    if proef:
+        advice_dir = None
+        print("\nProefrun: niets bewaard (geen archief, logregel, contextregel of Outlook-concept).")
+    else:
+        advice_dir = archive.save(trip, summary, r["reply"], request=req_in["body"] or "", suggestions=sugg,
+                                  context_line=context_line)
+        log_row(trip, summary, review_on=str(review or ""), advice_dir=str(advice_dir))
+        print(f"Bewaard in {advice_dir}")
 
     # what the dossier needs that no other file of the run keeps; see dossier.py
     from . import dossier
@@ -568,17 +582,18 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         "checks": {"issues": r["issues"], "notes": r["notes"]}, "warnings": warnings, "numbers": numbers,
         "review_on": str(review or ""), "attachments_sent": [Path(a).name for a in attach],
         "web_accepted": web_accepted, "earlier": earlier, "history": history,
-        "context_lines": _context_lines(trip, summary), "advice_dir": str(advice_dir)}
+        "context_lines": _context_lines(trip, summary), "advice_dir": str(advice_dir or ""), "proef": proef}
     (outp / dossier.DATA).write_text(json.dumps(dos_data, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     html_path = dossier.build(outp)
-    shutil.copy2(html_path, Path(advice_dir) / dossier.PAGE)
-    if r.get("context_update"):
+    if advice_dir:
+        shutil.copy2(html_path, Path(advice_dir) / dossier.PAGE)
+    if context_line and not proef:
         CONTEXT.parent.mkdir(parents=True, exist_ok=True)
         with open(CONTEXT, "a", encoding="utf-8") as f:
             f.write(("" if not CONTEXT.exists() or CONTEXT.read_text(encoding="utf-8").endswith("\n") else "\n")
-                    + "- " + r["context_update"].strip() + "\n")
+                    + "- " + context_line + "\n")
 
-    if outlook and not r["issues"]:
+    if outlook and not r["issues"] and not proef:
         from .outlook import draft
         try:
             draft(req, r["reply"], attach)
@@ -596,4 +611,4 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     for s in sugg:
         print(f"  - {s}")
     return {"out": str(outp), "reply": r["reply"], "suggestions": sugg, "summary": summary, "trip": trip,
-            "issues": r["issues"], "advice_dir": str(advice_dir), "dossier": str(html_path)}
+            "issues": r["issues"], "advice_dir": str(advice_dir) if advice_dir else None, "dossier": str(html_path)}

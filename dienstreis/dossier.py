@@ -377,6 +377,8 @@ def _hero(run: dict) -> str:
     meta = [("Go/no-go", _date(review) if review else ""), ("Cijfers tot", _date(s.get("asof")) if s.get("asof") else ""),
             ("Gemaakt", d.get("created", "")[:16].replace("T", " ")), ("Opnieuw opgebouwd", d.get("rebuilt", "")[:16].replace("T", " "))]
     meta_html = "".join(f"<span>{_e(k)} <b>{_e(v)}</b></span>" for k, v in meta if v)
+    if d.get("proef"):
+        badges.insert(0, '<span class="badge stop">proefrun</span>')
     return (f'<div class="eyebrow">{_e(KIND.get(kind, kind))} · intern dossier, niet voor An</div>'
             f"<h1>{_e(title)}{(' · ' + _e(', '.join(dict.fromkeys(places)))) if places else ''}</h1>"
             + (f'<p class="muted" style="margin:0">{_e(sub)}</p>' if sub else "")
@@ -386,7 +388,9 @@ def _hero(run: dict) -> str:
 def _attention(run: dict) -> str:
     d = run["data"]
     checks = d.get("checks") or {}
-    out = [_alert("Blokkerende controle: " + x, "hard") for x in checks.get("issues") or []]
+    out = [_alert("Proefrun: niet in het archief, geen logregel, geen contextregel, niets overgenomen. "
+                  "Enkel de map van deze run.", "hard")] if d.get("proef") else []
+    out += [_alert("Blokkerende controle: " + x, "hard") for x in checks.get("issues") or []]
     out += [_alert(x, "soft") for x in d.get("warnings") or []]
     return f'<div style="margin-top:16px">{"".join(out)}</div>' if out else ""
 
