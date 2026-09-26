@@ -96,6 +96,14 @@ class ClaudeCode(Backend):
     from, and an unrelated edit to a CLAUDE.md would silently change the wording of a medical advice.
     `--bare` would isolate too, but forces ANTHROPIC_API_KEY authentication and never reads the
     subscription login, so it cannot be used here.
+
+    The call runs on the claude.ai login, never on a key that happens to be in the environment: with
+    ANTHROPIC_API_KEY set, `claude` sends its calls with the key and bills them to it while still
+    reporting the subscription login (seen 2026-09-26). So the key is taken out of the environment of
+    the call; `--llm api` is the backend for a key.
+
+    A failure names claude's own reason (in the JSON on stdout; stderr only carries warnings), and a
+    busy or rate-limited API gets one more try, so a confirmed itinerary is not lost to a hiccup.
     """
     name = "claude-code"
 
@@ -104,6 +112,10 @@ class ClaudeCode(Backend):
                  "--permission-prompts", "none", "--no-session-persistence"]
     # a fiche opens some twenty documents once; an advice's web step checks a handful of pages
     WEB_TURNS, WEB_SECONDS = {"fiche": 80}, {"fiche": 2400}
+    # auth that would take precedence over the subscription login
+    HIDDEN_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+    TRANSIENT = re.compile(r"overload|rate.?limit|too many requests|\b(429|500|502|503|529)\b|timed? ?out", re.I)
+    RETRY_SECONDS = 30
 
     def __init__(self, model: str | None = None, workdir: Path | None = None, timeout: int = 900):
         self.bin = os.environ.get("DIENSTREIS_CLAUDE") or shutil.which("claude") or shutil.which("claude.exe")
@@ -122,16 +134,36 @@ class ClaudeCode(Backend):
             cmd += ["--tools", "", "--max-turns", "2"]
         if self.model:
             cmd += ["--model", self.model]
-        with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
-            r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                               timeout=max(self.timeout, self.WEB_SECONDS.get(step, 0)), cwd=neutral)
-        if r.returncode != 0:
-            raise LLMError(f"claude -p faalde ({r.returncode}): {r.stderr.strip()[:500]}")
+        env = {k: v for k, v in os.environ.items() if k not in self.HIDDEN_ENV}
+        for attempt in (1, 2):
+            with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
+                r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+                                   timeout=max(self.timeout, self.WEB_SECONDS.get(step, 0)), cwd=neutral, env=env)
+            out = self._envelope(r.stdout)
+            if r.returncode == 0 and not out.get("is_error"):
+                return out.get("result", "") if out else r.stdout
+            why = self._why(r, out)
+            if attempt == 1 and self.TRANSIENT.search(why):
+                print(f"  claude -p: {why}; nieuwe poging over {self.RETRY_SECONDS} s", flush=True)
+                time.sleep(self.RETRY_SECONDS)
+                continue
+            raise LLMError(f"claude -p faalde ({r.returncode}): {why}")
+        raise AssertionError("unreachable")
+
+    @staticmethod
+    def _envelope(stdout: str) -> dict:
         try:
-            env = json.loads(r.stdout)
-            return env.get("result", "") if isinstance(env, dict) else r.stdout
+            d = json.loads(stdout)
         except json.JSONDecodeError:
-            return r.stdout
+            return {}
+        return d if isinstance(d, dict) else {}
+
+    @staticmethod
+    def _why(r, out: dict) -> str:
+        """claude's own reason for a failed call: the JSON on stdout first; stderr without the notices."""
+        parts = [str(out[k]) for k in ("subtype", "result", "error") if out.get(k) not in (None, "", "success")]
+        notes = [ln for ln in r.stderr.splitlines() if ln.strip() and "connectors are disabled" not in ln]
+        return "; ".join(parts + notes)[:500] or r.stdout.strip()[:500] or "geen uitleg van claude"
 
 
 class Api(Backend):

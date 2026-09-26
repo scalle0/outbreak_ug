@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-016 | Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement | klaar | 2026-09-26 |
 | F-015 | Kort antwoord aan An, een intern dossier voor Steven, een vaste fiche per ziekte | bezig | 2026-09-26 |
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | klaar | 2026-09-25 |
@@ -19,6 +20,21 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-016 · Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement
+- **Gevraagd:** 2026-09-26 — Steven meldde een run die stopte met `LLMError: claude -p faalde (1): ⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login`.
+- **Status:** klaar (2026-09-26)
+- **Oorzaak:**
+  - `ANTHROPIC_API_KEY` staat als Windows-gebruikersvariabele en zit dus in elke shell. `claude -p` stuurt zijn oproepen dan met die sleutel en rekent ze daarop aan, terwijl `claude auth status` nog `authMethod: claude.ai` toont (`apiKeySource: ANTHROPIC_API_KEY`). De README beloofde het omgekeerde: dat de standaardbackend altijd op het abonnement draait.
+  - Sinds de sleutel gezet is, liepen de runs dus op de sleutel. Dat geldt ook voor de twee conceptfiches van F-015 (ebola en mpox), die dezelfde ochtend opgesteld zijn.
+  - De foutmelding toonde enkel de waarschuwing op stderr. De eigenlijke reden stond in de JSON op stdout en werd weggegooid, dus waarom de run van Steven faalde is niet meer te achterhalen. Die ochtend liepen drie `claude`-processen tegelijk (de twee fiches en zijn run), dus een drukke of begrensde API is waarschijnlijk.
+- **Gebouwd:**
+  - `llm.ClaudeCode` haalt `ANTHROPIC_API_KEY` en `ANTHROPIC_AUTH_TOKEN` uit de omgeving van elke oproep, zodat die op de claude.ai-login draait. De sleutel blijft voor `--llm api`.
+  - Een mislukte oproep noemt de reden uit de JSON (subtype, result), en die van stderr zonder de waarschuwing over connectors. Een antwoord met `is_error` geldt ook als fout wanneer de exitcode 0 is.
+  - Een drukke of begrensde API (overload, rate limit, 429, 5xx, timeout) krijgt na 30 seconden nog één poging.
+  - Nagekeken: een echte oproep met de sleutel in de shell geeft een antwoord via het abonnement. Tests: `test_llm_backend.py` (4), zonder `claude` of netwerk.
+- **Beslissingen:**
+  - De sleutel wordt voor elke oproep uit de omgeving gehaald in plaats van dat Steven hem moet weghalen. Een sleutel voor `--llm api` mag blijven staan zonder dat de standaardruns ongemerkt op de sleutel draaien.
 
 ## F-015 · Kort antwoord aan An, een intern dossier, een vaste fiche per ziekte
 - **Gevraagd:** 2026-09-26 — "the program is responding way too broadly to the general question. So what I would like is to have a report that I can use internally with the maps and the tables and the epidemiology and the treatment, the presentation, the risks, [...] any important documents from Belgian, European, world, US guidelines, and then have a very concise response to the actual question that was in the email sent by the office"
@@ -54,7 +70,13 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - De webstap krijgt bij elk advies de documenten en de fiche (`fiches`). Hij stelt nieuwere of nieuwe documenten voor (`document_updates`); die komen na een ja in de lokale `documents.yaml`, met dezelfde vraag als het landenregister. Een uitspraak die een nieuwere richtlijn tegenspreekt (`fiche_flags`), staat in de terminal en in het dossier en wordt nooit toegepast.
   - Dossier: de fiche per uitbraak, met een zandkleurige banner zolang ze een concept is, verwijzingen die naar het document linken, en de vlaggen van de webstap. Onder Richtlijnen staan de documenten per niveau, de voorstellen van de webstap en de documenten van een land (`documents` in `countries/<ISO3>.yaml`). De Markdown van de fiche toont ruwe HTML als tekst en laat enkel web- en paginalinks door. Nieuwe afhankelijkheid: `markdown`.
   - Tests: `test_fiche.py` (10) en een pijplijntest: de bevestigde fiche gaat naar de mail, een concept niet, en haar getallen gelden niet als verzonnen. De goldens zien geen fiche (bevroren in `test_golden.py`), zodat ze de analyse en de prompts vastleggen en niet de tekst van de fiche. De webprompt krijgt de nieuwe opdracht en `<fiches>`, de mailprompt de regel over de bevestigde fiche.
-- **Commits:** a8022e7 (stap 1), 63d1a55 (stap 2)
+- **Concepten opgesteld (2026-09-26):** met `dienstreis fiche <id> --opstellen --repo`, voor `ebola_cod_2026` (documenten: be 8, eu 5, who 6, us 8) en `mpox_cod_2026` (6 per niveau). Beide zijn `concept` tot Steven ze nagelezen heeft. Wat de drafts zelf als na te kijken melden:
+  - Sciensano: de themapagina's over ebola en mpox gaven een 404. De Belgische procedure rust daarom op de federale richtlijnen (health.belgium.be) en op Departement Zorg.
+  - Departement Zorg: de pagina's dragen geen datum. De datum van raadpleging staat er in de plaats.
+  - Ebola: de Hoge Gezondheidsraad heeft geen vaccinatieadvies. De monoklonale antilichamen uit de federale procedure zijn enkel geregistreerd voor Zaire-ebola, niet voor Bundibugyo. De bronnen geven geen vrijgavecriterium op PCR en geen PEP met bewezen effect.
+  - Mpox: HGR-advies 9900 voorziet MVA-BN voor reizigers met hoog risico, maar Departement Zorg en het ITG zeggen dat er in Vlaanderen nu geen preventieve vaccinatie is. EMA en ECDC raden tecovirimat af, terwijl CDC het via expanded access behoudt. De fiche geeft voor beide punten de twee standpunten naast elkaar.
+- **Meegenomen:** een voorstel dat je aanvaardde op de dag dat de versie in het pakket nagekeken was, viel weg: bij gelijke datum won het pakket. Dat bleek toen de conceptfiches er waren. De lokale kopie is gemaakt uit de versie die won plus wat aanvaard is, en wint nu bij gelijke datum. Dat geldt voor de documenten, de fiche en het landenregister (sinds F-011 met dezelfde fout).
+- **Commits:** a8022e7 (stap 1), 63d1a55 (stap 2), dd5d641 (stap 3)
 - **Beslissingen (uitvoering):**
   - Zonder `dossier` in het antwoord zwijgt `questions_note`: er is dan niets om de vragen mee te vergelijken, en een melding zou een vraag onbeantwoord noemen die misschien wel beantwoord is.
   - De sleutel `skeleton_issues` in `summary.json` blijft zo heten, zodat oude en nieuwe samenvattingen dezelfde vorm houden.

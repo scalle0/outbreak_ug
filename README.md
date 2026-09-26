@@ -45,7 +45,14 @@ What happens:
 The default backend signs in as **you**, through the Claude Code you already have installed. No API
 key, no `.env` file, nothing to configure: `claude auth status` shows `authMethod: claude.ai`, and
 that is the account the advices run on. An `ANTHROPIC_API_KEY` in your environment does not change
-that; it is only used when you ask for `--llm api` explicitly.
+that, but only because the code sees to it: with the key set, `claude` sends its calls with the key
+and bills them to it, while `claude auth status` still shows your login (`apiKeySource:
+ANTHROPIC_API_KEY`). So the default backend takes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` out
+of the environment of every call. The key is only used when you ask for `--llm api` explicitly.
+
+When a call fails, the error names claude's own reason (a limit, a busy API, too many turns), not the
+warning about claude.ai connectors that `claude` prints whenever a key is set. A busy or rate-limited
+API gets one more try after 30 seconds.
 
 Do not put an API key in a `.env` file inside this repository: the project lives in a synced folder,
 so the key would be uploaded with everything else. If you ever need one, set it as a Windows user
@@ -539,6 +546,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_llm_backend.py` | the claude-code backend with `claude` replaced: no API key reaches the call, a failure names claude's reason and not the connectors warning, an error with exit code 0 is still an error, a busy API gets one more try |
 | `test_fiche.py` | the fiche and its documents: front matter and sections, the local copy only when newer, proposals kept only after a yes and with the ids the fiche cites, a flag never applied, a draft always a concept and never over a confirmed fiche, the command with a fake model, the fiche in the dossier with its banner, links and escaping |
 | `test_dossier.py` | the dossier from a synthetic run folder: every section, the letter to copy (off while a check fails, on again after a corrected hand edit), figures embedded and scaled, questions with their answers, a case without a verdict, several outbreaks, escaping, links limited to http and file |
 | `test_skeleton.py` | the facts file writes zone names with their own capitals and ECDC dates with Dutch months, and is no letter frame; the redirect line is added by the code |
