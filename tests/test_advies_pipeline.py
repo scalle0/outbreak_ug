@@ -240,3 +240,28 @@ def test_the_dossier_fields_reach_the_notes_and_the_question_is_checked(env):
     assert "Toezegging in de mail: go/no-go op 20/11" in sugg
     reply = (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
     assert "steven.callens@uzgent.be" in reply                    # added by the code, not by the model
+
+
+def test_a_confirmed_fiche_goes_to_the_letter_and_its_numbers_count(env):
+    """F-015: answers about isolation or vaccination rest on the fiche Steven confirmed; a concept never."""
+    from dienstreis import fiche
+    tmp, req = env
+    d = fiche.LOCAL / "ebola_cod_2026"
+    d.mkdir(parents=True)
+    (d / "fiche.md").write_text("---\nstatus: bevestigd\nverified: 2099-01-01\nbevestigd_door: Steven Callens\n"
+                                "bevestigd_op: 2026-09-27\n---\n\n## Incubatie\n\nOpvolging tot 4812 uur [x].\n",
+                                encoding="utf-8")
+    reply = GOOD.replace("2. Kisangani: af te raden.", "2. Kisangani: af te raden. Opvolging tot 4812 uur.")
+    fake = llm.Fake({"stops": STOPS, "web": {"advisories": [], "news": [], "who": {}},
+                     "reply": {"reply": reply, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    assert "<fiches>" in fake.prompts["web"][0]                       # the web step checks it for newer guidance
+    assert "<fiche>" in fake.prompts["reply"][0] and "4812 uur" in fake.prompts["reply"][0]
+    assert res["issues"] == [] and len(fake.prompts["reply"]) == 1    # the fiche's number is no invention
+    (d / "fiche.md").write_text((d / "fiche.md").read_text(encoding="utf-8").replace("bevestigd\n", "concept\n", 1),
+                                encoding="utf-8")
+    fake2 = llm.Fake({"stops": STOPS, "reply": {"reply": GOOD, "suggestions": []}})
+    advies.run_advies(str(req), out=str(tmp / "out2"), yes=True, asof="2026-09-19",
+                      open_browser=False, llm_backend=fake2, web=False)
+    assert "<fiche>" not in fake2.prompts["reply"][0]

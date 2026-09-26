@@ -63,7 +63,7 @@ LLM backends (`--llm`, or the environment variable `DIENSTREIS_LLM`):
 - `manual`: no model access from the script; it writes `prompt_<step>.md`, you paste it in any Claude
   chat and save the JSON answer as `antwoord_<step>.json`.
 
-The prompts live in `dienstreis/prompts/` (`stops.md`, `web.md`, `reply.md`): that is where the
+The prompts live in `dienstreis/prompts/` (`stops.md`, `web.md`, `reply.md`, for a case `web_consult.md` and `consult.md`, and `fiche.md`): that is where the
 judgement rules and mail conventions are written down. The passages about one disease (the category
 table, its pitfalls, what the web step should look for) are in that outbreak's `prompt.md` and are
 spliced in where a prompt says `{{uitbraak:<name>}}`. Change them there, not in code.
@@ -95,6 +95,7 @@ Everything that differs between outbreaks is in `dienstreis/outbreaks/<id>/`, no
 | `outbreak.yaml` | where the figures come from (`adapter`), the countries they cover, the zone unit, the rule windows, the verdict per category and how it weighs in the trip verdict, flag texts and thresholds, the conditions for the traveller (in `feiten.txt`), ECDC and WHO sources, the texts on the map and the curve |
 | `prompt.md` | the passages of the prompts that are about this disease, one `<!-- uitbraak:<name> -->` section each |
 | `zone_overrides.csv` | observed zone spellings mapped to the shapefile (inrb adapter) |
+| `fiche.md`, `documents.yaml` | the fixed fiche of the disease and its key documents, see [The fiche per disease](#the-fiche-per-disease) |
 
 The windows, verdicts, conditions and flag texts are clinical judgements: the code applies them and
 invents none. A profile is checked when it is read, and refused whole with every problem named
@@ -155,6 +156,40 @@ labels, the date and the reason, and the log row follows.
 What a profile may set beyond the Ebola keys: `case_words` (how the letter names what the figures
 count), `windows.recent` (days over which new cases are counted, default 14), `flags.rising_recent`,
 and for a table `national_check: false` when zone and national figures come from different bases.
+
+## The fiche per disease
+
+What a clinician needs to know about the disease itself (agent, transmission, incubation, clinical
+picture, severity, diagnosis, treatment, vaccination and PEP, prevention for travellers, isolation and
+release, return to Belgium) is not looked up again for every mail. It is in a fixed fiche per
+outbreak profile, written once from Belgian, European, WHO and US sources and confirmed by you:
+
+| file | what |
+|---|---|
+| `outbreaks/<id>/fiche.md` | front matter (`status: concept` or `bevestigd`, `verified`, `bevestigd_door`, `bevestigd_op`), then one `##` section per topic. A statement cites its document as `[document-id]`, which the dossier links |
+| `outbreaks/<id>/documents.yaml` | the key documents per level (`be`, `eu`, `who`, `us`): `id`, `org`, `title`, `date`, `url`, and `key`, the key message in one sentence |
+
+```bash
+dienstreis fiche mpox_cod_2026                        # status: sections, documents per level, references without a document
+dienstreis fiche mpox_cod_2026 --opstellen --repo     # a concept drafted from sources (web search, a few minutes)
+```
+
+`--opstellen` writes a concept; without `--repo` it goes to the local folder
+(`%USERPROFILE%\.config\dienstreis\outbreaks\<id>\`), with `--repo` into the profile's folder to
+commit. A confirmed fiche is never overwritten: the draft then goes next to it as `fiche_concept.md`.
+Read the concept, correct it where needed, and set `status: bevestigd`, `bevestigd_door` and
+`bevestigd_op`. Until then the dossier shows it under a banner and the letter does not rest on it.
+
+- **The letter** gets only a confirmed fiche (`fiche` in its inputs): answers about isolation,
+  vaccination or release rest on text you have read, not on what the web step happened to find. Its
+  numbers count as sources for the number check.
+- **The web step** gets the documents and the fiche on every run. A newer version of a document, or
+  a new key document, is proposed (`document_updates`) and kept after a yes in a local copy of
+  `documents.yaml`, which wins while it is verified more recently, as for the country registry. A
+  statement of the fiche that newer guidance contradicts is only shown (`fiche_flags`), in the
+  terminal and in the dossier: the fiche is changed by you, never by the code.
+- **A country's own documents** (a ministry's circular, a national guideline) go under `documents` in
+  `countries/<ISO3>.yaml`, with the same fields (`org`, `title`, `date`, `url`, `key`); the dossier lists them per country.
 
 ## Which outbreaks apply
 
@@ -284,8 +319,8 @@ opens in the browser at the end of `advies`, is copied into the archive, and pri
 | Oordeel | per outbreak the verdict by the rules and the final one, overrides with their reason, the verdict per stop, the go/no-go date |
 | Epidemiologie | per outbreak the national total, deaths and CFR with source and date, the last eight full weeks, curve and map, the zones of the itinerary (cases, recent cases, days since the last one, active neighbouring zones, nearest active zone) and the checks on the figures |
 | Risico | the traveller's profile, per stop the FOD and CDC level and the flags, per country when it was last verified, the provinces that differ, border measures and the FOD pages |
-| Ziektefiche | reserved for the fixed fiche per disease (clinical picture, treatment, vaccination, isolation) |
-| Richtlijnen | the guidance the web step found for a case, and the sources of the advice |
+| Ziektefiche | the fiche per disease, under a banner while it is a concept, with the statements the web step flags as possibly outdated |
+| Richtlijnen | the key documents per level (België, Europa, WHO, Verenigde Staten), what the web step proposes, the countries' own documents, the guidance it found for a case, and the sources of the advice |
 | Beoordeling | the model's assessment: its reasoning, what it left out of the letter, what to verify, the commitments the letter makes, questions for the treating doctor |
 | Web | WHO, advisories, border measures, news, proposed figures and sources, and whether you accepted them |
 | Eerder | earlier advices for the same places or person (with a link to their dossier), log rows, the lines of `context.md` about them |
@@ -318,7 +353,7 @@ read the itinerary.
 
 Local files (never in the repo): `%USERPROFILE%\.config\dienstreis\context.md`, `advice_log.csv`,
 `countries\<ISO3>.yaml` for what you accepted from the web step (used when verified more recently than the
-registry in the repo), and the
+registry in the repo), `outbreaks\<id>\` for accepted case figures and documents and a local fiche, and the
 `out_<traveller>/` folders. Data cache: `%USERPROFILE%\.cache\dienstreis` (`dienstreis data` shows
 its size, `dienstreis data --reset-cache` empties it).
 
@@ -429,7 +464,7 @@ Four places, and only one of them is irreplaceable.
 
 | | where | what | if you lose it |
 |---|---|---|---|
-| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`, `dossier.html`), and `countries/<ISO3>.yaml` for the web-step findings you accepted | gone for good. Back this up |
+| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`, `dossier.html`), `countries/<ISO3>.yaml` for the web-step findings you accepted, and `outbreaks/<id>/` for accepted figures and documents, a local fiche and the trace of its draft | gone for good. Back this up |
 | **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
 | **Per-run output** | `out_<traveller>/` where you ran the command | the reply, the dossier, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
 | **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/`, `dienstreis/countries/` in this repo | places, the three prompts, per outbreak its profile, prompt passages and zone spellings, and per country its sources, advisories and border measures | it is in git |
@@ -504,6 +539,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_fiche.py` | the fiche and its documents: front matter and sections, the local copy only when newer, proposals kept only after a yes and with the ids the fiche cites, a flag never applied, a draft always a concept and never over a confirmed fiche, the command with a fake model, the fiche in the dossier with its banner, links and escaping |
 | `test_dossier.py` | the dossier from a synthetic run folder: every section, the letter to copy (off while a check fails, on again after a corrected hand edit), figures embedded and scaled, questions with their answers, a case without a verdict, several outbreaks, escaping, links limited to http and file |
 | `test_skeleton.py` | the facts file writes zone names with their own capitals and ECDC dates with Dutch months, and is no letter frame; the redirect line is added by the code |
 

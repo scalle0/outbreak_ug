@@ -7,7 +7,8 @@ Je ondersteunt een antwoord aan UGent Team Actueel over een casus (een reiziger 
 3. Reisadviezen en grensmaatregelen voor de landen in `landen`, in `advisories` (per land en eventueel per provincie, met `outbreak` het id uit `uitbraken`) en `measures`.
 4. Staat er `ziekten_zonder_profiel` in de invoer, zoek dan wat officiële bronnen over die ziekte in de landen van de casus zeggen, en zet het in `news`.
 5. Een betrouwbare bron die nog niet in `landen` staat, zet je in `sources`, met waarom ze betrouwbaar is. Een bron uit `internationaal.excluded` gebruik je niet en stel je niet voor.
-6. Vermeld alleen wat je effectief gezien hebt, met datum en URL. Geen vermoedens als feit, en niets over de persoon zelf buiten wat in `casus` staat.
+6. Documenten en fiche. `fiches` geeft per uitbraak de sleuteldocumenten (`documenten`, per niveau: `be` België, `eu` Europa, `who`, `us` Verenigde Staten), de datum waarop ze nagekeken zijn, en de ziektefiche met haar status. Kijk na of er van een document een nieuwere versie is, of een nieuw sleuteldocument van een Belgische, Europese, WHO- of Amerikaanse instantie sinds `documenten_nagekeken`, en zet het in `document_updates`: `action` is `nieuw`, of `nieuwere_versie` met in `replaces` het id van het document dat het vervangt; `key` is de kernboodschap in een zin. Spreekt een nieuwere officiële richtlijn een uitspraak in de fiche tegen, zet dan in `fiche_flags` de sectie, de uitspraak letterlijk, wat de nieuwere richtlijn zegt, en bron en datum. Herschrijf de fiche niet: de arts beslist. Enkel documenten die je zelf geopend hebt; is er geen fiche of geen document, stel dan de belangrijkste documenten voor als `nieuw`.
+7. Vermeld alleen wat je effectief gezien hebt, met datum en URL. Geen vermoedens als feit, en niets over de persoon zelf buiten wat in `casus` staat.
 
 Antwoord uitsluitend met dit JSON-object:
 
@@ -23,6 +24,9 @@ Antwoord uitsluitend met dit JSON-object:
                     "deaths_cum": 0, "case_def": "…", "source_url": "URL"}],
   "who": {"latest_don": "JJJJ-MM-DD", "risk_assessment": "…", "url": "…"},
   "news": [{"date": "JJJJ-MM-DD", "item": "…", "url": "…"}],
+  "document_updates": [{"outbreak": "…", "level": "be | eu | who | us", "action": "nieuw | nieuwere_versie",
+                        "replaces": null, "org": "…", "title": "…", "date": "JJJJ-MM-DD", "url": "…", "key": "…"}],
+  "fiche_flags": [{"outbreak": "…", "section": "…", "statement": "…", "newer": "…", "source": "URL", "date": "JJJJ-MM-DD"}],
   "notes": ["…"]
 }
 ```

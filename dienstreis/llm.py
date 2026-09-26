@@ -1,9 +1,12 @@
 """LLM layer: the only place where the package calls a language model.
 
-The model is used for three judgement steps and nothing else:
+The model is used for these judgement steps and nothing else:
   stops  : turn the request mail into a structured itinerary (stops.yaml), for the user to confirm
-  web    : optional check of FOD/CDC advisories and recent news that is not yet in the data
+  web    : optional check of FOD/CDC advisories, recent news not yet in the data, and newer guidance
+           than the fiche and its documents (web_consult for a case or a question)
   reply  : write the short Dutch reply and the dossier fields from the facts, the risk table and the context
+           (consult for a case or a question)
+  fiche  : once per disease, a draft fiche and its key documents from sources, for the clinician to confirm
 
 Backends
   claude-code : `claude -p` (Claude Code CLI, uses the user's own subscription); default
@@ -99,6 +102,8 @@ class ClaudeCode(Backend):
     # nothing from the machine, only the prompt
     ISOLATION = ["--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
                  "--permission-prompts", "none", "--no-session-persistence"]
+    # a fiche opens some twenty documents once; an advice's web step checks a handful of pages
+    WEB_TURNS, WEB_SECONDS = {"fiche": 80}, {"fiche": 2400}
 
     def __init__(self, model: str | None = None, workdir: Path | None = None, timeout: int = 900):
         self.bin = os.environ.get("DIENSTREIS_CLAUDE") or shutil.which("claude") or shutil.which("claude.exe")
@@ -111,14 +116,15 @@ class ClaudeCode(Backend):
         cmd = [self.bin, "-p", "Volg de instructies in de invoer. Antwoord uitsluitend met het gevraagde JSON-object.",
                "--output-format", "json", *self.ISOLATION]
         if web:   # only web tools, pre-approved so that print mode never waits for a permission prompt
-            cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch", "--max-turns", "25"]
+            cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch",
+                    "--max-turns", str(self.WEB_TURNS.get(step, 25))]
         else:     # pure text step: no tools at all
             cmd += ["--tools", "", "--max-turns", "2"]
         if self.model:
             cmd += ["--model", self.model]
         with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
             r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                               timeout=self.timeout, cwd=neutral)
+                               timeout=max(self.timeout, self.WEB_SECONDS.get(step, 0)), cwd=neutral)
         if r.returncode != 0:
             raise LLMError(f"claude -p faalde ({r.returncode}): {r.stderr.strip()[:500]}")
         try:

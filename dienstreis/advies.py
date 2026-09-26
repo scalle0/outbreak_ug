@@ -28,7 +28,7 @@ from pathlib import Path
 
 import yaml
 
-from . import archive, countries, data, llm, log, mail, outbreak, route
+from . import archive, countries, data, fiche, llm, log, mail, outbreak, route
 from . import trip as trip_mod
 from .pipeline import _slug, analyse, log_row, outbreak_ids
 from .msg import health_signals, parse_request
@@ -182,6 +182,10 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     --apply-web says otherwise. Accepting also records that the countries were checked today, so a
     country stops being "never verified" once you have seen what was found for it.
 
+    Newer or new key documents per outbreak (`document_updates`) are kept the same way, in a local
+    copy of the outbreak's documents list. A statement of a fiche that newer guidance contradicts
+    (`fiche_flags`) is only shown: the fiche is changed by the clinician, never by the code.
+
     Returns whether it was kept, or None when there was nothing to propose (for the dossier).
     """
     for n in webd.get("news", []):
@@ -196,11 +200,17 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
     first = [i for i in checked if countries.age_days(countries.load(i)) is None]
     tables = {sp.id: sp for sp in specs if sp.adapter.get("type") == "table"}
     rows = [r for r in webd.get("case_updates", []) if r.get("outbreak") in tables and r.get("date")]
+    by_id = {sp.id: sp for sp in specs}
+    docs = [u for u in webd.get("document_updates", []) if isinstance(u, dict) and u.get("outbreak") in by_id
+            and u.get("level") in fiche.LEVELS and u.get("url") and not countries.excluded(u["url"])]
+    for f in [x for x in webd.get("fiche_flags", []) if isinstance(x, dict)]:
+        print(f"  FICHE {f.get('outbreak')}, {f.get('section')}: \"{f.get('statement')}\" -> {f.get('newer')} "
+              f"({f.get('date')})  [{f.get('source')}]  (enkel ter info: de fiche pas je zelf aan)")
     for r in rows:
         print(f"  CIJFERS {r['outbreak']} {r.get('date')} {r.get('admin1')} {r.get('admin2') or ''}: "
               f"{r.get('cases_cum')} gevallen, {r.get('deaths_cum')} overlijdens ({r.get('case_def')})  "
               f"[{r.get('source_url')}]")
-    if not (changed or measures or found or first or rows):
+    if not (changed or measures or found or first or rows or docs):
         print("  landenregister: geen wijzigingen gevonden")
         return None
     for a in changed:
@@ -212,12 +222,20 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
         print(f"  BRON {x['country']} ({x.get('kind')}): {x.get('name')}  {x['url']}")
     if first:
         print(f"  voor het eerst nagekeken: {', '.join(first)}")
-    if apply_web or input("Dit lokaal overnemen in het landenregister? [j/n]: ").strip().lower().startswith("j"):
+    for u in docs:
+        what = f"vervangt {u.get('replaces')}" if u.get("action") == "nieuwere_versie" else "nieuw"
+        print(f"  DOCUMENT {u['outbreak']} ({fiche.LEVELS[u['level']]}, {what}): {u.get('title')} "
+              f"({u.get('org')}, {u.get('date')})  [{u['url']}]")
+    if apply_web or input("Dit lokaal overnemen (landenregister, cijfers, documenten)? [j/n]: ").strip().lower().startswith("j"):
         for c in countries.apply_web(webd, outbreak_id).values():
             countries.save_local(c)
         for oid in sorted({r["outbreak"] for r in rows}):
             p = data.append_local_table(tables[oid], [r for r in rows if r["outbreak"] == oid])
             print(f"  cijfers bewaard in {p}")
+        for oid in sorted({u["outbreak"] for u in docs}):
+            sp = by_id[oid]
+            p = fiche.save_local_documents(sp, fiche.apply_updates(sp, [u for u in docs if u["outbreak"] == oid]))
+            print(f"  documenten bewaard in {p}")
         print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
         return True
     return False
@@ -456,6 +474,9 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         tabellen = _tables_for_web(specs)
         if tabellen:
             web_in["tabellen"] = tabellen
+        fiches = {sp.id: fiche.for_prompt(sp) for sp in specs if sp.id != outbreak.NONE}
+        if fiches:
+            web_in["fiches"] = fiches
         webd = llm.ask_json(be, "web" if kind == "reisadvies" else "web_consult", web_in,
                             required=["advisories", "news", "who"] if kind == "reisadvies" else ["guidance", "news"],
                             web=True, specs=specs)
@@ -485,13 +506,17 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
             for i, o in summary["outbreaks"].items() if i != ids[0]]
     if unmatched:
         inputs["ziekten_zonder_profiel"] = unmatched
+    confirmed = {sp.id: t for sp in specs if (t := fiche.confirmed_text(sp))}
+    if confirmed:                                 # a concept fiche never reaches the letter
+        inputs["fiche"] = confirmed
     if kind != "reisadvies":                      # a case letter: facts, not a trip verdict
         inputs = {"vandaag": inputs["vandaag"], "type": kind, "casus": trip.get("situation"),
                   **{k: v for k, v in inputs.items() if k not in ("vandaag", "regel_oordeel", "overrules",
                                                                    "regel_oordeel_zonder_overrule")}}
     # every number in the mail must come from one of these; see mail.unknown_numbers
     sources = [feiten_txt, json.dumps(summary, ensure_ascii=False, default=str),
-               json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
+               json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or "",
+               *confirmed.values()]
     questions = d.get("questions_from_an") or []
     if kind == "reisadvies":
         r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs,

@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,dossier,due,zoek,context,uitbraken,herlabel}."""
+"""Command line: dienstreis {advies,msg,data,run,check,dossier,fiche,due,zoek,context,uitbraken,herlabel}."""
 from __future__ import annotations
 
 import argparse
@@ -159,6 +159,52 @@ def cmd_dossier(a):
         print("Kopiëren staat uit: " + "; ".join(checks["issues"])); sys.exit(1)
 
 
+def cmd_fiche(a):
+    """The fiche and documents of an outbreak: their state, or a concept drafted from sources (F-015)."""
+    from datetime import date
+    from . import countries, fiche, llm, outbreak
+    sp = outbreak.load(a.id)
+    if sp.id == outbreak.NONE:
+        print("Het profiel 'geen' is geen ziekte en heeft geen fiche."); sys.exit(1)
+    if a.opstellen:
+        trace_dir = fiche.LOCAL / sp.id
+        be = llm.get_backend(a.llm, a.model, trace_dir)
+        cur = fiche.load(sp)
+        inputs = {"vandaag": date.today().isoformat(),
+                  "uitbraak": {"id": sp.id, "naam": sp.name, "landen": sp.countries, "cijfers": sp.case_words},
+                  "secties": list(fiche.SECTIONS), "niveaus": fiche.LEVELS,
+                  "bestaande_fiche": cur["body"] if cur else "",
+                  "bestaande_documenten": fiche.documents(sp)["levels"],
+                  "internationaal": countries.international()}
+        print(f"Fiche opstellen voor {sp.name} ({be.name}, met webzoeken); dat duurt enkele minuten.")
+        try:
+            ans = llm.ask_json(be, "fiche", inputs, required=["secties", "documenten"], web=True, specs=[sp])
+        finally:                           # what the model was given and answered, kept outside the repo
+            trace_dir.mkdir(parents=True, exist_ok=True)
+            (trace_dir / "fiche_trace.json").write_text(
+                json.dumps(llm.trace_of(be), ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        for path in fiche.write_draft(sp, ans, sp.dir if a.repo else trace_dir):
+            print(f"  {path}")
+        for n in ans.get("notities") or []:
+            print(f"  - {n}")
+        print("Een concept: lees het na, en zet dan status: bevestigd, bevestigd_door en bevestigd_op. "
+              "Pas daarna steunt de mail erop.")
+        return
+    f, d = fiche.load(sp), fiche.documents(sp)
+    if not f:
+        print(f"{sp.id}: nog geen fiche. Maak een concept met: dienstreis fiche {sp.id} --opstellen")
+    else:
+        who = f" door {f['bevestigd_door']} op {f['bevestigd_op']}" if f["confirmed"] else ""
+        print(f"{sp.id}: fiche {f['status']}{who}, bronnen nagekeken {f['verified'] or '-'} ({f['source']}: {f['path']})")
+        ids = {x.get("id") for docs in d["levels"].values() for x in docs}
+        for x in f["issues"] + [f"verwijzing zonder document: [{r}]" for r in f["refs"] if r not in ids]:
+            print(f"  - {x}")
+    counts = ", ".join(f"{lv} {len(docs)}" for lv, docs in d["levels"].items())
+    print(f"documenten: {counts}; nagekeken {d['verified'] or '-'} ({d['source'] or 'geen lijst'}: {d['path'] or '-'})")
+    for x in fiche.check_documents(d):
+        print(f"  - {x}")
+
+
 def cmd_due(a):
     from .log import due
     for r in due():
@@ -216,6 +262,15 @@ def main(argv=None):
     w.add_argument("out", help="de map van de run (out_...)")
     w.add_argument("--no-open", action="store_true", help="niet in de browser openen")
     w.set_defaults(f=cmd_dossier)
+    fi = s.add_parser("fiche", help="de ziektefiche en documenten van een uitbraak: stand, of een concept laten opstellen")
+    fi.add_argument("id", help="het id van de uitbraak (dienstreis uitbraken)")
+    fi.add_argument("--opstellen", action="store_true",
+                    help="een concept laten opstellen uit Belgische, Europese, WHO- en Amerikaanse bronnen (webzoeken)")
+    fi.add_argument("--repo", action="store_true",
+                    help="het concept in de map van het profiel zetten in plaats van lokaal (om te committen)")
+    fi.add_argument("--llm", default=os.environ.get("DIENSTREIS_LLM", "claude-code"), choices=["claude-code", "api", "manual"])
+    fi.add_argument("--model", default=os.environ.get("DIENSTREIS_MODEL"))
+    fi.set_defaults(f=cmd_fiche)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
     z = s.add_parser("zoek", help="eerdere adviezen zoeken op plaats, zone, provincie, reiziger of notitie")
     z.add_argument("term", nargs="?", default="")

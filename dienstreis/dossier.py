@@ -27,7 +27,7 @@ from pathlib import Path
 
 import yaml
 
-from . import countries, mail, outbreak
+from . import countries, fiche, mail, outbreak
 
 DATA = "dossier.json"
 PAGE = "dossier.html"
@@ -102,6 +102,9 @@ h1 { font: 700 28px/1.2 var(--font-display); letter-spacing: -0.02em; margin: 0 
 h2 { font: 600 20px/1.2 var(--font-display); letter-spacing: -0.02em; margin: 0 0 14px; }
 h3 { font: 600 16px/1.25 var(--font-display); letter-spacing: -0.01em; margin: 22px 0 8px; }
 h3:first-child { margin-top: 0; }
+h4 { font: 600 14px/1.3 var(--font-display); margin: 16px 0 4px; }
+.fiche p { margin: 4px 0 8px; } .fiche ul { margin: 4px 0 8px; padding-left: 20px; }
+.ref { font-family: var(--font-mono); font-size: 0.85em; text-decoration: none; }
 .eyebrow { font: 500 11px var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--green-600); margin-bottom: 6px; }
 section { margin-top: 28px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px;
@@ -342,7 +345,8 @@ def recheck(out) -> dict:
     kind = d.get("type") or s.get("type") or "reisadvies"
     sources = [run["feiten"], json.dumps(s, ensure_ascii=False, default=str),
                json.dumps(run["web"], ensure_ascii=False, default=str) if run["web"] else "",
-               (d.get("aanvraag") or {}).get("body") or ""]
+               (d.get("aanvraag") or {}).get("body") or "",
+               *[t for t in (fiche.confirmed_text(sp) for sp in specs) if t]]      # as in the run
     reply = run["reply"]
     issues = mail.check_reply(reply, sources, numbers=d.get("numbers", True), specs=specs or None)
     questions = (d.get("aanvraag") or {}).get("questions_from_an") or []
@@ -609,11 +613,51 @@ def _risk(run: dict) -> str:
     return _section("risico", "Risico voor deze reiziger", body or '<p class="muted">Geen reisschema.</p>')
 
 
+def _md(text: str, known: set[str]) -> str:
+    """Markdown of the fiche as HTML: raw HTML is shown as text, links go to the web or within the page,
+    and a reference [document-id] links to that document under Richtlijnen."""
+    import markdown
+    h = markdown.markdown(str(text).replace("<", "&lt;"), extensions=["sane_lists", "tables"])
+    h = re.sub(r'href="(?!https?:|#)[^"]*"', 'href="#"', h)
+    return fiche._REF.sub(lambda m: (f'<a class="ref" href="#doc-{_e(m.group(1))}">[{_e(m.group(1))}]</a>'
+                                     if m.group(1) in known else m.group(0)), h)
+
+
+def _doc_ids(sp) -> set[str]:
+    return {x.get("id") for docs in fiche.documents(sp)["levels"].values() for x in docs if x.get("id")}
+
+
 def _fiche(run: dict) -> str:
-    names = [p.get("name", oid) for oid, p in _parts(run["summary"]).items() if oid != outbreak.NONE]
-    body = (f'<p class="muted">Nog geen vaste fiche voor {_e(", ".join(names))}: klinisch beeld, behandeling, '
-            f"vaccinatie en isolatie volgen met de fiche per ziekte.</p>" if names else
-            '<p class="muted">Geen uitbraakprofiel, dus geen fiche.</p>')
+    flags = [f for f in (run["web"] or {}).get("fiche_flags") or [] if isinstance(f, dict)]
+    blocks = []
+    for oid, p in _parts(run["summary"]).items():
+        sp = _spec(oid)
+        if oid == outbreak.NONE or sp is None:
+            continue
+        f = fiche.load(sp)
+        head = f"<h3>{_e(p.get('name', oid))}</h3>"
+        if not f:
+            blocks.append(f'<div class="part">{head}<p class="muted">Nog geen fiche. Maak een concept met '
+                          f"<code>dienstreis fiche {_e(oid)} --opstellen</code>.</p></div>")
+            continue
+        if f["confirmed"]:
+            state = _alert(f"Bevestigd door {f.get('bevestigd_door') or '?'} op {_date(f.get('bevestigd_op'))}; "
+                           f"bronnen nagekeken op {_date(f.get('verified'))}.", "ok")
+        else:
+            state = _alert(f"Concept, nog niet bevestigd: de mail steunt er niet op. Nagelezen? Zet "
+                           f"<code>status: bevestigd</code>, <code>bevestigd_door</code> en <code>bevestigd_op</code> "
+                           f"in {_e(f['path'])}.", "hard", raw=True)
+        state += "".join(_alert(
+            f"Mogelijk verouderd, {_e(x.get('section'))}: &ldquo;{_e(x.get('statement'))}&rdquo;. Nieuwer: "
+            f"{_e(x.get('newer'))} ({_link(x.get('source'), 'bron')}, {_e(_date(x.get('date')))}).", "soft", raw=True)
+            for x in flags if x.get("outbreak") == oid)
+        known = _doc_ids(sp)
+        order = list(fiche.SECTIONS) + [k for k in f["sections"] if k not in fiche.SECTIONS]
+        secs = "".join(f"<h4>{_e(k)}</h4>{_md(f['sections'][k], known)}" for k in order if f["sections"].get(k))
+        issues = _items(f["issues"] + [f"verwijzing zonder document: [{r}]" for r in f["refs"] if r not in known])
+        blocks.append(f'<div class="part">{head}{state}<div class="fiche">{secs}</div>'
+                      + (f'<p class="muted">Bij de fiche:</p>{issues}' if issues else "") + "</div>")
+    body = "".join(blocks) or '<p class="muted">Geen uitbraakprofiel, dus geen fiche.</p>'
     return _section("fiche", "Ziektefiche", body)
 
 
@@ -626,9 +670,49 @@ def _sources_list(txt: str) -> list[tuple[str, str]]:
     return rows
 
 
+def _documents(run: dict) -> str:
+    """The key documents per outbreak and level, what the web step proposed, and the countries' own."""
+    body = ""
+    for oid, p in _parts(run["summary"]).items():
+        sp = _spec(oid)
+        if oid == outbreak.NONE or sp is None:
+            continue
+        d = fiche.documents(sp)
+        rows_by_level = [(fiche.LEVELS[lv], docs) for lv, docs in d["levels"].items() if docs]
+        if not rows_by_level:
+            body += (f"<h3>{_e(p.get('name', oid))}</h3><p class=\"muted\">Nog geen documentenlijst: "
+                     f"<code>dienstreis fiche {_e(oid)} --opstellen</code>.</p>")
+            continue
+        body += (f"<h3>{_e(p.get('name', oid))}</h3>"
+                 + (f'<p class="muted">Nagekeken op {_e(_date(d["verified"]))}.</p>' if d["verified"] else ""))
+        for label, docs in rows_by_level:
+            body += f"<h4>{_e(label)}</h4>" + _table(
+                ["Document", "Organisatie", "Datum", "Kernboodschap"],
+                [[("html", f'<span id="doc-{_e(x.get("id"))}"></span>{_link(x.get("url"), x.get("title"))}'),
+                  x.get("org"), _date(x.get("date")), x.get("key")] for x in docs])
+    ups = [u for u in (run["web"] or {}).get("document_updates") or [] if isinstance(u, dict)]
+    if ups:
+        acc = run["data"].get("web_accepted")
+        body += "<h3>Voorgesteld door de webstap</h3>" + _table(
+            ["Uitbraak", "Niveau", "Wat", "Document", "Datum", "Kernboodschap"],
+            [[u.get("outbreak"), fiche.LEVELS.get(u.get("level"), u.get("level")),
+              f"vervangt {u.get('replaces')}" if u.get("action") == "nieuwere_versie" else "nieuw",
+              ("html", _link(u.get("url"), u.get("title"))), _date(u.get("date")), u.get("key")] for u in ups])
+        body += (_alert("Overgenomen in de lokale documentenlijst.", "ok") if acc is True else
+                 _alert("Niet overgenomen.", "soft") if acc is False else "")
+    for iso in dict.fromkeys(x.get("country") for x in run["summary"].get("stops") or [] if x.get("country")):
+        docs = [x for x in (countries.load(iso) or {}).get("documents") or [] if isinstance(x, dict)]
+        if docs:
+            body += f"<h3>{_e(iso)}: documenten van het land</h3>" + _table(
+                ["Document", "Organisatie", "Datum", "Kernboodschap"],
+                [[("html", _link(x.get("url"), x.get("title"))), x.get("org"), _date(x.get("date")), x.get("key")]
+                 for x in docs])
+    return body
+
+
 def _guidance(run: dict) -> str:
     g = [x for x in (run["web"] or {}).get("guidance") or [] if isinstance(x, dict)]
-    body = ""
+    body = _documents(run)
     if g:
         body += "<h3>Wat de webstap aan richtlijnen vond</h3>" + _table(
             ["Onderwerp", "Wat", "Bron", "Datum"],

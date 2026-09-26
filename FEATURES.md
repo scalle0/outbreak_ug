@@ -45,7 +45,16 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - De figuren staan in de pagina, verkleind tot 1600 pixels (Pillow, nu een expliciete afhankelijkheid), zodat de kopie in het archief zonder de map van de run opent. `dienstreis zoek` toont de link naar het dossier.
   - Opmaak volgens ScAIdev: inktkleurige bovenbalk met het knooppuntmerk, papieren achtergrond, Space Grotesk, Inter en JetBrains Mono, groen voor de hoofdknop, blauw voor info, zand voor wat blokkeert, Lucide-lijniconen, een afdrukstijl voor PDF.
   - Tests: `test_dossier.py`, 14 tests op een verzonnen run zonder netwerk. Alle 259 tests groen. Goldens: `summary.json` krijgt `weeks_last8`; de prompts zijn ongewijzigd.
-- **Commits:** a8022e7 (stap 1)
+- **Gebouwd, stap 3 (fiche en documenten per ziekte):**
+  - `dienstreis/fiche.py`: per uitbraakprofiel `fiche.md` (front matter `status: concept | bevestigd`, `verified`, `bevestigd_door`, `bevestigd_op`, en elf vaste secties, van verwekker tot terugkeer naar België) en `documents.yaml` (sleuteldocumenten per niveau `be`, `eu`, `who`, `us`: id, organisatie, titel, datum, url, kernboodschap).
+  - Een uitspraak in de fiche verwijst naar haar document als `[id]`. Een lokale kopie in `~/.config/dienstreis/outbreaks/<id>/` wint zolang ze recenter nagekeken is, net zoals bij het landenregister.
+  - `dienstreis fiche <id>` toont de stand: status, ontbrekende secties, documenten per niveau en verwijzingen zonder document.
+  - `dienstreis fiche <id> --opstellen [--repo]` laat met webzoeken een concept opstellen (`prompts/fiche.md`). Het concept komt lokaal, of met `--repo` in de map van het profiel. Een bevestigde fiche wordt nooit overschreven: het concept komt dan als `fiche_concept.md` ernaast. Het modelspoor blijft lokaal (`fiche_trace.json`). De `fiche`-stap krijgt 80 beurten en 40 minuten, de webstap van een advies 25.
+  - De mailstap krijgt enkel een bevestigde fiche (`fiche`). Wat de mail zegt over isolatie, vaccinatie of vrijgave steunt daarop, en de getallen erin tellen als bron voor de cijfercontrole. Een concept komt nooit in de mail.
+  - De webstap krijgt bij elk advies de documenten en de fiche (`fiches`). Hij stelt nieuwere of nieuwe documenten voor (`document_updates`); die komen na een ja in de lokale `documents.yaml`, met dezelfde vraag als het landenregister. Een uitspraak die een nieuwere richtlijn tegenspreekt (`fiche_flags`), staat in de terminal en in het dossier en wordt nooit toegepast.
+  - Dossier: de fiche per uitbraak, met een zandkleurige banner zolang ze een concept is, verwijzingen die naar het document linken, en de vlaggen van de webstap. Onder Richtlijnen staan de documenten per niveau, de voorstellen van de webstap en de documenten van een land (`documents` in `countries/<ISO3>.yaml`). De Markdown van de fiche toont ruwe HTML als tekst en laat enkel web- en paginalinks door. Nieuwe afhankelijkheid: `markdown`.
+  - Tests: `test_fiche.py` (10) en een pijplijntest: de bevestigde fiche gaat naar de mail, een concept niet, en haar getallen gelden niet als verzonnen. De goldens zien geen fiche (bevroren in `test_golden.py`), zodat ze de analyse en de prompts vastleggen en niet de tekst van de fiche. De webprompt krijgt de nieuwe opdracht en `<fiches>`, de mailprompt de regel over de bevestigde fiche.
+- **Commits:** a8022e7 (stap 1), 63d1a55 (stap 2)
 - **Beslissingen (uitvoering):**
   - Zonder `dossier` in het antwoord zwijgt `questions_note`: er is dan niets om de vragen mee te vergelijken, en een melding zou een vraag onbeantwoord noemen die misschien wel beantwoord is.
   - De sleutel `skeleton_issues` in `summary.json` blijft zo heten, zodat oude en nieuwe samenvattingen dezelfde vorm houden.
@@ -54,6 +63,9 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - `dienstreis dossier` bouwt de pagina in de map van de run opnieuw, niet in het archief: daar blijft wat de run schreef, zoals voor `reply.txt` en `advies.json`.
   - Het dossier bevat de aanvraag en de casus, zoals het archief. Het blijft op deze pc en gaat nergens heen.
   - De lettertypes komen van Google Fonts, zoals in `permanentiefile`. Zonder internet valt de pagina terug op de systeemletters. Een pagina die als bestand opent, stuurt geen verwijzer mee.
+  - De fiche en de documenten kregen een eigen module (`fiche.py`) in plaats van een plaats in `outbreak.py`: die blijft over het profiel zelf gaan.
+  - Een fiche verwijst naar een vast id (`[who-ebola-factsheet]`), niet naar een nummer. Een nummer zou verschuiven telkens de webstap een document toevoegt, en de fiche zou dan naar het verkeerde document wijzen. Een nieuwere versie van een document houdt daarom ook het id van de vorige.
+  - Een nieuwere richtlijn die de fiche tegenspreekt, verandert de mail niet: de mail volgt de bevestigde fiche en zet de tegenspraak in `na_te_kijken`, zodat Steven beslist.
 
 ## F-014 · Een map per aanvraag: meerdere mails samen lezen
 - **Gevraagd:** 2026-09-25 — "I will make a folder per request, rather than a msg file, because I now have three emails for one request in one hour time"

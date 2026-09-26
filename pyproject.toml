@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Outbreak travel-risk advice for UGent dienstreizen: zone-level risk per outbreak profile (first: Ebola BVD DRC 2026), maps, epicurve, Dutch reply"
 requires-python = ">=3.10"
 dependencies = ["pandas>=2", "geopandas>=0.14", "shapely>=2", "matplotlib>=3.7", "pyyaml", "requests",
-                "olefile", "adjustText>=1.0", "tabulate", "python-docx", "pypdf", "pillow"]
+                "olefile", "adjustText>=1.0", "tabulate", "python-docx", "pypdf", "pillow", "markdown"]
 
 [project.optional-dependencies]
 api = ["anthropic"]

@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from dienstreis import advies, archive, countries, data, llm, log, outbreak, pipeline
+from dienstreis import advies, archive, countries, data, fiche, llm, log, outbreak, pipeline
 
 HERE = Path(__file__).parent
 GOLDEN = HERE / "golden"
@@ -97,6 +97,11 @@ def frozen():
         mp.setattr(countries, "LEGACY", GOLDEN / "advisories.yaml")
         mp.setattr(countries, "LOCAL", GOLDEN / "geen_lokaal_register")
         mp.setattr(data, "_stale", lambda *a, **k: False)
+        # the fiche and its documents are curated text that changes on its own schedule (F-015); the
+        # goldens pin the analysis and the prompts, so the web step sees no fiche here
+        mp.setattr(fiche, "load", lambda spec: None)
+        mp.setattr(fiche, "documents", lambda spec: {"verified": "", "path": "", "source": "",
+                                                     "levels": {lv: [] for lv in fiche.LEVELS}})
         yield mp
 
 
