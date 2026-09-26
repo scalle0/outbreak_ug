@@ -66,9 +66,10 @@ def sections(body: str) -> dict[str, str]:
 
 
 def _pick(spec, name: str, verified) -> tuple[Path | None, str]:
-    """The package's file or the local copy, whichever was verified last."""
+    """The package's file or the local copy, whichever was verified last. On the same date the local copy
+    wins: it was made from the package's version plus what was accepted that day."""
     pkg, loc = spec.dir / name, LOCAL / spec.id / name
-    if loc.exists() and (not pkg.exists() or verified(loc) > verified(pkg)):
+    if loc.exists() and (not pkg.exists() or verified(loc) >= verified(pkg)):
         return loc, "lokaal"
     return (pkg, "pakket") if pkg.exists() else (None, "")
 

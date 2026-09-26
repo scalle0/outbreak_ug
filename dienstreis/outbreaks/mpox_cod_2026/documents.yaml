@@ -1,0 +1,202 @@
+verified: '2026-09-26'
+be:
+- id: hgr-9900-mpox-vaccinatie
+  org: Hoge Gezondheidsraad
+  title: 'Advies 9900: Belgische vaccinatiestrategie tegen mpox (herziening 2026)'
+  date: '2026-03-26'
+  url: https://www.hgr-css.be/nl/advies/9900/belgische-vaccinatiestrategie-tegen-mpox-herziening-2026
+  key: MVA-BN in twee subcutane dosissen met minimaal 28 dagen interval, PrEP voor
+    risicogroepen en voor reizigers met verwachte hoogrisicoblootstelling, PEP voor
+    nauwe contacten idealiter binnen 4 dagen.
+- id: fod-mpox-klinische-richtlijn
+  org: FOD Volksgezondheid
+  title: 'Mpox: klinische richtlijnen voor zorgprofessionals'
+  date: '2024-09-24'
+  url: https://www.health.belgium.be/nl/organisatie-beleid/regelgeving-beleidsdocumenten/mpox-klinische-richtlijnen-zorgprofessionals
+  key: Bevat de Belgische case definitie, besmettelijke periode, aanpak van een vermoedelijk
+    geval, contactclassificatie en maatregelen, staalafnameprocedure, lijst erkende
+    labo's en clade-typering door het ITG.
+- id: zorg-mpox-infectieziekte
+  org: Departement Zorg
+  title: Mpox (infectieziekte)
+  date: '2026-09-26'
+  url: https://www.departementzorg.be/nl/infectieziekte/mpox
+  key: Meldingsplicht voor elk vermoedelijk geval zonder dat PCR-bevestiging nodig
+    is, contactonderzoek door Departement Zorg, en gratis Vlaamse postexpositievaccinatie
+    binnen 4 tot 14 dagen na contact.
+- id: itg-mpox-faq
+  org: Instituut voor Tropische Geneeskunde
+  title: Frequently Asked Questions about Mpox
+  date: '2026-09-07'
+  url: https://www.itg.be/en/mpox-faq
+  key: 'Reisgeneeskundig referentiepunt voor clade Ib: overdracht vooral via seksueel
+    contact, incubatie 5 tot 21 dagen, PCR-diagnostiek, en telefonisch contact met
+    arts, ITG of spoed bij symptomen na terugkeer.'
+- id: sciensano-rag-mpox-clade-ib
+  org: Sciensano (Risk Assessment Group)
+  title: RAG | Risk Assessment mpox clade Ib
+  date: '2026-05-20'
+  url: https://repository.sciensano.be/items/a7da53f7-4064-49a4-a00e-ecde3e7ab107
+  key: Meest recente Belgische risicobeoordeling voor mpox clade Ib, opgemaakt door
+    de door Sciensano gecoördineerde RAG, die de Risk Management Group adviseert over
+    maatregelen.
+- id: bioveiligheid-mpox-diagnostiek
+  org: Belgian Biosafety Server
+  title: Richtlijn biologische veiligheid voor diagnostiek en onderzoek inzake het
+    mpox-virus
+  date: '2024-08-22'
+  url: https://www.bioveiligheid.be/bioveiligheid-mpox-virus
+  key: PCR op klinische stalen zonder virale amplificatie gebeurt op BSL-2 met aanvullende
+    maatregelen, kweek en onderzoek op bevestigde stalen vragen BSL-3.
+eu:
+- id: ecdc-mpox-factsheet
+  org: ECDC
+  title: Factsheet for health professionals on mpox
+  date: '2026-04-01'
+  url: https://www.ecdc.europa.eu/en/all-topics-z/monkeypox/factsheet-health-professionals
+  key: Referentie voor clades, incubatie 5 tot 21 dagen, CFR 0 tot 11% in endemische
+    gebieden en tot 15% bij hiv met CD4 onder 200, PCR-diagnostiek, en het niet langer
+    aanbevelen van tecovirimat sinds maart 2026.
+- id: ecdc-mpox-public-health-measures
+  org: ECDC
+  title: Rapid scientific advice on public health measures for mpox (2024-2025)
+  date: '2025-01-14'
+  url: https://www.ecdc.europa.eu/en/infectious-disease-topics/mpox/rapid-scientific-advice-public-health-measures-mpox-2024-2025
+  key: Contacten 21 dagen opvolgen zonder quarantaine, isolatie van gevallen tot volledige
+    genezing van de uitslag, 21 dagen zelfmonitoring na terugkeer, en geen reisrestricties
+    of massavaccinatie.
+- id: ecdc-risk-assessment-clade-i-africa
+  org: ECDC
+  title: Risk assessment for the EU/EEA of the mpox epidemic caused by monkeypox virus
+    clade I in affected African countries
+  date: '2024-08-16'
+  url: https://www.ecdc.europa.eu/en/publications-data/risk-assessment-mpox-epidemic-monkeypox-virus-clade-i-africa
+  key: Risico matig voor reizigers met nauw contact met getroffen gemeenschappen en
+    laag voor de algemene EU/EEA-bevolking, met pre-travel vaccinatieadvies, snelle
+    isolatie van vermoedelijke gevallen en contactopsporing.
+- id: ecdc-mpox-monthly-surveillance
+  org: ECDC
+  title: Surveillance of mpox in the EU/EEA, monthly report, August 2026
+  date: '2026-09-15'
+  url: https://mpox-monthly.ecdc.europa.eu/
+  key: Van september 2025 tot augustus 2026 meldden 23 EU/EEA-landen 1.420 clade I-gevallen,
+    12% gehospitaliseerd en geen overlijdens, met ontbrekende clade-informatie bij
+    een deel van de meldingen.
+- id: ecdc-mpox-worldwide-overview
+  org: ECDC
+  title: Mpox worldwide overview, situation update 26 June 2026
+  date: '2026-06-26'
+  url: https://www.ecdc.europa.eu/en/mpox-worldwide-overview
+  key: De DRC meldde minder dan 100 bevestigde gevallen in de zes weken tot 14 juni
+    2026; het clade Ib-risico voor de EU/EEA is matig voor MSM en laag voor de algemene
+    bevolking.
+- id: ema-tecovirimat-mpox
+  org: EMA
+  title: EMA recommends restricting use of Tecovirimat SIGA
+  date: '2026-03-27'
+  url: https://www.ema.europa.eu/en/news/ema-recommends-restricting-use-tecovirimat-siga
+  key: Tecovirimat SIGA mag niet langer gebruikt worden voor mpox op basis van PALM007,
+    STOMP, UNITY en PLATINUM-UK; de indicaties pokken, koepokken en complicaties van
+    pokkenvaccinatie blijven.
+who:
+- id: who-mpox-factsheet
+  org: WHO
+  title: Mpox fact sheet
+  date: '2024-08-26'
+  url: https://www.who.int/news-room/fact-sheets/detail/monkeypox
+  key: 'Basisfiche: MPXV als orthopoxvirus met clades I en II, overdracht via nauw
+    contact, incubatie 1 tot 21 dagen, PCR op letselmateriaal, en isolatie tot de
+    korsten afgevallen zijn.'
+- id: who-don587-clade-ib-global
+  org: WHO
+  title: 'Disease Outbreak News: Broader transmission of mpox due to clade Ib MPXV,
+    global situation'
+  date: '2025-12-05'
+  url: https://www.who.int/emergencies/disease-outbreak-news/item/2025-DON587
+  key: Na het opheffen van de PHEIC op 5 september 2025 blijft er communautaire transmissie
+    in de DRC met beide clade I-subclades; contacten beperken 21 dagen hun verplaatsingen
+    en seksuele contacten, en er zijn geen reisbeperkingen.
+- id: who-don595-recombinant
+  org: WHO
+  title: 'Disease Outbreak News: Mpox, recombinant virus with genomic elements of
+    clades Ib and IIb, global situation'
+  date: '2026-02-14'
+  url: https://www.who.int/emergencies/disease-outbreak-news/item/2026-DON595
+  key: Twee gevallen van een clade Ib/IIb-recombinant bij reizigers zonder ernstige
+    uitkomst; WHO beoordeelt het risico als matig voor MSM met nieuwe of meerdere
+    partners en laag voor de algemene bevolking.
+- id: who-clinical-management-living-guideline
+  org: WHO
+  title: 'Clinical management and infection prevention and control for mpox: living
+    guideline, May 2025'
+  date: '2025-06-02'
+  url: https://who.int/publications/i/item/B09434
+  key: Aanbevelingen over isolatie van de patiënt, contact- en druppelvoorzorgen,
+    ondersteunende zorg, tecovirimat, antiretrovirale therapie bij hiv-coinfectie
+    en borstvoeding.
+- id: who-mva-bn-interim-guidance
+  org: WHO
+  title: 'MVA-BN (Modified Vaccinia Ankara, Bavarian Nordic) smallpox and mpox vaccine:
+    interim guidance'
+  date: '2024-11-27'
+  url: https://www.who.int/publications/i/item/B09202
+  key: SAGE beveelt MVA-BN aan in uitbraakcontext voor personen met hoog blootstellingsrisico
+    en contacten, en buiten uitbraken voor laboratoriumpersoneel; bruikbaar bij immuungecompromitteerden
+    en zwangeren.
+- id: who-mpox-sitrep-69
+  org: WHO
+  title: 'Multi-country outbreak of mpox, external situation report #69'
+  date: '2026-09-14'
+  url: https://www.who.int/publications/m/item/multi-country-outbreak-of-mpox--external-situation-report--69---14-september-2026
+  key: Meest recente WHO-situatierapport met landspecifieke cijfers, met globale data
+    tot 31 juli 2026 en Afrikaanse data tot 16 augustus 2026; de cijfers staan enkel
+    in de pdf.
+us:
+- id: cdc-mpox-clinical-signs
+  org: US CDC
+  title: Clinical Features of Mpox
+  date: '2026-01-14'
+  url: https://www.cdc.gov/monkeypox/hcp/clinical-signs/index.html
+  key: Incubatie ongeveer 1 tot 2 weken zonder besmettelijkheid, prodroom met lymfadenopathie,
+    uitslag in vier tot vijf stadia, ziekteduur 2 tot 4 weken en besmettelijkheid
+    tot alle korsten weg zijn.
+- id: cdc-mpox-clinical-care
+  org: US CDC
+  title: Caring for Patients with Mpox
+  date: '2026-01-15'
+  url: https://www.cdc.gov/monkeypox/hcp/clinical-care/index.html
+  key: Ondersteunende zorg en pijncontrole volstaan voor de meeste patiënten; brincidofovir,
+    VIGIV en cidofovir zijn beperkt beschikbaar, met een opsomming van de risicogroepen
+    voor ernstig verloop.
+- id: cdc-mpox-tecovirimat
+  org: US CDC
+  title: Tecovirimat (TPOXX) for Treatment of Mpox
+  date: '2026-03-20'
+  url: https://www.cdc.gov/monkeypox/hcp/clinical-care/tecovirimat.html
+  key: Tecovirimat is niet goedgekeurd voor mpox en blijft in de VS beschikbaar via
+    expanded access (EA-IND) voor bepaalde risicogroepen, ondanks PALM007 en STOMP
+    die geen snellere genezing aantoonden.
+- id: cdc-mpox-vaccine-considerations
+  org: US CDC
+  title: Mpox Vaccine Considerations for Clinicians
+  date: '2026-09-04'
+  url: https://www.cdc.gov/monkeypox/hcp/vaccine-considerations/index.html
+  key: Vaccinatie aanbieden aan reizigers naar getroffen landen die hoogrisicoactiviteiten
+    verwachten; effectiviteit 66 tot 90% na twee dosissen en PEP idealiter binnen
+    4 dagen, mogelijk tot dag 14.
+- id: cdc-mpox-public-health-strategy
+  org: US CDC
+  title: Public Health Guidance for Mpox
+  date: '2026-02-10'
+  url: https://www.cdc.gov/monkeypox/php/public-health-strategy/index.html
+  key: Snelle clade-specifieke testing en isolatie bij reisanamnese naar clade I-gebieden,
+    contactidentificatie vanaf 4 dagen voor ziektebegin en actieve monitoring van
+    hoog- en intermediair-risicocontacten.
+- id: cdc-mpox-travel
+  org: US CDC
+  title: Preventing Mpox While Traveling
+  date: '2026-01-23'
+  url: https://www.cdc.gov/monkeypox/travel/index.html
+  key: 'Concrete reizigersinstructies: vaccineer indien mogelijk 6 weken voor vertrek,
+    vermijd huidcontact, gedeeld eetgerei en beddengoed van patiënten, en reis niet
+    als je zelf ziek bent.'

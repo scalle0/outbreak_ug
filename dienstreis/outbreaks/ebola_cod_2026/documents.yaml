@@ -1,0 +1,235 @@
+verified: '2026-09-26'
+be:
+- id: fod-vhk-procedures-zorgprofessionals
+  org: FOD Volksgezondheid
+  title: 'Virale hemorragische koorts (ebola): procedures voor zorgprofessionals'
+  date: '2026-07-15'
+  url: https://www.health.belgium.be/nl/professionals/gezondheidsprofessionals/menselijke-gezondheid/beheer-risicos-gezondheidscrisissen/bestrijding-infectieziekten/infectieziekten/virale-hemorragische-koorts-ebola-lassa-crimean-congo
+  key: 'Bundelt de Belgische VHK-procedures: de eerstelijnsarts maakt de risico-inschatting
+    op drie criteria en de regionale gezondheidsautoriteit herbeoordeelt in overleg
+    met de behandelende arts.'
+- id: fod-vhk-acties-bevestigd-geval
+  org: FOD Volksgezondheid
+  title: Acties bij een bevestigd geval (dry/wet)
+  date: '2026-07-27'
+  url: https://www.health.belgium.be/nl/professionals/gezondheidsprofessionals/menselijke-gezondheid/beheer-risicos-gezondheidscrisissen/bestrijding-infectieziekten/infectieziekten/virale-hemorragische-koorts-ebola-lassa-crimean-congo/risico-inschatting-melding-virale-hemorragische-koorts-0
+  key: 'Operationeel kernstuk voor België: meldingsketen via regionale gezondheidsautoriteit,
+    FOD VVVL, Sciensano en RMG, opvang in referentieziekenhuis met PAPR/FFP3, en contactopvolging
+    21 dagen met laag- en hoogrisicoregels.'
+- id: zorg-vhk-filovirussen
+  org: Departement Zorg
+  title: Virale Hemorragische Koorts (incl. Ebola, Lassa, Crimean-Congo)
+  date: '2026-09-26'
+  url: https://www.departementzorg.be/nl/infectieziekte/virale-hemorragische-koorts-incl-ebola-lassa-crimean-congo
+  key: Vlaamse richtlijnpagina met gevalsdefinitie, incubatie 2 tot 21 dagen (meestal
+    9), besmettelijkheid tijdens de hele symptomatische periode, meldingsplicht met
+    telefoonnummer 02 512 93 89 en NRC bij Sciensano voor de diagnostiek.
+- id: zorg-faq-testen-zonder-blootstelling
+  org: Departement Zorg
+  title: 'Casusvraag: een patiënt zonder blootstellingsrisico, maar wel afkomstig
+    uit een risicogebied, wordt die dan getest op ebola?'
+  date: '2026-09-26'
+  url: https://www.departementzorg.be/nl/faq/casusvraag-een-patient-zonder-blootstellingsrisico-maar-wel-afkomstig-uit-een-risicogebied-wordt-die-dan-getest-op-ebola
+  key: Testen vraagt zowel klinische symptomen als een relevante blootstelling tijdens
+    de incubatieperiode; het Departement Zorg beoordeelt geval per geval met de behandelende
+    arts, herkomst alleen volstaat niet.
+- id: zorg-faq-reizigers-huisarts
+  org: Departement Zorg
+  title: Wordt aan reizigers uit risicogebieden gevraagd wie hun huisarts is, en worden
+    huisartsen daar eventueel over geïnformeerd?
+  date: '2026-09-26'
+  url: https://www.departementzorg.be/nl/faq/wordt-aan-reizigers-uit-risicogebieden-gevraagd-wie-hun-huisarts-en-worden-huisartsen-daar-eventueel-over-geinformeerd
+  key: Terugkeerders uit DRC en Oeganda krijgen een flyer, worden tijdens de terugvlucht
+    gesensibiliseerd om 21 dagen alert te blijven en moeten bij klachten eerst telefonisch
+    een arts contacteren in plaats van naar wachtzaal of spoed te gaan.
+- id: sciensano-rag-coordinatie
+  org: Sciensano
+  title: Coordination of the Risk Assessment Group
+  date: '2007-01-01'
+  url: https://www.sciensano.be/en/projects/coordination-risk-assessment-group
+  key: Sciensano coördineert de RAG, die het risico voor België inschat en maatregelen
+    voorstelt aan de RMG; de RMG beslist en communiceert, wat de rolverdeling bij
+    een importgeval vastlegt.
+- id: itg-ebola-uitbraak-drc-oeganda
+  org: ITG
+  title: Ebola outbreak in the DRC and Uganda
+  date: '2026-05-17'
+  url: https://www.itg.be/en/health-stories/articles/ebola-outbreak-in-the-drc-and-uganda
+  key: ITG stelt dat er geen goedgekeurd vaccin of behandeling tegen Bundibugyo-virus
+    is, dat het risico voor de bevolking in België laag blijft, en dat GeneXpert-PCR
+    deze variant niet detecteert.
+- id: hgr-9188-ebola
+  org: Hoge Gezondheidsraad
+  title: Advies 9188 - Ebola
+  date: '2014-10-27'
+  url: https://www.hgr-css.be/nl/advies/9188/ebola
+  key: Het enige HGR-advies over ebola; het behandelt repatriëring van Belgen en aanbevelingen
+    voor huisartsen en bevat geen vaccinatieaanbeveling tegen Bundibugyo-virus.
+eu:
+- id: ecdc-tab-bdbv-2026
+  org: ECDC
+  title: 'Threat assessment brief: Ebola disease outbreak caused by Bundibugyo virus,
+    Democratic Republic of the Congo and Uganda, 2026'
+  date: '2026-05-21'
+  url: https://www.ecdc.europa.eu/en/publications-data/threat-assessment-brief-ebola-disease-outbreak-caused-bundibugyo-virus-democratic
+  key: 'Formele EU-risicobeoordeling: risico voor de algemene bevolking in de EU/EER
+    zeer laag, geen geregistreerd vaccin of specifieke behandeling, en terugkeerders
+    met compatibele symptomen binnen 21 dagen isoleren zich en melden reisgeschiedenis.'
+- id: ecdc-risicoclassificatie-reizigers
+  org: ECDC
+  title: 'Risk classification and contact tracing of travellers returning from affected
+    areas: Ebola disease outbreak 2026 caused by Bundibugyo virus'
+  date: '2026-06-15'
+  url: https://www.ecdc.europa.eu/en/publications-data/risk-classification-and-contact-tracing-travellers-returning-affected-areas-ebola
+  key: 'De operationele indeling die bepaalt wat je een terugkeerder oplegt: vier
+    blootstellingscategorieën, 21 dagen zelfmonitoring voor geen, beroepsmatig laag
+    en laag risico, 21 dagen actieve opvolging met tweemaal daagse rapportering bij
+    hoog risico.'
+- id: ecdc-uitbraak-drc
+  org: ECDC
+  title: Ebola disease outbreak in the Democratic Republic of the Congo
+  date: '2026-09-25'
+  url: https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda
+  key: 'Actueelste EU-cijfers: 7.890 bevestigde gevallen en 3.799 overlijdens, CFR
+    48,1% (stand 23 september 2026), met importatierisico voor de EU/EER dat zeer
+    laag blijft.'
+- id: eurosurveillance-screening-europa
+  org: Eurosurveillance
+  title: 'Screening and monitoring of travellers returning from countries affected
+    by Bundibugyo virus: an overview of European approaches, July 2026'
+  date: '2026-07-16'
+  url: https://doi.org/10.2807/1560-7917.ES.2026.31.28.2600578
+  key: Beschrijft dat Europa risicogebaseerd werkt zonder routinescreening aan de
+    grens, en dat België geen formele meldingsverplichting tussen ngo's en regionale
+    autoriteiten heeft maar steunt op arbeidsgeneeskunde plus regionale autoriteit.
+- id: eurosurveillance-geimporteerd-geval-frankrijk
+  org: Eurosurveillance
+  title: An imported case of Bundibugyo virus infection, France, June 2026
+  date: '2026-08-06'
+  url: https://doi.org/10.2807/1560-7917.ES.2026.31.31.2600627
+  key: 'Het enige Europese importgeval: zelfmelding door een intensivist na inzet
+    in Ituri, discordante eerstelijnstesten bij lage virale lading, remdesivir, ontslag
+    na 11 dagen en vijf laagrisicocontacten zonder secundaire gevallen.'
+who:
+- id: who-don616
+  org: WHO
+  title: 'Disease Outbreak News: Ebola disease caused by Bundibugyo virus, Democratic
+    Republic of the Congo'
+  date: '2026-08-28'
+  url: https://www.who.int/emergencies/disease-outbreak-news/item/2026-DON616
+  key: 'Basisprofiel van de uitbraak: BDBV als orthoebolavirus, incubatie 2 tot 21
+    dagen zonder besmettelijkheid voor symptoomstart, overdrachtsroutes, geen goedgekeurd
+    vaccin of therapie, en start van Ervebo-vaccinatie op 27 augustus 2026.'
+- id: who-don617
+  org: WHO
+  title: 'Disease Outbreak News: Ebola disease caused by Bundibugyo virus, Democratic
+    Republic of the Congo'
+  date: '2026-09-10'
+  url: https://www.who.int/emergencies/disease-outbreak-news/item/2026-DON617
+  key: 'Meest recente WHO-stand: 6.778 bevestigde gevallen en 3.269 overlijdens, CFR
+    48,3% (stand 7 september 2026), PARTNERS-studie met meer dan 300 ingesloten patiënten,
+    en geen reis- of handelsbeperkingen.'
+- id: who-filovirus-klinische-richtlijnen
+  org: WHO
+  title: WHO guidelines for the clinical management of filovirus disease
+  date: '2026-06-11'
+  url: https://www.who.int/publications/i/item/B09774
+  key: 'Referentie voor de klinische zorg, uitdrukkelijk ook voor Bundibugyo-virus:
+    monitoring, orale en intraveneuze vochttherapie, shock en vasopressoren, bacteriële
+    co-infectie, hemorragische complicaties en opvolging van overlevenden.'
+- id: who-noodrichtlijn-ervebo-bdbv
+  org: WHO
+  title: WHO emergency guidance on the use of the licensed Ebola vaccine during Bundibugyo
+    virus disease outbreaks, 31 August 2026
+  date: '2026-09-01'
+  url: https://www.who.int/fr/publications-detail/B09884
+  key: Bepaalt dat Ervebo bij BVD-uitbraken alleen binnen een onderzoeksprotocol mag
+    worden gebruikt omdat het bewijs voor klinisch relevante bescherming bij mensen
+    ontbreekt.
+- id: who-eul-diagnostische-test-bdbv
+  org: WHO
+  title: WHO adds first diagnostic test for Ebola Bundibugyo virus to its Emergency
+    Use Listing
+  date: '2026-07-02'
+  url: https://www.who.int/news/item/02-07-2026-who-adds-first-diagnostic-test-for-ebola-bundibugyo-virus-to-its-emergency-use-listing
+  key: Eerste kwaliteitsgecontroleerde moleculaire test voor BDBV op bloed, wat verklaart
+    waarom de diagnostiek van deze stam pas sinds juli 2026 op een gevalideerde PCR
+    kan steunen.
+- id: who-factsheet-ebola
+  org: WHO
+  title: 'Fact sheet: Ebola disease'
+  date: '2025-04-24'
+  url: https://www.who.int/news-room/fact-sheets/detail/ebola-disease
+  key: 'Generieke achtergrond en het onderscheid tussen soorten: incubatie 2 tot 21
+    dagen, geen overdracht voor symptoomstart, virus tot 15 maanden in sperma, en
+    mAb114, REGN-EB3, Ervebo en Zabdeno/Mvabea enkel goedgekeurd voor Ebolavirus (Zaire).'
+us:
+- id: cdc-han-00530
+  org: US CDC
+  title: 'CDCHAN-00530: Ebola Disease Outbreak in the Democratic Republic of the Congo
+    and Uganda'
+  date: '2026-05-19'
+  url: https://www.cdc.gov/han/php/notices/han00530.html
+  key: 'Geeft de klinische drempel en het testvenster: blootstelling beoordelen in
+    de 21 dagen voor symptoomstart, direct isoleren bij blootstelling plus compatibele
+    symptomen, en negatief resultaat pas geldig op een staal minstens 72 uur na symptoomstart.'
+- id: cdc-reisadvies-niveau-2
+  org: US CDC
+  title: 'Travel Health Notice Level 2: Ebola Bundibugyo Virus Disease in the Democratic
+    Republic of the Congo and Uganda'
+  date: '2026-08-28'
+  url: https://wwwnc.cdc.gov/travel/notices/level2/ebola-drc-uganda
+  key: Concreetste lijst van wat een reiziger doet en laat, met zelfmonitoring tijdens
+    het verblijf en 21 dagen na vertrek en telefonisch aanmelden voor zorgcontact.
+- id: cdc-interimrichtlijn-reizigers
+  org: US CDC
+  title: Interim Guidance for Public Health Assessment and Management of Travelers
+    from Countries Affected by the 2026 Ebola Outbreak
+  date: '2026-08-07'
+  url: https://www.cdc.gov/ebola/php/emergency-guidance/index.html
+  key: Toont het strengste opvolgingsmodel voor terugkeerders uit de DRC (tweemaal
+    daags in persoon, 21 dagen, thuisblijven en reisbeperkingen) en het onderscheid
+    met hoogrisicoblootstellingen bij zorg- en begrafenispersoneel.
+- id: cdc-vhk-publieke-gezondheid-beheer
+  org: US CDC
+  title: Public Health Management of People with Suspected or Confirmed VHFs or High-risk
+    Exposures
+  date: '2026-08-07'
+  url: https://www.cdc.gov/viral-hemorrhagic-fevers/php/public-health-strategy/people-with-suspected-or-confirmed-vhf-or-high-risk.html
+  key: Formuleert isolatie tot uitsluiting van VHK of tot niet langer infectieus,
+    en quarantaine met dagelijkse opvolging en reisverbod voor hoogrisicocontacten
+    tijdens de incubatieperiode.
+- id: cdc-mmwr-risicobeoordeling-vs
+  org: US CDC (MMWR)
+  title: Assessment of Risk to the U.S. Population from the Ebola Disease Outbreak
+    Caused by Bundibugyo Virus, 2026
+  date: '2026-06-11'
+  url: https://www.cdc.gov/mmwr/volumes/75/wr/mm7522e2.htm
+  key: Geeft het historische CFR-bereik van 25% tot 50% voor Oeganda 2007 en DRC 2012
+    en bevestigt dat er geen goedgekeurde vaccins of geneesmiddelen voor BVD bestaan.
+- id: cdc-mmwr-klinische-kenmerken-oeganda
+  org: US CDC (MMWR)
+  title: 'Notes from the Field: Clinical Characteristics of Patients with Ebola Disease
+    Caused by Bundibugyo Virus, Uganda, 2026'
+  date: '2026-09-10'
+  url: https://www.cdc.gov/mmwr/volumes/75/wr/mm7535a2.htm
+  key: 'Beste klinische beschrijving bij vroege herkenning en goede zorg: symptoomfrequenties,
+    bloedingen bij slechts 17%, labopatroon bij opname, remdesivir via compassionate
+    use en CFR 10% op 20 bevestigde gevallen.'
+- id: cdc-mmwr-kenmerken-monitoring-drc
+  org: US CDC (MMWR)
+  title: 'Notes from the Field: Characteristics and Monitoring of the 2026 Outbreak
+    of Ebola Disease Caused by Bundibugyo Virus, Democratic Republic of the Congo,
+    August 2026'
+  date: '2026-09-10'
+  url: https://www.cdc.gov/mmwr/volumes/75/wr/mm7535e1.htm
+  key: 'Kwantificeert waarom de letaliteit ter plaatse zo hoog blijft: 5.458 bevestigde
+    gevallen en 2.606 overlijdens tot 21 augustus 2026, met 59% van de overlijdens
+    buiten de behandelcentra.'
+- id: cdc-situatieoverzicht
+  org: US CDC
+  title: 'Ebola Outbreak: Current Situation'
+  date: '2026-09-23'
+  url: https://www.cdc.gov/ebola/situation-summary/index.html
+  key: 'Geeft de geografische gradatie van het reisadvies: alle reizen naar Ituri
+    en Noord-Kivu vermijden, niet-noodzakelijke reizen naar Haut-Uélé en Tshopo heroverwegen.'

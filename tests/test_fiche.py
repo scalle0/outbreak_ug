@@ -63,6 +63,8 @@ def test_the_local_copy_wins_only_when_newer(local, tmp_path):
     d = fiche.documents(sp)
     assert d["source"] == "lokaal" and d["levels"]["be"][0]["id"] == "sciensano-procedure"
     assert fiche.check_documents(d) == []
+    (local / fiche.DOCUMENTS).write_text(yaml.safe_dump({**DOCS, "verified": "2026-09-01"}), encoding="utf-8")
+    assert fiche.documents(sp)["source"] == "lokaal"                # same day: what was accepted that day
 
 
 def test_only_a_confirmed_fiche_reaches_the_letter(local):
@@ -110,8 +112,9 @@ def test_proposals_are_kept_only_after_a_yes_and_flags_never(local, monkeypatch,
     assert not (local / fiche.DOCUMENTS).exists()
     out = capsys.readouterr().out
     assert "FICHE ebola_cod_2026, Incubatie" in out and "DOCUMENT ebola_cod_2026 (Europa, nieuw)" in out
+    before = [x["title"] for x in fiche.documents(sp)["levels"]["eu"]]       # the package's list, if any
     assert advies.maybe_apply_web(WEB, apply_web=True, outbreak_id=sp.id, specs=[sp]) is True
-    assert [x["title"] for x in fiche.documents(sp)["levels"]["eu"]] == ["Rapid risk assessment"]
+    assert [x["title"] for x in fiche.documents(sp)["levels"]["eu"]] == before + ["Rapid risk assessment"]
     assert (local / fiche.FICHE).read_text(encoding="utf-8") == text          # the flag changed nothing
 
 

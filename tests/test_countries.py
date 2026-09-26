@@ -48,6 +48,13 @@ def test_a_newer_local_copy_wins_and_an_older_one_does_not():
     assert countries.load("COD")["pretravel"] != "oud"
 
 
+def test_a_local_copy_of_the_same_day_wins():
+    """Accepted the day the package entry was verified: the finding must not wait for the next day."""
+    c = {k: v for k, v in countries.load("COD").items() if not k.startswith("_")}
+    countries.save_local({**c, "pretravel": "vandaag aanvaard"})
+    assert countries.load("COD")["pretravel"] == "vandaag aanvaard"
+
+
 def test_the_02_advisories_table_is_still_read_when_newer():
     countries.LEGACY.write_text(yaml.safe_dump({
         "verified": date(2099, 1, 1), "default": {"fod": "niet_essentieel_afgeraden", "fod_reason": "x", "cdc": 1},

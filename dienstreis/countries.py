@@ -51,7 +51,7 @@ def load(iso3: str | None) -> dict | None:
     c, source = (_read(pkg), "package") if pkg.exists() else (None, None)
     if loc.exists():
         mine = _read(loc)
-        if c is None or _newer(mine, c):
+        if c is None or not _newer(c, mine):     # a tie goes to the local copy: package plus what was accepted
             c, source = mine, str(loc)
     if c is None:
         return None
