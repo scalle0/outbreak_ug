@@ -3,9 +3,9 @@
     1 read the request (.msg/.eml/.txt, or a folder with all its mails)  deterministic
     2 itinerary from the mail -> stops.yaml, user confirms       LLM (stops)
       and the outbreaks that apply to it (routing)               deterministic
-    3 per outbreak: data, risk per stop, map, epicurve; skeleton, QA   deterministic
+    3 per outbreak: data, risk per stop, map, epicurve; facts, QA   deterministic
     4 optional: advisories, border measures and news not yet in the data   LLM with web access (web)
-    5 reply mail and notes for Steven                            LLM (reply)
+    5 short reply to An, dossier fields for Steven               LLM (reply)
     A case or a question (type casus / vraag) takes the same road without map or curve, with its
     own web and reply prompts (web_consult, consult). A mail that looks like health data about a
     person is only sent after the user agrees (decision 2026-09-25).
@@ -217,30 +217,51 @@ def maybe_apply_web(webd: dict, apply_web: bool, outbreak_id: str = outbreak.DEF
         print(f"  bewaard in {countries.LOCAL} (zet het ook in de repo als het blijvend is)")
 
 
-def _soft_notes(reply: str, overall: str | None, specs=None, coverage: bool = True) -> list[str]:
+def _soft_notes(d: dict, overall: str | None, specs=None, coverage: bool = True,
+                questions: list[str] | None = None) -> list[str]:
     """Things worth one more try but never worth refusing a correct reply over."""
     specs = specs or []
-    limit = mail.MAX_WORDS + 100 * max(0, len(specs) - 1) if coverage else mail.MAX_WORDS
+    reply = d["reply"]
+    limit = mail.MAX_WORDS + 50 * max(0, len(specs) - 1) if coverage else mail.MAX_WORDS
     return [n for n in (mail.verdict_note(reply, overall), mail.length_note(reply, limit),
-                        mail.coverage_note(reply, specs) if coverage else None) if n]
+                        mail.coverage_note(reply, specs) if coverage else None,
+                        mail.questions_note(d.get("dossier"), questions or [])) if n]
+
+
+# the dossier fields of the reply step, in the order the notes list them
+DOSSIER_FIELDS = (("beoordeling", "Beoordeling"), ("weggelaten", "Uit de mail gelaten"),
+                  ("na_te_kijken", "Na te kijken"), ("toezeggingen", "Toezegging in de mail"),
+                  ("vragen_aan_behandelaar", "Vraag aan de behandelende arts"))
+
+
+def dossier_notes(d: dict) -> list[str]:
+    """The model's notes for Steven as lines: the dossier fields, then any free suggestions."""
+    dos = d.get("dossier") or {}
+    out = []
+    for key, label in DOSSIER_FIELDS:
+        items = dos.get(key) or []
+        out += [f"{label}: {x}" for x in (items if isinstance(items, list) else [items]) if str(x).strip()]
+    return out + [str(x) for x in d.get("suggestions") or []]
 
 
 def write_reply(backend, inputs: dict, sources: list[str], overall: str | None = None,
-                numbers: bool = True, specs=None, step: str = "reply", coverage: bool = True) -> dict:
+                numbers: bool = True, specs=None, step: str = "reply", coverage: bool = True,
+                questions: list[str] | None = None) -> dict:
     """Write the reply, check it against the facts it came from, and allow one repair round.
 
     `issues` blocks the widget (style, invented numbers); `notes` only warns (the rule verdict not
-    coming back in the letter). Both drive the repair round.
+    coming back in the letter, a letter grown too long, a question of An left unanswered). Both
+    drive the repair round.
     """
-    d = llm.ask_json(backend, step, inputs, required=["reply", "suggestions"], specs=specs)
+    d = llm.ask_json(backend, step, inputs, required=["reply"], specs=specs)
     issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
-    notes = _soft_notes(d["reply"], overall, specs, coverage)
+    notes = _soft_notes(d, overall, specs, coverage, questions)
     if issues or notes:   # one repair round with the concrete problems
         _say("Controle faalt (" + "; ".join(issues + notes) + "), herstelronde")
         inputs = {**inputs, "vorige_versie": d["reply"], "problemen": issues + notes}
-        d = llm.ask_json(backend, step, inputs, required=["reply", "suggestions"], repair=True, specs=specs)
+        d = llm.ask_json(backend, step, inputs, required=["reply"], repair=True, specs=specs)
         issues = mail.check_reply(d["reply"], sources, numbers=numbers, specs=specs)
-        notes = _soft_notes(d["reply"], overall, specs, coverage)
+        notes = _soft_notes(d, overall, specs, coverage, questions)
     d["reply"] = d["reply"].replace("\r\n", "\n").strip() + "\n"
     d["issues"], d["notes"] = issues, notes
     return d
@@ -413,8 +434,11 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
 
     _say("Mail schrijven")
     stops_view = [_stop_view(s) for s in summary["stops"]]
+    feiten_txt = (outp / "feiten.txt").read_text(encoding="utf-8")
+    # map and curve go along with a trip advice; a case or a question keeps them in the dossier
+    attach = list(summary.get("attachments") or []) if kind == "reisadvies" else []
     inputs = {"vandaag": date.today().isoformat(),
-              "skelet": (outp / "reply_skeleton.txt").read_text(encoding="utf-8"),
+              "feiten": feiten_txt, "bijlagen": [Path(a).name for a in attach],
               "risico_per_stop": stops_view, "regel_oordeel": summary["overall"], "epi": summary["epi"],
               "qa": {k: v for k, v in qa.items() if k not in ("ecdc", "far_stops_in_inset")}, "ecdc": qa.get("ecdc"),
               "aanvraag": {k: d.get(k) for k in ("traveller", "note", "nationality", "profile", "work_nature", "transport",
@@ -431,22 +455,24 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
             for i, o in summary["outbreaks"].items() if i != ids[0]]
     if unmatched:
         inputs["ziekten_zonder_profiel"] = unmatched
-    if kind != "reisadvies":                      # a case letter: facts, not a trip skeleton or a verdict
+    if kind != "reisadvies":                      # a case letter: facts, not a trip verdict
         inputs = {"vandaag": inputs["vandaag"], "type": kind, "casus": trip.get("situation"),
-                  "feiten": inputs["skelet"],
-                  **{k: v for k, v in inputs.items() if k not in ("vandaag", "skelet", "regel_oordeel", "overrules",
+                  **{k: v for k, v in inputs.items() if k not in ("vandaag", "regel_oordeel", "overrules",
                                                                    "regel_oordeel_zonder_overrule")}}
     # every number in the mail must come from one of these; see mail.unknown_numbers
-    sources = [(outp / "reply_skeleton.txt").read_text(encoding="utf-8"), json.dumps(summary, ensure_ascii=False, default=str),
+    sources = [feiten_txt, json.dumps(summary, ensure_ascii=False, default=str),
                json.dumps(webd, ensure_ascii=False, default=str) if webd else "", req_in["body"] or ""]
+    questions = d.get("questions_from_an") or []
     if kind == "reisadvies":
-        r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs)
+        r = write_reply(be, inputs, sources, overall=summary["overall"], numbers=numbers, specs=specs,
+                        questions=questions)
     else:
         r = write_reply(be, inputs, sources, overall=None, numbers=numbers, specs=specs, step="consult",
-                        coverage=False)
+                        coverage=False, questions=questions)
+    r["reply"] = mail.with_redirect(r["reply"], bool(trip.get("sent_to_ugent_address")))
 
     (outp / "reply.txt").write_text(r["reply"], encoding="utf-8")
-    sugg = list(r.get("suggestions", []))
+    sugg = dossier_notes(r)
     for n in r["notes"]:
         sugg.insert(0, n)
     for label, _ in unreachable:
@@ -492,7 +518,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     if outlook and not r["issues"]:
         from .outlook import draft
         try:
-            draft(req, r["reply"], summary.get("attachments") or [summary["map"], summary["epicurve"]])
+            draft(req, r["reply"], attach)
             print("Conceptmail staat open in Outlook (niet verzonden).")
         except Exception as e:
             print(f"Outlook-concept niet gelukt ({e}); gebruik de widget.")

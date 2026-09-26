@@ -19,8 +19,7 @@ overall:                               # no rules apply: the verdict is the clin
 
 outside_note: geen uitbraakprofiel voor dit land; of er een uitbraak loopt, zegt de webstap
 
-conditions:
-  - "[[CLAUDE: voorwaarden die uit de landfeiten of de webstap volgen, of schrappen]]"
+conditions: []                         # what follows from the country facts or the web step, the letter adds itself
 
 sources:
   mail: []

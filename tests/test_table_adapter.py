@@ -123,9 +123,8 @@ def test_a_single_report_date_gives_no_curve(table_profile, no_drawing, tmp_path
     s = pipeline.analyse(TRIP, tmp_path / "out", asof="2026-09-20")
     assert s["epi"]["weekly_cases_last4_full_weeks"] == {} and s["epicurve"] is None
     assert len(s["attachments"]) == 1                             # the map only
-    skel = (tmp_path / "out" / "reply_skeleton.txt").read_text(encoding="utf-8")
+    skel = (tmp_path / "out" / "feiten.txt").read_text(encoding="utf-8")
     assert "6 bevestigde gevallen" in skel and "per volledige week" not in skel
-    assert "In bijlage de kaart met het reisschema." in skel          # no curve promised
 
 
 def test_an_empty_table_does_not_stop_the_advice(table_profile, no_drawing, tmp_path):

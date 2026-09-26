@@ -1,4 +1,4 @@
-"""The deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA.
+"""The deterministic core: data, risk per stop, map, epicurve, the facts of the reply, QA.
 
 Everything here is arithmetic on the itinerary and the outbreak's figures; no model is involved. Kept
 apart from cli.py so that `advies` can call it without importing the argument parser, and so that
@@ -86,7 +86,7 @@ def _stops(rs) -> list[dict]:
 
 def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False,
             spec=None, specs=None, draw: bool = True) -> dict:
-    """Deterministic core: data, risk per stop, map, epicurve, reply skeleton, QA. Returns summary.
+    """Deterministic core: data, risk per stop, map, epicurve, facts, QA. Returns summary.
 
     `spec` or `specs` name the outbreaks to assess the trip against; by default those of the trip
     (`outbreaks:` in stops.yaml), else the routing.
@@ -124,11 +124,11 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     else:
         overall, rule_overall, overrides = main["overall"], main["rule_overall"], main["overrides"]
 
-    redirect = bool(trip.get("sent_to_ugent_address", False))
-    skel = mail.skeleton(trip, main["rs"], main["epi"], main["qa"]["ecdc"], redirect,
-                         others=[(p["rs"], p["epi"], p["qa"]["ecdc"]) for p in others], overrides=overrides,
-                         kind=trip.get("type") or "reisadvies")
-    (out / "reply_skeleton.txt").write_text(skel, encoding="utf-8")
+    # the facts the letter is written from and every number in it must trace to; not a letter frame
+    skel = mail.feiten(trip, main["rs"], main["epi"], main["qa"]["ecdc"],
+                       others=[(p["rs"], p["epi"], p["qa"]["ecdc"]) for p in others], overrides=overrides,
+                       kind=trip.get("type") or "reisadvies")
+    (out / "feiten.txt").write_text(skel, encoding="utf-8")
     trip_iso = list(dict.fromkeys(r.country for r in main["rs"] if r.country))
     (out / "sources.txt").write_text(mail.sources_block(main["spec"], trip_iso, [p["spec"] for p in others]),
                                      encoding="utf-8")

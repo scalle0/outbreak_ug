@@ -88,16 +88,15 @@ def test_each_outbreak_has_its_own_map_and_curve(two_outbreaks, tmp_path):
                      "kaart_reiziger_m_ebola_cod_2026.png", "kaart_reiziger_m_test_cod.png"]
 
 
-def test_the_skeleton_covers_every_outbreak(two_outbreaks, tmp_path):
+def test_the_facts_cover_every_outbreak(two_outbreaks, tmp_path):
     pipeline.analyse(TRIP, tmp_path / "out", asof="2026-09-19")
-    skel = (tmp_path / "out" / "reply_skeleton.txt").read_text(encoding="utf-8")
+    skel = (tmp_path / "out" / "feiten.txt").read_text(encoding="utf-8")
     assert "Voor Testziekte:" in skel
     testblock = skel.split("Voor Testziekte:")[1].split("Stand van zaken")[0]
     assert "Kinshasa" in testblock and "Kisangani" not in testblock      # only where it weighs
     assert "Stand van zaken Ebola (Bundibugyo-virus)" in skel and "Stand van zaken Testziekte" in skel
-    assert skel.count("go/no-go-datum en criteria") == 1                 # the same condition once
-    assert "Testvoorwaarde voor de testziekte." in skel
-    assert "de kaarten met het reisschema en de bijgewerkte epidemiecurves" in skel
+    assert skel.count("Temperatuur opvolgen tot 21 dagen") == 1          # the same condition once
+    assert "Testvoorwaarde voor de testziekte." in skel and "[[" not in skel
 
 
 def test_an_override_applies_to_the_outbreak_it_names(two_outbreaks, tmp_path):
@@ -140,7 +139,7 @@ def test_a_trip_no_outbreak_applies_to_is_written_at_country_level(tmp_path):
     s = pipeline.analyse(ADDIS, tmp_path / "out", asof="2026-09-19")
     assert s["outbreak"] == "geen" and s["overall_level"] is None and s["attachments"] == []
     assert s["epi"] is None and s["map"] is None and s["qa"]["zone_sum_matches_national"] is None
-    skel = (tmp_path / "out" / "reply_skeleton.txt").read_text(encoding="utf-8")
+    skel = (tmp_path / "out" / "feiten.txt").read_text(encoding="utf-8")
     assert "geen uitbraakprofiel van toepassing" in skel
     assert "Stand van zaken" not in skel and "In bijlage" not in skel
     assert "Pretravel consult en registratie via Travellers Online." in skel

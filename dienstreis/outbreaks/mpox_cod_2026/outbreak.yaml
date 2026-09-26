@@ -56,9 +56,8 @@ flags:
   # cases over 42 days, so this is the same rate (20 per 14 days), not a value Steven confirmed.
   rising_recent: 60
 
-conditions:                            # after the pretravel line
+conditions:                            # for the traveller, in feiten.txt after the pretravel line; the letter picks from them
   - Geen nauw lichamelijk of seksueel contact met zieken of met personen met huidletsels; geen gedeeld beddengoed, handdoeken of kledij.
-  - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
   - "Mpox-vaccinatie (MVA-BN) volgens advies 9900 van de Hoge Gezondheidsraad: aanbevolen bij zorg- of humanitair werk, geval per geval bij familiebezoek, altijd bij verwacht seksueel risicocontact."
   - Bij koorts of huiduitslag tot 21 dagen na terugkeer eerst telefonisch contact met het ITG of onze dienst.
 

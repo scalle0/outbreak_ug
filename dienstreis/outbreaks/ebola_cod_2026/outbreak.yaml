@@ -54,13 +54,12 @@ flags:                                 # facts the letter must weigh; they never
   long_stay_nights: 14
   rising_new14: 5                      # new cases in 14 days that make a zone "stijgend"
 
-conditions:                            # the numbered conditions of the reply skeleton, after the pretravel line
+conditions:                            # for the traveller, in feiten.txt after the pretravel line; the letter picks from them
   - Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
-  - "[[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]"
   - Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
 
 sources:
-  national: INSP                       # the national figures, as the skeleton names them without ECDC
+  national: INSP                       # the national figures, as feiten.txt names them without ECDC
   ecdc: https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda
   who:                                 # the latest Disease Outbreak News item whose title matches all of these
     label: DRC Ebola

@@ -1,7 +1,8 @@
-"""Reply skeleton to Team Actueel (Dutch), HTML copy widget, sources and output checks.
+"""The facts a reply is written from, the checks on the reply, the HTML copy widget, and sources.
 
-The skeleton contains only facts and the rule-based verdict per stop. Paragraphs that need
-judgement are marked [[CLAUDE: ...]] and must be written (or deleted) before sending. What is
+The facts file (`feiten.txt`) holds the rule verdict, the calculated facts per stop, the state of
+the outbreak and the conditions. It is not a letter frame: An gets a short answer written by the
+model (prompts/reply.md, prompts/consult.md), and the facts go to Steven's dossier. What is
 about the disease (the zone unit, the conditions, the outbreak sources) comes from its profile;
 what is about the country (FOD pages, the pretravel line) from the country registry.
 """
@@ -112,21 +113,20 @@ def facts(rs: list[StopRisk], epi: dict | None, ecdc: dict, others=()) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redirect: bool,
-             others=(), overrides: list[dict] | None = None, kind: str = "reisadvies") -> str:
-    """The reply skeleton. `rs`, `epi`, `ecdc` are the strictest outbreak's; `others` holds
-    (stops, epi, ecdc) for every further outbreak that applies. `epi` is None without figures.
-    A case or a question gets the facts only: its letter follows prompts/consult.md."""
+def feiten(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, others=(),
+           overrides: list[dict] | None = None, kind: str = "reisadvies") -> str:
+    """The calculated facts the letter is written from, and that every number in it must trace to.
+
+    `rs`, `epi`, `ecdc` are the strictest outbreak's; `others` holds (stops, epi, ecdc) for every
+    further outbreak that applies; `epi` is None without figures. A case or a question gets the
+    figures for its place only (`facts`).
+    """
     if kind != "reisadvies":
         return facts(rs, epi, ecdc, others)
     spec = spec_of(rs)
-    who = trip.get("traveller", "de reiziger")
     rule = rule_overall(rs) if not others else "; ".join(
         f"{spec_of(x).name}: {rule_overall(x)}" for x in [rs] + [o[0] for o in others])
-    lines = ["Beste An,", "",
-             f"[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. "
-             f"Regel-uitkomst: {rule}.{_override_hint(rs, trip, overrides)}]]", "",
-             "Mijn beoordeling per luik:", ""]
+    lines = [f"Regeloordeel: {rule}.{_override_hint(rs, trip, overrides)}", "", "Per luik:"]
     lines += [leg_paragraph(i + 1, r) for i, r in enumerate(rs)]
     for o_rs, _, _ in others:                    # a further outbreak: only the stops where it weighs
         legs = [leg_paragraph(i + 1, r) for i, r in enumerate(o_rs)
@@ -134,22 +134,24 @@ def skeleton(trip: dict, rs: list[StopRisk], epi: dict | None, ecdc: dict, redir
         lines += ["", f"Voor {spec_of(o_rs).name}:"] + (legs or ["geen bezwaar op de haltes van dit reisschema."])
     stand = [_stand(x, e, c, named=bool(others)) for x, e, c in [(rs, epi, ecdc)] + list(others) if e]
     lines += [""] + (stand + [""] if stand else [])
-    lines += [f"[[CLAUDE: profiel en context van {who}: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. "
-              "Enkel wat het oordeel verandert.]]", "",
-              "Voorwaarden:"]
-    conds = list(dict.fromkeys(spec.conditions + [c for o in others for c in spec_of(o[0]).conditions]))
-    lines += [f"{i}. {c}" for i, c in enumerate([pretravel_line(rs)] + conds, start=1)]
-    epis = [e for e in [epi] + [o[1] for o in others] if e]        # every outbreak with figures has a map
-    curves = sum(1 for e in epis if e.get("path", True))           # a table with one report date has no curve
-    attach = [] if not epis else [
-        ("In bijlage de kaart met het reisschema" if len(epis) == 1 else "In bijlage de kaarten met het reisschema")
-        + ("" if not curves else " en de bijgewerkte epidemiecurve" if curves == 1 else " en de bijgewerkte epidemiecurves")
-        + ".", ""]
-    lines += ["", "[[CLAUDE: antwoord op elke expliciete vraag van An]]", ""] + attach
-    if redirect:
-        lines += ["Voor verdere correspondentie kan u mij best bereiken via steven.callens@uzgent.be.", ""]
-    lines += ["Met vriendelijke groet,", "Steven Callens"] + (["steven.callens@uzgent.be"] if redirect else [])
-    return "\n".join(lines)
+    conds = [c for c in dict.fromkeys(spec.conditions + [c for o in others for c in spec_of(o[0]).conditions])
+             if not c.startswith("[[")]           # a local profile may still carry a slot of the old letter frame
+    lines += ["Voorwaarden uit profiel en land (voor de reiziger):"]
+    lines += [f"- {c}" for c in [pretravel_line(rs)] + conds]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+REDIRECT = "Voor verdere correspondentie kan u mij best bereiken via steven.callens@uzgent.be."
+
+
+def with_redirect(reply: str, redirect: bool) -> str:
+    """The uzgent.be line when the thread used the ugent.be address: added by the code, not left to the model."""
+    if not redirect or "steven.callens@uzgent.be" in reply:
+        return reply
+    i = reply.find("Met vriendelijke groet")
+    if i < 0:
+        return reply.rstrip() + "\n\n" + REDIRECT + "\n"
+    return reply[:i] + REDIRECT + "\n\n" + reply[i:].rstrip() + "\nsteven.callens@uzgent.be\n"
 
 
 BANNED = ["cruciaal", "essentieel", "significant", "belangrijk", "substantieel", "aanzienlijk"]
@@ -214,7 +216,8 @@ _VERDICT = {
 }
 
 
-MAX_WORDS = 500
+TARGET_WORDS = 120      # An reads the answer, not the reasoning: that goes to the dossier
+MAX_WORDS = 200
 
 
 def word_count(txt: str) -> int:
@@ -233,14 +236,30 @@ def length_note(txt: str, limit: int = MAX_WORDS) -> str | None:
     """Warn when the reply has grown into a report.
 
     An reads this to decide about a trip, not to follow the reasoning; the reasoning belongs in the
-    notes. Raised in the repair round so the model gets one chance to cut, but never blocking: a
+    dossier. Raised in the repair round so the model gets one chance to cut, but never blocking: a
     long reply that is accurate can still be sent, and only the clinician can judge that.
     """
     n = word_count(txt)
     if n <= limit:
         return None
-    return (f"de mail telt {n} woorden, dat is te lang (richtlijn 350, maximum {limit}); "
-            f"kort in en zet wat wegvalt in de notities")
+    return (f"de mail telt {n} woorden, dat is te lang (richtlijn {TARGET_WORDS}, maximum {limit}); "
+            f"kort in: An krijgt het antwoord, de rest hoort in het dossier")
+
+
+def questions_note(dossier: dict | None, questions: list[str]) -> str | None:
+    """Every explicit question of An needs its answer in the letter; `dossier.vragen` says which sentence.
+
+    Never blocking: the pairing comes from the model, so it can only show that an answer is missing.
+    Without a dossier (a reply of before F-015) there is nothing to pair with.
+    """
+    if not questions or not isinstance(dossier, dict):
+        return None
+    answered = [q for q in dossier.get("vragen") or []
+                if isinstance(q, dict) and str(q.get("antwoord") or "").strip()]
+    if len(answered) >= len(questions):
+        return None
+    return (f"{len(questions) - len(answered)} van de {len(questions)} vragen van An zonder antwoord "
+            f"(dossier.vragen); beantwoord elke vraag in een of twee zinnen")
 
 
 def coverage_note(txt: str, specs) -> str | None:

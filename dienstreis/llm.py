@@ -3,7 +3,7 @@
 The model is used for three judgement steps and nothing else:
   stops  : turn the request mail into a structured itinerary (stops.yaml), for the user to confirm
   web    : optional check of FOD/CDC advisories and recent news that is not yet in the data
-  reply  : write the Dutch reply from the skeleton, the risk table and the context
+  reply  : write the short Dutch reply and the dossier fields from the facts, the risk table and the context
 
 Backends
   claude-code : `claude -p` (Claude Code CLI, uses the user's own subscription); default

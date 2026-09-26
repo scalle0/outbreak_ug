@@ -63,9 +63,10 @@ def test_pipeline_with_repair(env, monkeypatch):
     out = Path(res["out"])
     # deterministic categories unchanged by the LLM
     assert "".join(s["category"] for s in res["summary"]["stops"]) == "FA"
-    # the reply prompt carried the skeleton, the risk table, An's question and the context
+    # the reply prompt carried the facts, the attachments, the risk table, An's question and the context
     p = fake.prompts["reply"][0]
-    assert "<skelet>" in p and "Makiso Kisangani" in p and "21-dagenregel" in p and "Hubeau" in p
+    assert "<feiten>" in p and "Makiso Kisangani" in p and "21-dagenregel" in p and "Hubeau" in p
+    assert "<skelet>" not in p and "kaart_reiziger_t.png" in p
     # first answer failed the text checks -> exactly one repair round with the problems listed
     assert len(fake.prompts["reply"]) == 2 and "em-dash" in fake.prompts["reply"][1]
     assert (out / "reply.txt").read_text(encoding="utf-8").startswith("Beste An,")
@@ -214,3 +215,25 @@ def test_trace_marks_the_repair_round(env):
     reply_calls = [e for e in trace if e["step"] == "reply"]
     assert [e["repair"] for e in reply_calls] == [False, True]
     assert all(e["repair"] is False for e in trace if e["step"] == "stops")
+
+
+def test_the_dossier_fields_reach_the_notes_and_the_question_is_checked(env):
+    """F-015: the letter stays short; the reasoning goes to Steven, and An's question must be answered."""
+    tmp, req = env
+    unanswered = {"reply": GOOD, "dossier": {"vragen": [], "beoordeling": ["Kisangani: categorie A, 13 gevallen."]}}
+    answered = {"reply": GOOD, "dossier": {
+        "vragen": [{"vraag": "Geldt de 21-dagenregel?", "antwoord": "Kisangani: af te raden."}],
+        "beoordeling": ["Kisangani: categorie A."], "weggelaten": ["de stand van zaken: staat in de curve"],
+        "na_te_kijken": ["de interne 21-dagenregel bij de ambassade"], "toezeggingen": ["go/no-go op 20/11"],
+        "vragen_aan_behandelaar": []}}
+    replies = iter([unanswered, answered])
+    fake = llm.Fake({"stops": {**STOPS, "sent_to_ugent_address": True},
+                     "reply": lambda p: json.dumps(next(replies), ensure_ascii=False)})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake, web=False)
+    assert len(fake.prompts["reply"]) == 2 and "vragen van An zonder antwoord" in fake.prompts["reply"][1]
+    sugg = (Path(res["out"]) / "sugg.txt").read_text(encoding="utf-8")
+    assert "Uit de mail gelaten: de stand van zaken" in sugg and "Na te kijken: de interne 21-dagenregel" in sugg
+    assert "Toezegging in de mail: go/no-go op 20/11" in sugg
+    reply = (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
+    assert "steven.callens@uzgent.be" in reply                    # added by the code, not by the model

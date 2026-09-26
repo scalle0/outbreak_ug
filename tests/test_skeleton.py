@@ -1,4 +1,5 @@
-"""The reply skeleton writes names and dates the way a Dutch letter does. No network, no model."""
+"""The facts file writes names and dates the way a Dutch letter does, and is no letter itself. No network,
+no model."""
 from datetime import date
 
 from dienstreis import mail, risk
@@ -28,8 +29,26 @@ def test_every_category_sentence_keeps_the_capitals():
 
 def test_ecdc_month_is_written_in_dutch():
     ecdc = {"ok": True, "cases": 7773, "deaths": 3759, "data_until": "19 September"}
-    txt = mail.skeleton({"traveller": "Reiziger T"}, [_stop()], EPI, ecdc, redirect=False)
+    txt = mail.feiten({"traveller": "Reiziger T"}, [_stop()], EPI, ecdc)
     assert "ECDC, data tot 19 september" in txt and "September" not in txt
+
+
+def test_the_facts_are_not_a_letter_frame():
+    """F-015: the model writes a short answer; the facts go to Steven, not into the letter paragraph by paragraph."""
+    txt = mail.feiten({"traveller": "Reiziger T"}, [_stop()], EPI, {"ok": False})
+    assert txt.startswith("Regeloordeel: niet goedkeuren")
+    assert "Beste An" not in txt and "[[" not in txt and "Met vriendelijke groet" not in txt
+    assert "In bijlage" not in txt                               # the attachments are named in the inputs
+    assert "- Pretravel consult" in txt and "Temperatuur opvolgen tot 21 dagen" in txt
+
+
+def test_the_redirect_line_is_added_by_the_code():
+    reply = "Beste An,\n\nGeen bezwaar.\n\nMet vriendelijke groet,\nSteven Callens\n"
+    out = mail.with_redirect(reply, True)
+    assert out.index(mail.REDIRECT) < out.index("Met vriendelijke groet")
+    assert out.rstrip().endswith("Steven Callens\nsteven.callens@uzgent.be")
+    assert mail.with_redirect(out, True) == out                  # not twice
+    assert mail.with_redirect(reply, False) == reply
 
 
 def test_nl_months_leaves_dutch_and_other_words_alone():

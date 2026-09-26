@@ -35,10 +35,10 @@ What happens:
 |---|---|---|
 | 1 | Python | read the .msg, or every mail in the request's folder in the order they were sent (attachments included) |
 | 2 | LLM | itinerary from the mail -> `stops.yaml`; shown in the terminal, you confirm or edit it in Notepad |
-| 3 | Python | per outbreak that applies (see [Which outbreaks apply](#which-outbreaks-apply)): its data, zone per stop, category A-F, map, epicurve, ECDC cross-check; then one reply skeleton |
+| 3 | Python | per outbreak that applies (see [Which outbreaks apply](#which-outbreaks-apply)): its data, zone per stop, category A-F, map, epicurve, ECDC cross-check; then one facts file (`feiten.txt`) |
 | 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories, border measures of neighbouring countries and news not yet in the data; changes and new sources are offered for the local country registry |
-| 5 | LLM | reply to An and notes for you, using `context.md` and the earlier advices for the same destinations |
-| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, widget in the browser, Outlook draft with map and epicurve (never sent), log line, context line, archived advice, `llm_trace.json` |
+| 5 | LLM | a short reply to An (the answer, one or two sentences per question of hers, at most three actions) and the dossier fields for you (assessment, what was left out of the mail, what to verify, commitments), using `context.md` and the earlier advices for the same destinations |
+| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, the uzgent.be redirect line when the thread used the ugent.be address, widget in the browser, Outlook draft (never sent) with map and epicurve for a trip advice, log line, context line, archived advice, `llm_trace.json` |
 
 ### Which account pays
 
@@ -79,7 +79,8 @@ figure. Four checks hold that line, and each one names the problem instead of co
 | every number in the reply appears in the calculated facts | `mail.unknown_numbers` | one repair round naming the number; if it survives, no widget and no Outlook draft |
 | style: no em-dash, no banned intensifiers, no open placeholders | `mail.check_text` | same |
 | the rule verdict (afraden / voorwaardelijk / geen bezwaar) still appears in the letter | `mail.verdict_note` | a note in `sugg.txt`. Only a warning: the model may argue against the rules, but you should see that it did |
-| the reply stays readable in a minute (350 words, 500 at most) | `mail.length_note` | one attempt to cut, then a note. Also only a warning: what falls out of the mail belongs in `sugg.txt`, which is where the reasoning goes |
+| the reply is an answer, not a report (about 120 words, 200 at most, 50 more per further outbreak) | `mail.length_note` | one attempt to cut, then a note. Also only a warning: what falls out of the mail belongs in the dossier fields (`sugg.txt`), which is where the reasoning goes |
+| every explicit question of An has an answer (`dossier.vragen` pairs each question with its sentence in the mail) | `mail.questions_note` | one repair round, then a note. Only a warning, and skipped when the model returns no dossier |
 
 `out_*/llm_trace.json` keeps every prompt, answer and retry of the run, so a sentence in a sent
 advice can be traced back to what the model was given. `--no-number-check` switches the number
@@ -91,7 +92,7 @@ Everything that differs between outbreaks is in `dienstreis/outbreaks/<id>/`, no
 
 | file | what |
 |---|---|
-| `outbreak.yaml` | where the figures come from (`adapter`), the countries they cover, the zone unit, the rule windows, the verdict per category and how it weighs in the trip verdict, flag texts and thresholds, the conditions of the skeleton, ECDC and WHO sources, the texts on the map and the curve |
+| `outbreak.yaml` | where the figures come from (`adapter`), the countries they cover, the zone unit, the rule windows, the verdict per category and how it weighs in the trip verdict, flag texts and thresholds, the conditions for the traveller (in `feiten.txt`), ECDC and WHO sources, the texts on the map and the curve |
 | `prompt.md` | the passages of the prompts that are about this disease, one `<!-- uitbraak:<name> -->` section each |
 | `zone_overrides.csv` | observed zone spellings mapped to the shapefile (inrb adapter) |
 
@@ -167,10 +168,10 @@ screen. After you edit the itinerary it is worked out again, unless you changed 
 or named them with `--uitbraak ID` (repeatable) on `advies` or `run`.
 
 - **Several outbreaks**: each is assessed on its own figures, with its own map and curve (file names
-  carry the outbreak id). The strictest leads the letter and the summary; the others follow in the
-  skeleton under "Voor <ziekte>:", listing only the stops where they matter, and reach the mail step
+  carry the outbreak id). The strictest leads the letter and the summary; the others follow in
+  `feiten.txt` under "Voor <ziekte>:", listing only the stops where they matter, and reach the mail step
   as `andere_uitbraken`. `summary.json` keeps every outbreak under `outbreaks`. The length warning
-  allows 100 words more per further outbreak, and a reply that does not name one of them gets a note.
+  allows 50 words more per further outbreak, and a reply that does not name one of them gets a note.
 - **None applies**: the advice is written at country level with the profile `geen`. There are no
   figures, map or curve; every stop carries its country's FOD and CDC advice and border measures, and
   the web step is told to look for an outbreak at the destination first, because "no profile" does
@@ -336,8 +337,8 @@ drops it; the next run makes the lean one.
 ```bash
 dienstreis msg request.msg > request.json        # 1. read the forwarded Outlook message
 # 2. write stops.yaml from the request (see examples/)
-dienstreis run stops.yaml --out out_name --log     # 3. risk table, map, epicurve, skeleton, QA
-# 4. complete the [[CLAUDE: ...]] paragraphs in out_name/reply_skeleton.txt -> reply.txt
+dienstreis run stops.yaml --out out_name --log     # 3. risk table, map, epicurve, facts, QA
+# 4. write the short reply to An from out_name/feiten.txt -> reply.txt
 dienstreis widget reply.txt --suggestions sugg.txt --out reply.html   # 5. refuses if checks fail
 dienstreis due                                     # reviews that are due (go/no-go dates)
 dienstreis data --zone Watsa                       # quick look at current figures
@@ -365,12 +366,12 @@ stops:
 | `risk.csv`, `risk.md` | per stop: health zone, category A-F/X, rule verdict, cases, new in 14 d, days since last case, active neighbours, nearest active zone, FOD and CDC level, flags |
 | `kaart_*.png` | health-zone choropleth, hatching for new cases (14 d), stop zones outlined, route, locator inset for far stops, label-overlap checked; one per outbreak with figures, the id in the name when there are several |
 | `epicurve_*.png` | cumulative cases/deaths and weekly incidence from the national series; one per outbreak with figures |
-| `reply_skeleton.txt` | Dutch reply with fact-based paragraph per stop and `[[CLAUDE: ...]]` placeholders |
+| `feiten.txt` | the calculated facts the letter is written from: the rule verdict, a paragraph per stop, the state of the outbreak, the conditions for the traveller. Every number in the reply must appear here or in `summary.json`. Not a letter frame (until F-015 it was one: `reply_skeleton.txt`) |
 | `sources.txt` | URLs to paste into the mail |
 | `summary.json` | everything above as data, plus QA |
 | `stops.yaml` | the itinerary the model read from the mail, after your confirmation |
 | `reply.txt`, `reply_*.html` | the reply, and the copy widget (only written when every check passed) |
-| `sugg.txt` | notes for you, not part of the mail: commitments made, deviations, what to verify |
+| `sugg.txt` | notes for you, not part of the mail: the model's assessment, what it left out of the mail, what to verify, commitments made, questions for the treating doctor; failed checks on top |
 | `llm_trace.json` | every prompt, answer and retry of this run |
 | `web.json` | what the web step found (FOD, CDC, WHO, news) |
 
@@ -455,7 +456,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 |---|---|
 | `test_advies_pipeline.py` | the whole `advies` run with a fake LLM: the repair round, the prompt inputs, overruling and archiving end to end, the web step on and off |
 | `test_trip.py` | the itinerary checks: Belgian and ISO dates, unknown places, stop order, wrong years |
-| `test_reply_checks.py` | style, invented numbers, and the ways Dutch writes "afraden" |
+| `test_reply_checks.py` | style, invented numbers, the ways Dutch writes "afraden", the length limits and An's questions |
 | `test_overrule.py` | a rule may be set aside, never silently: reason required, rule verdict preserved |
 | `test_archive.py` | advices saved, searchable, and handed back to the next advice |
 | `test_cache.py` | what is fetched and when, with git and requests replaced |
@@ -465,14 +466,14 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_mpox.py` | the mpox profile on its seeded WHO table: the one unmatched zone, the counts, the example trips, and a letter that says "vermoede en bevestigde gevallen" |
 | `test_casus.py` | case questions: a go/no-go in the past asks whether it is a case, nothing leaves without consent (not even under `--yes`), the case road without figures, a question routed by disease, relabelling an archived advice |
 | `test_route.py` | which outbreaks apply: outbreak country, neighbouring country, none; a stop's country from the map, including the France and South Sudan code traps; overrides that must name their outbreak |
-| `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the skeleton covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
+| `test_multi.py` | a synthetic second outbreak: strictest first, a map and curve each, the facts covering both, overrides per outbreak; country-level advice end to end; the log and archive of before 0.3 |
 | `test_request_folder.py` | a folder of mails read as one request: order by send date, loose documents, the thread reaching the itinerary step |
 | `test_request_parsing.py` | reading the request mail, against an invented fixture |
 | `test_regression.py` | reproduces the manual advices of August and September 2026 on frozen data dates (one trip on 22 Aug, three on 19 Sep), including the published figures of the original report (5 514 cases, 57 zones, Tshopo 15 cases of which 13 in Kisangani) |
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
-| `test_skeleton.py` | the skeleton writes zone names with their own capitals and ECDC dates with Dutch months |
+| `test_skeleton.py` | the facts file writes zone names with their own capitals and ECDC dates with Dutch months, and is no letter frame; the redirect line is added by the code |
 
 The pipeline, regression and golden tests each do a full analysis against the cached data, so a complete
 run takes minutes. `pytest -q --ignore=tests/test_advies_pipeline.py --ignore=tests/test_regression.py --ignore=tests/test_golden.py`

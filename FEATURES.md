@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-015 | Kort antwoord aan An, een intern dossier voor Steven, een vaste fiche per ziekte | bezig | 2026-09-26 |
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
 | F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | klaar | 2026-09-25 |
 | F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | klaar | 2026-09-25 |
@@ -18,6 +19,27 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-015 · Kort antwoord aan An, een intern dossier, een vaste fiche per ziekte
+- **Gevraagd:** 2026-09-26 — "the program is responding way too broadly to the general question. So what I would like is to have a report that I can use internally with the maps and the tables and the epidemiology and the treatment, the presentation, the risks, [...] any important documents from Belgian, European, world, US guidelines, and then have a very concise response to the actual question that was in the email sent by the office"
+- **Status:** bezig
+- **Aanleiding:** de echte mail van 25/09, opnieuw door de tool op 25/09: juist herkend als casus, maar een mail van 547 woorden (situatie, vier lange antwoorden, zes aanbevelingen, richtlijnen met datums), terwijl wat Steven zelf nodig had als losse lijst in `sugg.txt` stond, zonder kaart, epidemiologie, klinisch beeld of richtlijnenoverzicht.
+- **Beslissingen (Steven, 2026-09-26):**
+  - Mail aan An: kort, ongeveer 120 woorden en hoogstens 200: het antwoord, een of twee zinnen per vraag, hoogstens drie acties; kaart en curve als bijlage ("Short with map"). Bij een casus of vraag gaan er geen bijlagen mee; de figuren staan in het dossier.
+  - Dossier: een HTML-pagina per advies, met de mail bovenaan en een kopieerknop, bewaard in het archief.
+  - Klinisch beeld, behandeling, vaccinatie en de Belgische, Europese, WHO- en Amerikaanse richtlijnen: een vaste fiche per ziekte, eenmaal opgesteld uit bronnen en door Steven bevestigd; de webstap meldt nieuwere richtlijnen en stelt ze voor.
+- **Plan:** vier stappen, elk met een eigen commit: (1) de korte mail, (2) de dossierpagina, (3) fiche en documenten per ziekte, (4) een proefrun op verzonnen mails, die Steven leest voor de tak samengevoegd wordt.
+- **Gebouwd, stap 1 (de korte mail):**
+  - `prompts/reply.md` en `prompts/consult.md`: richt op 120 woorden, hoogstens 200. De mail is het antwoord (een of twee zinnen), per expliciete vraag van An een of twee zinnen, hoogstens drie acties en bij een reisadvies een halve zin over de bijlagen. Geen alinea per luik, geen stand van zaken, geen bronnenlijst, tenzij een zin het antwoord draagt.
+  - Het model geeft een `dossier`-object terug in plaats van de vrije lijst `suggestions`: `vragen` (elke vraag met de zin die ze beantwoordt), `beoordeling`, `weggelaten`, `na_te_kijken`, `toezeggingen`, `vragen_aan_behandelaar`. Tot de dossierpagina er is, gaan die velden met een label naar `sugg.txt`; een oud antwoord met `suggestions` wordt nog gelezen.
+  - `reply_skeleton.txt` wordt `feiten.txt`: het regeloordeel, de feiten per luik, de stand van zaken en de voorwaarden voor de reiziger, zonder briefkader of `[[CLAUDE]]`-plaatshouders. Het model krijgt het als `feiten`, "om te weten, niet om over te schrijven"; de cijfercontrole leest het zoals vroeger. De plaatshouders zijn ook uit de profielen (`conditions`) gehaald: de go/no-go is nu een van de drie acties.
+  - De doorverwijzing naar steven.callens@uzgent.be zet de code zelf in de mail (`mail.with_redirect`), niet meer het model.
+  - Bijlagen: kaart en curve gaan enkel mee bij een reisadvies, en het model krijgt hun bestandsnamen (`bijlagen`), zodat de mail geen curve belooft die er niet is.
+  - Controles: `length_note` waarschuwt boven 200 woorden (50 meer per bijkomende uitbraak, was 500 en 100); nieuw is `questions_note`, die waarschuwt als een vraag van An geen antwoord kreeg in `dossier.vragen`. Beide sturen de herstelronde en blokkeren nooit.
+  - Tests: 245 groen. Goldens: `feiten.txt` vervangt `reply_skeleton.txt` en bevat dezelfde feitenalinea's zonder het kader; in `summary.json` is `skeleton_issues` leeg (de vier plaatshouders waren het kader); de mailprompt heeft de nieuwe secties en krijgt `<feiten>` en `<bijlagen>` in plaats van `<skelet>`.
+- **Beslissingen (uitvoering):**
+  - Zonder `dossier` in het antwoord zwijgt `questions_note`: er is dan niets om de vragen mee te vergelijken, en een melding zou een vraag onbeantwoord noemen die misschien wel beantwoord is.
+  - De sleutel `skeleton_issues` in `summary.json` blijft zo heten, zodat oude en nieuwe samenvattingen dezelfde vorm houden.
 
 ## F-014 · Een map per aanvraag: meerdere mails samen lezen
 - **Gevraagd:** 2026-09-25 — "I will make a folder per request, rather than a msg file, because I now have three emails for one request in one hour time"

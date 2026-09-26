@@ -37,7 +37,7 @@ EXAMPLES = {"voorbeeld_kisangani_kortverblijf": "2026-08-22",
             "voorbeeld_hautkatanga": "2026-09-19",
             "voorbeeld_yangambi_via_kisangani": "2026-09-19",
             "voorbeeld_familieverblijf_hautuele": "2026-09-19"}
-FILES = ["risk.csv", "reply_skeleton.txt", "sources.txt", "summary.json"]
+FILES = ["risk.csv", "feiten.txt", "sources.txt", "summary.json"]
 LABEL_COUNTS = ("map_label_overlaps", "map_labels_clipped")
 
 

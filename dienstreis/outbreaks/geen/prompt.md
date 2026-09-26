@@ -9,7 +9,7 @@ naar een bestemming waarvoor geen uitbraakprofiel van toepassing is
 
 Voor geen enkel land van het reisschema, en voor geen buurland ervan, bestaat een uitbraakprofiel. Er zijn dus geen zonecijfers en geen regelcategorieën: elke halte staat als X in `risico_per_stop`, met het FOD- en CDC-advies en de grensmaatregelen uit het landenregister.
 
-"Geen profiel" betekent niet "geen uitbraak". Kijk in `web` of er op de bestemming of in een buurland een uitbraak loopt. Vindt de webstap er een, zeg dan in de mail dat het advies voorlopig is tot de cijfers bekend zijn, en zet in `suggestions` welke uitbraak een profiel nodig heeft. Vindt hij er geen, dan gaat het advies over de gewone reisrisico's van het land, kort: FOD-advies en de reden (veiligheid of gezondheid), vaccinaties en profylaxe, en wat de reiziger zelf moet nakijken.
+"Geen profiel" betekent niet "geen uitbraak". Kijk in `web` of er op de bestemming of in een buurland een uitbraak loopt. Vindt de webstap er een, zeg dan in de mail dat het advies voorlopig is tot de cijfers bekend zijn, en zet in het dossier (`na_te_kijken`) welke uitbraak een profiel nodig heeft. Vindt hij er geen, dan gaat het advies over de gewone reisrisico's van het land, kort: FOD-advies en de reden (veiligheid of gezondheid), vaccinaties en profylaxe, en wat de reiziger zelf moet nakijken.
 
 <!-- uitbraak:valkuilen -->
 - De go/no-go-beslissing valt vóór vertrek uit België (standaard een week ervoor): eenmaal ter plaatse kan UGent enkel nog adviseren.

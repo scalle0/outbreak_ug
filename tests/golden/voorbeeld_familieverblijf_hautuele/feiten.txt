@@ -1,9 +1,6 @@
-Beste An,
+Regeloordeel: niet goedkeuren in huidige vorm (minstens een luik af te raden).
 
-[[CLAUDE: kernoordeel in een zin; vergelijk met eerdere aanvragen voor dezelfde bestemming. Regel-uitkomst: niet goedkeuren in huidige vorm (minstens een luik af te raden).]]
-
-Mijn beoordeling per luik:
-
+Per luik:
 1. Kinshasa (28 november tot 6 december): geen bezwaar. Geen bevestigde gevallen in gezondheidszone Barumbu of in de provincie Kinshasa; de dichtstbijzijnde zone met recente gevallen (Bulu) ligt op circa 870 km; valt Kinshasa onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 2.
 2. Kisangani (6 december tot 14 december): af te raden. Gezondheidszone Makiso Kisangani telt 20 bevestigde gevallen (9 overlijdens), waarvan 10 in de laatste 14 dagen; raadt de FOD alle reizen naar Tshopo formeel af (veiligheidssituatie); de CDC hanteert niveau 3.
 3. Isiro (14 december tot 22 december): af te raden. De gezondheidszone telt 98 bevestigde gevallen (42 overlijdens), waarvan 6 in de laatste 14 dagen; valt Haut-Uele onder het algemene FOD-advies (niet-essentiële reizen naar de DRC afgeraden); de CDC hanteert niveau 3.
@@ -11,17 +8,7 @@ Mijn beoordeling per luik:
 
 Stand van zaken (INSP): 7 672 bevestigde gevallen en 3 699 overlijdens (CFR 48 procent). Nieuwe gevallen per volledige week, laatste vier weken: 569, 586, 586, 572.
 
-[[CLAUDE: profiel en context van Reiziger D: verblijf, duur, aard van het werk, wat het dossier over de uitbraak zegt. Enkel wat het oordeel verandert.]]
-
-Voorwaarden:
-1. Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
-2. Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
-3. [[CLAUDE: go/no-go-datum en criteria, of 'korte check een week voor vertrek']]
-4. Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
-
-[[CLAUDE: antwoord op elke expliciete vraag van An]]
-
-In bijlage de kaart met het reisschema en de bijgewerkte epidemiecurve.
-
-Met vriendelijke groet,
-Steven Callens
+Voorwaarden uit profiel en land (voor de reiziger):
+- Pretravel consult (gele koorts verplicht, malariaprofylaxe) en registratie via Travellers Online.
+- Geen reizen naar of transit door getroffen gezondheidszones; geen contact met zieken of overledenen, geen begrafenissen, geen bushmeat.
+- Temperatuur opvolgen tot 21 dagen na terugkeer; bij koorts eerst telefonisch contact met het ITG of onze dienst.
