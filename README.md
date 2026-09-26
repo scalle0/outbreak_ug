@@ -313,6 +313,49 @@ dienstreis zoek --sinds 2026-08-01 --oordeel afraden
 
 Each hit shows its folder and, for an advice since F-015, a link to its dossier.
 
+## Follow-up: the go/no-go and travellers in the field
+
+An advice is written on the figures of one day; the go/no-go a week before departure, and the weeks a
+colleague spends in the field, run on later ones. `dienstreis opvolging` takes every archived advice
+that is still running (the traveller abroad now, or leaving within 30 days; a case included) and
+assesses its itinerary again on today's figures, without a model:
+
+```bash
+dienstreis opvolging                     # everything that is running; the report opens in the browser
+dienstreis opvolging "Reiziger T"        # one traveller or place, also further ahead (when An asks)
+dienstreis opvolging --klaar 2026-09-10_reiziger_t --notitie "doorgaan zonder Kisangani"
+dienstreis opvolging --plannen weekdagen --uur 08:00    # optional: your own schedule; --plannen uit removes it
+```
+
+Per advice the report puts the advice next to today per leg: the category by the rules then and now
+(an overrule stays, but a change under it still shows), the cases, the recent cases, the days since
+the last one, and the FOD and CDC level. Each advice gets one status:
+
+| status | when |
+|---|---|
+| strenger | a leg gets a stricter category, the FOD advises formally against it now, the CDC level went up, or an outbreak applies now that did not then (named in the notes) |
+| nieuwe gevallen | the same categories, but more cases in a zone of the itinerary |
+| milder | a leg gets a milder category |
+| ongewijzigd | none of these |
+
+**Go/no-go.** An advice whose review date has come while the traveller has not left yet is shown on
+top, with map and curve on today's figures, as is every trip that became stricter. Once you have
+decided, `--klaar <folder>` notes it in the archived advice and it leaves the list; after departure
+the watch in the field goes on.
+
+**Facts only.** Nothing goes to a model and no letter is written: you decide, and start a new advice
+with `dienstreis advies` when a letter to An is needed.
+
+**A schedule of your own.** By hand is the default. `--plannen weekdagen|dagelijks|wekelijks` sets a
+task in the Windows Task Scheduler at the hour you give (`--uur`, default 08:00), which runs
+`dienstreis opvolging --stil`: the report is written every time, and opens only when something
+changed since the previous check. `--plannen uit` removes the task.
+
+The itinerary is kept with each advice (`stops.yaml` in its archive folder) since F-017; an older
+advice is rebuilt from its summary, without its overrules, and the report says so. A hand-kept table
+that is older than its limit is named, since A and B then cannot be trusted. Reports are kept per day
+under `%USERPROFILE%\.config\dienstreis\opvolging\<date>\` (`opvolging.html`, `opvolging.json`).
+
 ## The internal dossier
 
 The letter to An is short: the answer, one or two sentences per question of hers, at most three
@@ -471,7 +514,7 @@ Four places, and only one of them is irreplaceable.
 
 | | where | what | if you lose it |
 |---|---|---|---|
-| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`, `dossier.html`), `countries/<ISO3>.yaml` for the web-step findings you accepted, and `outbreaks/<id>/` for accepted figures and documents, a local fiche and the trace of its draft | gone for good. Back this up |
+| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`, `dossier.html`, `stops.yaml`), `opvolging/<date>/` (the follow-up reports), `countries/<ISO3>.yaml` for the web-step findings you accepted, and `outbreaks/<id>/` for accepted figures and documents, a local fiche and the trace of its draft | gone for good. Back this up |
 | **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
 | **Per-run output** | `out_<traveller>/` where you ran the command | the reply, the dossier, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
 | **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/`, `dienstreis/countries/` in this repo | places, the three prompts, per outbreak its profile, prompt passages and zone spellings, and per country its sources, advisories and border measures | it is in git |
@@ -546,6 +589,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_opvolging.py` | the follow-up: which advices are followed (abroad, within 30 days, a newer advice replacing an older one, a question never), when a go/no-go is due and when it is marked done, the change per leg on the rules with an overrule kept, FOD and CDC, an outbreak that applies now, an old advice rebuilt from its summary, the report with map and curve, a quiet run, the schedule |
 | `test_llm_backend.py` | the claude-code backend with `claude` replaced: no API key reaches the call, a failure names claude's reason and not the connectors warning, an error with exit code 0 is still an error, a busy API gets one more try |
 | `test_fiche.py` | the fiche and its documents: front matter and sections, the local copy only when newer, proposals kept only after a yes and with the ids the fiche cites, a flag never applied, a draft always a concept and never over a confirmed fiche, the command with a fake model, the fiche in the dossier with its banner, links and escaping |
 | `test_dossier.py` | the dossier from a synthetic run folder: every section, the letter to copy (off while a check fails, on again after a corrected hand edit), figures embedded and scaled, questions with their answers, a case without a verdict, several outbreaks, escaping, links limited to http and file |

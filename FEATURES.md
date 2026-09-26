@@ -4,6 +4,7 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-017 | Opvolging na het advies: de go/no-go-check en reizigers ter plaatse, op de actuele cijfers | klaar | 2026-09-26 |
 | F-016 | Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement | klaar | 2026-09-26 |
 | F-015 | Kort antwoord aan An, een intern dossier voor Steven, een vaste fiche per ziekte | bezig | 2026-09-26 |
 | F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
@@ -20,6 +21,27 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-017 · Opvolging na het advies: de go/no-go-check en reizigers ter plaatse
+- **Gevraagd:** 2026-09-26 — "Make indeed a module for 1 and 2": (1) de go/no-go-check een week voor vertrek automatisch opnieuw beoordelen op de actuele cijfers, (2) reizigers die ter plaatse zijn of binnenkort vertrekken opvolgen en een zone melden die verandert.
+- **Status:** klaar (2026-09-26)
+- **Gebouwd:**
+  - `dienstreis/opvolging.py` en `dienstreis opvolging [zoekterm]`. Het volgt elk bewaard advies dat nog loopt: de reiziger is ter plaatse of vertrekt binnen 30 dagen (`--dagen`), casussen inbegrepen. Een vraag volgt het niet. Een nieuwer advies voor dezelfde reiziger vervangt het oudere. Met een zoekterm (op vraag van An) telt ook een vertrek verder vooruit.
+  - Elk advies wordt op de cijfers van vandaag opnieuw beoordeeld, per uitbraak en zonder model. Per halte staat de categorie volgens de regels toen naast die van nu, zodat een overrule blijft staan maar een wijziging eronder zichtbaar is. Ernaast staan de gevallen, de recente gevallen, de dagen sinds het laatste geval, en het FOD- en CDC-niveau.
+  - Per advies één status: strenger, nieuwe gevallen, milder of ongewijzigd. Strenger is een strengere categorie, een FOD dat nu formeel afraadt, een hoger CDC-niveau, of een uitbraak die nu geldt en toen niet.
+  - Go/no-go: een advies waarvan de go/no-go-datum gekomen is en de reiziger nog niet vertrok, staat bovenaan. Voor zo'n advies, en voor elke reis die strenger werd, worden kaart en curve opnieuw getekend op de cijfers van vandaag. `--klaar <map of mapnaam> --notitie "..."` noteert de beslissing in het bewaarde advies; na vertrek loopt de opvolging ter plaatse verder.
+  - Het rapport (`~/.config/dienstreis/opvolging/<datum>/opvolging.html` en `.json`) heeft de opmaak van het dossier, met een link naar het dossier van elk advies.
+  - Planning door de gebruiker zelf: `--plannen weekdagen|dagelijks|wekelijks|uit` en `--uur 08:00` maken of verwijderen een taak in de Windows Taakplanner. Die draait `dienstreis opvolging --stil`: het rapport wordt altijd geschreven, maar de pagina opent enkel als er iets veranderde sinds de vorige check.
+  - Het archief bewaart voortaan het bevestigde reisschema (`stops.yaml`), overrules inbegrepen. Een ouder advies wordt opnieuw opgebouwd uit zijn samenvatting, zonder overrules, en het rapport zegt dat.
+  - Tests: `test_opvolging.py` (15), deels op de gecachte cijfers van 19/09. Alle 290 tests groen. Een run op het echte archief: drie lopende adviezen, alle drie de mpox-student van 25/09 onder drie namen uit de proefruns, ongewijzigd.
+- **Beslissingen (uitvoering):**
+  - Vergeleken wordt op de categorie volgens de regels, niet op de categorie na een overrule. Een overrule is een oordeel over de toestand van toen; verandert de regel eronder, dan moet Steven dat zien.
+  - Twee adviezen met dezelfde plaatsen en data maar een andere naam worden niet samengevoegd: twee collega's op dezelfde reis zouden er net zo uitzien.
+  - Een geplande run opent de pagina enkel bij iets nieuws. Anders zou een blijvende wijziging elke ochtend opnieuw openen.
+- **Beslissingen (Steven, 2026-09-26):**
+  - Voorlopig met de hand, bijvoorbeeld op vraag van An. Later kan het automatisch lopen, gepland door de gebruiker zelf, met een frequentie die hij kiest.
+  - Enkel feiten, geen model en geen brief: het rapport toont per halte het advies van toen naast de toestand nu. Steven beslist en start zelf een nieuw advies of schrijft.
+  - Gevolgd worden reizigers die nu ter plaatse zijn en reizen die binnen 30 dagen vertrekken, casussen inbegrepen.
 
 ## F-016 · Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement
 - **Gevraagd:** 2026-09-26 — Steven meldde een run die stopte met `LLMError: claude -p faalde (1): ⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login`.

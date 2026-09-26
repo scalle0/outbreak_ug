@@ -1,8 +1,8 @@
-"""Every test writes its log, context, local country registry, case tables, documents and fiches to a temporary
+"""Every test writes its log, context, local country registry, case tables, documents, fiches and follow-up reports to a temporary
 folder, never to the user's files, and never reads the user's local copies either."""
 import pytest
 
-from dienstreis import advies, archive, countries, data, fiche, log
+from dienstreis import advies, archive, countries, data, fiche, log, opvolging
 
 
 @pytest.fixture(autouse=True)
@@ -14,3 +14,4 @@ def _isolate_user_files(tmp_path, monkeypatch):
     monkeypatch.setattr(data, "LOCAL_OUTBREAKS", tmp_path / "outbreaks")
     monkeypatch.setattr(fiche, "LOCAL", tmp_path / "outbreaks")
     monkeypatch.setattr(archive, "ARCHIVE", tmp_path / "adviezen")
+    monkeypatch.setattr(opvolging, "ROOT", tmp_path / "opvolging")

@@ -10,6 +10,8 @@ One folder per advice under ~/.config/dienstreis/adviezen/JJJJ-MM-DD_reiziger/:
     reply.txt     the mail as it was written
     summary.json  the calculated figures behind it
     dossier.html  the internal dossier of the run (dossier.py), since F-015
+    stops.yaml    the itinerary as confirmed, overrules included, since F-017: the follow-up
+                  (opvolging.py) assesses it again on the figures of the day
 These are colleagues' travel details. They stay on the machine; `search` reads them, and only the
 hits for the same destinations go to the model.
 
@@ -24,6 +26,8 @@ import os
 import re
 from datetime import date, datetime
 from pathlib import Path
+
+import yaml
 
 ARCHIVE = Path(os.environ.get("DIENSTREIS_ARCHIVE",
                               Path.home() / ".config" / "dienstreis" / "adviezen"))
@@ -77,6 +81,7 @@ def save(trip: dict, summary: dict, reply: str, *, request: str = "",
     (d / "reply.txt").write_text(reply, encoding="utf-8")
     (d / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1, default=str),
                                     encoding="utf-8")
+    (d / "stops.yaml").write_text(yaml.safe_dump(trip, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return d
 
 

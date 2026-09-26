@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,dossier,fiche,due,zoek,context,uitbraken,herlabel}."""
+"""Command line: dienstreis {advies,msg,data,run,check,dossier,fiche,opvolging,due,zoek,context,uitbraken,herlabel}."""
 from __future__ import annotations
 
 import argparse
@@ -205,6 +205,42 @@ def cmd_fiche(a):
         print(f"  - {x}")
 
 
+def cmd_opvolging(a):
+    """The go/no-go checks that have come and the travellers in the field, on today's figures (F-017)."""
+    import subprocess
+    import webbrowser
+    from datetime import date as _d
+    from . import opvolging
+    if a.plannen:
+        if not sys.platform.startswith("win"):
+            print("Plannen gaat via de Windows Taakplanner. Elders: zet `dienstreis opvolging --stil` in cron.")
+            sys.exit(1)
+        for cmd in opvolging.plan_commands(a.plannen, a.uur):
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            print((r.stdout or r.stderr).strip())
+            if r.returncode != 0:
+                sys.exit(r.returncode)
+        print("Planning verwijderd." if a.plannen == "uit" else
+              f"Gepland ({a.plannen}, {a.uur}): de pagina opent enkel als er iets veranderde sinds de vorige check.")
+        return
+    if a.klaar:
+        r = opvolging.mark_done(a.klaar, a.notitie)
+        print(f"Go/no-go van {r.get('traveller')} genoteerd op {r['go_no_go']['op']}.")
+        return
+    rep = opvolging.run(today=_d.fromisoformat(a.asof) if a.asof else None, horizon=a.dagen, term=a.term or "",
+                        asof=a.asof, refresh=a.refresh)
+    for x in rep["results"]:
+        flag = " GO/NO-GO" if x["due"] else ""
+        print(f"{x['status']:<16}{flag:<10} {x['traveller']}  {', '.join(map(str, x['places']))}  "
+              f"({x['first']} tot {x['last']})")
+    if not rep["results"]:
+        print(f"Niemand ter plaatse en geen vertrek binnen {a.dagen} dagen.")
+    print(rep["page"])
+    open_it = opvolging.news_since_last(rep) if a.stil else not a.no_open
+    if open_it:
+        webbrowser.open(Path(rep["page"]).resolve().as_uri())
+
+
 def cmd_due(a):
     from .log import due
     for r in due():
@@ -271,7 +307,21 @@ def main(argv=None):
     fi.add_argument("--llm", default=os.environ.get("DIENSTREIS_LLM", "claude-code"), choices=["claude-code", "api", "manual"])
     fi.add_argument("--model", default=os.environ.get("DIENSTREIS_MODEL"))
     fi.set_defaults(f=cmd_fiche)
-    u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
+    op = s.add_parser("opvolging", help="go/no-go-checks en reizigers ter plaatse, op de cijfers van vandaag (geen model)")
+    op.add_argument("term", nargs="?", default="", help="enkel deze reiziger of plaats, ook verder dan --dagen (bv. op vraag van An)")
+    op.add_argument("--dagen", type=int, default=30, help="een vertrek binnen zoveel dagen telt mee (standaard 30)")
+    op.add_argument("--asof", help="JJJJ-MM-DD: de cijfers en de dag van die datum")
+    op.add_argument("--refresh", action="store_true")
+    op.add_argument("--stil", action="store_true",
+                    help="voor een geplande run: de pagina enkel openen als er iets veranderde sinds de vorige check")
+    op.add_argument("--no-open", action="store_true", help="de pagina niet openen")
+    op.add_argument("--klaar", metavar="MAP", help="de go/no-go van dit advies (map in het archief) als beslist noteren")
+    op.add_argument("--notitie", default="", help="bij --klaar: wat er beslist is")
+    op.add_argument("--plannen", choices=["weekdagen", "dagelijks", "wekelijks", "uit"],
+                    help="zelf een planning instellen of weghalen (Windows Taakplanner)")
+    op.add_argument("--uur", default="08:00", help="bij --plannen: UU:MM (standaard 08:00)")
+    op.set_defaults(f=cmd_opvolging)
+    u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden (zie ook opvolging)"); u.set_defaults(f=cmd_due)
     z = s.add_parser("zoek", help="eerdere adviezen zoeken op plaats, zone, provincie, reiziger of notitie")
     z.add_argument("term", nargs="?", default="")
     z.add_argument("--sinds", help="JJJJ-MM-DD"); z.add_argument("--tot", help="JJJJ-MM-DD")
