@@ -38,7 +38,7 @@ What happens:
 | 3 | Python | per outbreak that applies (see [Which outbreaks apply](#which-outbreaks-apply)): its data, zone per stop, category A-F, map, epicurve, ECDC cross-check; then one facts file (`feiten.txt`) |
 | 4 | LLM (`--no-web` to skip) | check FOD, CDC and WHO advisories, border measures of neighbouring countries and news not yet in the data; changes and new sources are offered for the local country registry |
 | 5 | LLM | a short reply to An (the answer, one or two sentences per question of hers, at most three actions) and the dossier fields for you (assessment, what was left out of the mail, what to verify, commitments), using `context.md` and the earlier advices for the same destinations |
-| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, the uzgent.be redirect line when the thread used the ugent.be address, widget in the browser, Outlook draft (never sent) with map and epicurve for a trip advice, log line, context line, archived advice, `llm_trace.json` |
+| 6 | Python | checks (em-dash, banned words, placeholders, every number traceable to step 3) with one repair round, the uzgent.be redirect line when the thread used the ugent.be address, the [internal dossier](#the-internal-dossier) in the browser, Outlook draft (never sent) with map and epicurve for a trip advice, log line, context line, archived advice, `llm_trace.json` |
 
 ### Which account pays
 
@@ -76,7 +76,7 @@ figure. Four checks hold that line, and each one names the problem instead of co
 | check | where | what happens when it fails |
 |---|---|---|
 | itinerary is usable: readable dates, known place or coordinates, stops in order, plausible years | `trip.py`, before any analysis | shown with the itinerary; `--yes` stops, otherwise you edit it in Notepad. A wrong itinerary would give a wrong risk table, not an error |
-| every number in the reply appears in the calculated facts | `mail.unknown_numbers` | one repair round naming the number; if it survives, no widget and no Outlook draft |
+| every number in the reply appears in the calculated facts | `mail.unknown_numbers` | one repair round naming the number; if it survives, the dossier's copy button stays off and there is no Outlook draft |
 | style: no em-dash, no banned intensifiers, no open placeholders | `mail.check_text` | same |
 | the rule verdict (afraden / voorwaardelijk / geen bezwaar) still appears in the letter | `mail.verdict_note` | a note in `sugg.txt`. Only a warning: the model may argue against the rules, but you should see that it did |
 | the reply is an answer, not a report (about 120 words, 200 at most, 50 more per further outbreak) | `mail.length_note` | one attempt to cut, then a note. Also only a warning: what falls out of the mail belongs in the dossier fields (`sugg.txt`), which is where the reasoning goes |
@@ -140,7 +140,7 @@ shown on the itinerary screen, yours to correct):
 | type | what | road |
 |---|---|---|
 | `reisadvies` | a trip that has not started | as above: rules, map, curve, verdict |
-| `casus` | a traveller already abroad or just back, ill, exposed or in quarantine | the figures for the place as background, no map or curve, no verdict; a web step that looks up official guidance first (isolation, return travel, what arrival in Belgium requires, contacts: ITG, Sciensano, Departement Zorg, Hoge Gezondheidsraad, WHO, ECDC); a letter written from the employer's side (the treating doctor decides, UGent advises, criteria rather than dates) |
+| `casus` | a traveller already abroad or just back, ill, exposed or in quarantine | the figures for the place as background, with map and curve in the dossier but none attached to the letter, no verdict; a web step that looks up official guidance first (isolation, return travel, what arrival in Belgium requires, contacts: ITG, Sciensano, Departement Zorg, Hoge Gezondheidsraad, WHO, ECDC); a letter written from the employer's side (the treating doctor decides, UGent advises, criteria rather than dates) |
 | `vraag` | a general question | as a case; without a place it goes to the outbreaks its diseases name |
 
 A trip whose go/no-go date already lies in the past is refused with the question whether it is a
@@ -269,12 +269,41 @@ dienstreis zoek --overruled --vol    # advices where a rule was set aside, with 
 dienstreis zoek --sinds 2026-08-01 --oordeel afraden
 ```
 
+Each hit shows its folder and, for an advice since F-015, a link to its dossier.
+
+## The internal dossier
+
+The letter to An is short: the answer, one or two sentences per question of hers, at most three
+actions. Everything behind it is in `dossier.html`, one page per advice for you, never for An. It
+opens in the browser at the end of `advies`, is copied into the archive, and prints to PDF.
+
+| section | what |
+|---|---|
+| Antwoord aan An | the letter with a copy button, the word count against the limit, and the checks' notes. The button stays off while a blocking check fails (an invented number, an em-dash): correct `reply.txt` and run `dienstreis dossier <out folder>`, which checks the text again and rebuilds the page |
+| Aanvraag | subject, sender, type, profile, An's questions each with the sentence that answers it (or "geen antwoord gekoppeld"), what is missing or contradicts, the itinerary, and the request as it came in |
+| Oordeel | per outbreak the verdict by the rules and the final one, overrides with their reason, the verdict per stop, the go/no-go date |
+| Epidemiologie | per outbreak the national total, deaths and CFR with source and date, the last eight full weeks, curve and map, the zones of the itinerary (cases, recent cases, days since the last one, active neighbouring zones, nearest active zone) and the checks on the figures |
+| Risico | the traveller's profile, per stop the FOD and CDC level and the flags, per country when it was last verified, the provinces that differ, border measures and the FOD pages |
+| Ziektefiche | reserved for the fixed fiche per disease (clinical picture, treatment, vaccination, isolation) |
+| Richtlijnen | the guidance the web step found for a case, and the sources of the advice |
+| Beoordeling | the model's assessment: its reasoning, what it left out of the letter, what to verify, the commitments the letter makes, questions for the treating doctor |
+| Web | WHO, advisories, border measures, news, proposed figures and sources, and whether you accepted them |
+| Eerder | earlier advices for the same places or person (with a link to their dossier), log rows, the lines of `context.md` about them |
+| Bronnen | data dates per outbreak, the profiles, the files of the run, and `feiten.txt` |
+
+Everything on the page is rendered from the run's files; only the assessment comes from the model.
+The figures are embedded, scaled down to 1600 pixels, so the archived page opens without the run's
+folder; the full-size PNGs stay for Outlook. A case or a question gets its map and curve too, in the
+dossier only. The layout follows the ScAIdev design system; the colours of the map and the curve are
+data colours and stay as they are. The page contains the request and the case, like the archive
+does: it stays on this machine.
+
 ## Privacy
 
 This tool is no longer fully local. With the `claude-code` and `api` backends, the subject and body
 of the request mail, the text of its attachments, `context.md` (which names colleagues and earlier
 advices), the matching rows of the advice log, **the full text of earlier advices for the same
-destinations** and the calculated figures are sent to Anthropic under your own subscription or API key. Nothing is sent by `data`, `run`, `check`, `widget` or `due`, and
+destinations** and the calculated figures are sent to Anthropic under your own subscription or API key. Nothing is sent by `data`, `run`, `check`, `dossier` or `due`, and
 `--llm manual` keeps the machine offline: it writes the prompt to a file and waits for you to paste
 an answer back. `--no-web` stops the model searching the open web. Decide deliberately what
 goes into `context.md`; it is the richest personal data in the system and it goes out with every reply.
@@ -339,7 +368,7 @@ dienstreis msg request.msg > request.json        # 1. read the forwarded Outlook
 # 2. write stops.yaml from the request (see examples/)
 dienstreis run stops.yaml --out out_name --log     # 3. risk table, map, epicurve, facts, QA
 # 4. write the short reply to An from out_name/feiten.txt -> reply.txt
-dienstreis widget reply.txt --suggestions sugg.txt --out reply.html   # 5. refuses if checks fail
+dienstreis dossier out_name                        # 5. rebuild the dossier after editing reply.txt
 dienstreis due                                     # reviews that are due (go/no-go dates)
 dienstreis data --zone Watsa                       # quick look at current figures
 ```
@@ -370,7 +399,9 @@ stops:
 | `sources.txt` | URLs to paste into the mail |
 | `summary.json` | everything above as data, plus QA |
 | `stops.yaml` | the itinerary the model read from the mail, after your confirmation |
-| `reply.txt`, `reply_*.html` | the reply, and the copy widget (only written when every check passed) |
+| `reply.txt` | the letter to An |
+| `dossier.html` | the internal dossier, see [The internal dossier](#the-internal-dossier); a copy goes into the archive |
+| `dossier.json` | what the dossier needs that no other file keeps: the request, the model's assessment, the checks |
 | `sugg.txt` | notes for you, not part of the mail: the model's assessment, what it left out of the mail, what to verify, commitments made, questions for the treating doctor; failed checks on top |
 | `llm_trace.json` | every prompt, answer and retry of this run |
 | `web.json` | what the web step found (FOD, CDC, WHO, news) |
@@ -398,9 +429,9 @@ Four places, and only one of them is irreplaceable.
 
 | | where | what | if you lose it |
 |---|---|---|---|
-| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`), and `countries/<ISO3>.yaml` for the web-step findings you accepted | gone for good. Back this up |
+| **Your state** | `%USERPROFILE%\.config\dienstreis\` | `context.md` (standing notes), `advice_log.csv` (one line per advice), `adviezen/<date>_<traveller>/` (each advice whole: `advies.json`, `reply.txt`, `summary.json`, `dossier.html`), and `countries/<ISO3>.yaml` for the web-step findings you accepted | gone for good. Back this up |
 | **Source data** | `%USERPROFILE%\.cache\dienstreis\` | the INRB clone (INSP figures, zone shapefile), Natural Earth borders, the cached map outlines, `http_cache.json` | re-downloaded on the next run |
-| **Per-run output** | `out_<traveller>/` where you ran the command | the reply, widget, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
+| **Per-run output** | `out_<traveller>/` where you ran the command | the reply, the dossier, map, epicurve, risk table, `stops.yaml`, `summary.json`, `llm_trace.json`, `web.json` | regenerate by running it again, though the wording will differ |
 | **Maintained by hand** | `dienstreis/config/`, `dienstreis/prompts/`, `dienstreis/outbreaks/`, `dienstreis/countries/` in this repo | places, the three prompts, per outbreak its profile, prompt passages and zone spellings, and per country its sources, advisories and border measures | it is in git |
 
 The advice folders are the thing worth protecting: they are what later advices are checked against,
@@ -434,7 +465,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 - ECDC headline parsed and compared (ok / mismatch / page changed)
 - unmatched zone spellings reported (add them to `outbreaks/<id>/zone_overrides.csv`)
 - advisories older than 14 days, or never checked, flagged per country (`countries/<ISO3>.yaml`, `verified:`)
-- map label overlaps and labels clipped by the frame, inset or legend counted (inset and legend go to corners without stops); em-dash, banned intensifiers and open placeholders block the widget
+- map label overlaps and labels clipped by the frame, inset or legend counted (inset and legend go to corners without stops); em-dash, banned intensifiers and open placeholders keep the dossier's copy button off
 
 ## Known limits
 
@@ -473,6 +504,7 @@ reason, CDC level, family stay, healthcare work, overnight stays, long stays, ri
 | `test_countries.py` | the country registry: valid files, neighbours that agree, local copies and the 0.2 table only when newer, web findings merged and written only after a yes, border measures on a stop in a neighbouring country |
 | `test_golden.py` | the deterministic output of the four example trips and the prompts of the three model steps, byte for byte, as they were before Ebola became a profile (frozen data dates and advisories); regenerate only on purpose with `DIENSTREIS_GOLDEN_WRITE=1` |
 | `test_outbreak.py` | profiles are checked when read and refused whole; prompt passages land where the template asks |
+| `test_dossier.py` | the dossier from a synthetic run folder: every section, the letter to copy (off while a check fails, on again after a corrected hand edit), figures embedded and scaled, questions with their answers, a case without a verdict, several outbreaks, escaping, links limited to http and file |
 | `test_skeleton.py` | the facts file writes zone names with their own capitals and ECDC dates with Dutch months, and is no letter frame; the redirect line is added by the code |
 
 The pipeline, regression and golden tests each do a full analysis against the cached data, so a complete

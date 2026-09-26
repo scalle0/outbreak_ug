@@ -37,9 +37,23 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - Bijlagen: kaart en curve gaan enkel mee bij een reisadvies, en het model krijgt hun bestandsnamen (`bijlagen`), zodat de mail geen curve belooft die er niet is.
   - Controles: `length_note` waarschuwt boven 200 woorden (50 meer per bijkomende uitbraak, was 500 en 100); nieuw is `questions_note`, die waarschuwt als een vraag van An geen antwoord kreeg in `dossier.vragen`. Beide sturen de herstelronde en blokkeren nooit.
   - Tests: 245 groen. Goldens: `feiten.txt` vervangt `reply_skeleton.txt` en bevat dezelfde feitenalinea's zonder het kader; in `summary.json` is `skeleton_issues` leeg (de vier plaatshouders waren het kader); de mailprompt heeft de nieuwe secties en krijgt `<feiten>` en `<bijlagen>` in plaats van `<skelet>`.
+- **Gebouwd, stap 2 (het dossier):**
+  - `dienstreis/dossier.py`: een HTML-pagina per advies (`dossier.html`) met elf delen: antwoord aan An, aanvraag, oordeel, epidemiologie, risico, ziektefiche (leeg tot stap 3), richtlijnen, beoordeling, web, eerdere adviezen, bronnen.
+  - Bovenaan staat de mail met een kopieerknop, het aantal woorden tegenover de grens en de opmerkingen van de controles. Bij elke vraag van An staat de zin die ze beantwoordt, of "geen antwoord gekoppeld".
+  - De pagina komt uit de bestanden van de run plus `dossier.json`, dat bewaart wat geen ander bestand heeft: de aanvraag, de beoordeling van het model, de controles, eerdere adviezen, logregels en de relevante regels uit `context.md`. Zo bouwt `dienstreis dossier <map>` de pagina opnieuw na een handmatige aanpassing van `reply.txt`, en doet het de controles opnieuw. Dat commando vervangt `dienstreis widget`; `mail.widget` is weg.
+  - Kaart en curve worden ook voor een casus of vraag getekend, voor het dossier; enkel een reisadvies stuurt ze mee. `epi` heeft nu ook de laatste acht volle weken met overlijdens (`weeks_last8`), enkel voor het dossier: de mailstap krijgt ze niet.
+  - De figuren staan in de pagina, verkleind tot 1600 pixels (Pillow, nu een expliciete afhankelijkheid), zodat de kopie in het archief zonder de map van de run opent. `dienstreis zoek` toont de link naar het dossier.
+  - Opmaak volgens ScAIdev: inktkleurige bovenbalk met het knooppuntmerk, papieren achtergrond, Space Grotesk, Inter en JetBrains Mono, groen voor de hoofdknop, blauw voor info, zand voor wat blokkeert, Lucide-lijniconen, een afdrukstijl voor PDF.
+  - Tests: `test_dossier.py`, 14 tests op een verzonnen run zonder netwerk. Alle 259 tests groen. Goldens: `summary.json` krijgt `weeks_last8`; de prompts zijn ongewijzigd.
+- **Commits:** a8022e7 (stap 1)
 - **Beslissingen (uitvoering):**
   - Zonder `dossier` in het antwoord zwijgt `questions_note`: er is dan niets om de vragen mee te vergelijken, en een melding zou een vraag onbeantwoord noemen die misschien wel beantwoord is.
   - De sleutel `skeleton_issues` in `summary.json` blijft zo heten, zodat oude en nieuwe samenvattingen dezelfde vorm houden.
+  - Het dossier wordt ook gebouwd als een blokkerende controle faalt (een verzonnen getal, een em-dash), want Steven heeft het nodig om de mail te verbeteren. De kopieerknop staat dan uit: een mail die de controles niet haalt, is nooit één klik van Outlook, zoals de widget vroeger niet gebouwd werd.
+  - DesignSync kon niet inloggen in deze sessie. De ScAIdev-tokens komen uit de kopie in `permanentiefile/prototype/scaidev-tokens.css`, die uit `colors_and_type.css` v2 van het Claude Design-project genomen is.
+  - `dienstreis dossier` bouwt de pagina in de map van de run opnieuw, niet in het archief: daar blijft wat de run schreef, zoals voor `reply.txt` en `advies.json`.
+  - Het dossier bevat de aanvraag en de casus, zoals het archief. Het blijft op deze pc en gaat nergens heen.
+  - De lettertypes komen van Google Fonts, zoals in `permanentiefile`. Zonder internet valt de pagina terug op de systeemletters. Een pagina die als bestand opent, stuurt geen verwijzer mee.
 
 ## F-014 · Een map per aanvraag: meerdere mails samen lezen
 - **Gevraagd:** 2026-09-25 — "I will make a folder per request, rather than a msg file, because I now have three emails for one request in one hour time"

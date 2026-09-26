@@ -9,6 +9,7 @@ One folder per advice under ~/.config/dienstreis/adviezen/JJJJ-MM-DD_reiziger/:
     advies.json   the searchable record (traveller, dates, stops, zones, verdict, overrules, reply)
     reply.txt     the mail as it was written
     summary.json  the calculated figures behind it
+    dossier.html  the internal dossier of the run (dossier.py), since F-015
 These are colleagues' travel details. They stay on the machine; `search` reads them, and only the
 hits for the same destinations go to the model.
 
@@ -135,12 +136,14 @@ def search(term: str = "", *, since: date | None = None, until: date | None = No
     return out[:limit]
 
 
-def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = None) -> list[dict]:
+def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = None,
+             with_dir: bool = False) -> list[dict]:
     """Earlier advices for the same places or zones, trimmed for the prompt that writes the mail.
 
     The reply text is kept: that is the point. What the previous advice *said* is what a new one
     can contradict, and a one-line log row cannot show that. Advices about the same outbreak come
-    first; within that, the newest.
+    first; within that, the newest. `with_dir` adds the archive folder, for the dossier's links;
+    the model never gets it.
     """
     mine = set(summary.get("outbreaks") or []) or {summary.get("outbreak")}
     wanted = {str(s.get("place", "")).lower() for s in summary.get("stops", [])}
@@ -154,9 +157,9 @@ def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = N
         here = {str(x).lower() for x in r.get("places", []) + r.get("zones", []) + r.get("provinces", [])
                 + [r.get("traveller", "")]}
         if here & wanted:
-            hits.append({k: r[k] for k in ("advised_on", "traveller", "type", "outbreaks", "places", "zones", "overall",
-                                           "rule_overall", "overrides", "review_on", "reply")
-                         if k in r})
+            keys = ("advised_on", "traveller", "type", "outbreaks", "places", "zones", "overall",
+                    "rule_overall", "overrides", "review_on", "reply") + (("dir",) if with_dir else ())
+            hits.append({k: r[k] for k in keys if k in r})
     hits.sort(key=lambda h: not (set(h.get("outbreaks", [])) & mine))     # stable: newest first within
     return hits[:limit]
 

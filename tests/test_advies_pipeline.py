@@ -71,7 +71,8 @@ def test_pipeline_with_repair(env, monkeypatch):
     assert len(fake.prompts["reply"]) == 2 and "em-dash" in fake.prompts["reply"][1]
     assert (out / "reply.txt").read_text(encoding="utf-8").startswith("Beste An,")
     assert "—" not in (out / "reply.txt").read_text(encoding="utf-8")
-    assert list(out.glob("reply_*.html")) and list(out.glob("kaart_*.png")) and (out / "stops.yaml").exists()
+    assert (out / "dossier.html").exists() and list(out.glob("kaart_*.png")) and (out / "stops.yaml").exists()
+    assert (Path(res["advice_dir"]) / "dossier.html").exists()      # archived with the advice
     assert "Reiziger T" in (tmp / "context.md").read_text(encoding="utf-8")
     assert "Reiziger T" in (tmp / "log.csv").read_text(encoding="utf-8")
 
@@ -81,7 +82,7 @@ INVENTED = GOOD.replace("2. Kisangani: af te raden.",
 
 
 def test_invented_number_triggers_a_repair_round(env):
-    """A case count that is in no calculated figure must not reach the widget."""
+    """A case count that is in no calculated figure must not reach the letter."""
     tmp, req = env
     replies = iter([{"reply": INVENTED, "suggestions": []},
                     {"reply": GOOD, "suggestions": []}])
@@ -92,14 +93,16 @@ def test_invented_number_triggers_a_repair_round(env):
     assert res["issues"] == [] and "8 421" not in (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
 
 
-def test_widget_is_not_built_when_checks_still_fail(env):
-    """The widget is the copy-to-Outlook page: never built around text that failed the checks."""
+def test_copying_stays_off_when_checks_still_fail(env):
+    """The dossier is built all the same (Steven needs it), but its copy button stays off: a letter that
+    failed the checks is never one click away from Outlook, as the old widget was never built around it."""
     tmp, req = env
     fake = llm.Fake({"stops": STOPS, "reply": {"reply": INVENTED, "suggestions": []}})
     res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
                             open_browser=False, llm_backend=fake, web=False)
     out = Path(res["out"])
-    assert res["widget"] is None and not list(out.glob("reply_*.html"))
+    page = (out / "dossier.html").read_text(encoding="utf-8")
+    assert 'onclick="kopieer()" disabled' in page and "dienstreis dossier" in page
     assert any("8421" in i for i in res["issues"])
     assert (out / "reply.txt").exists()            # the text is kept so it can be corrected by hand
     assert "8421" in (out / "sugg.txt").read_text(encoding="utf-8")

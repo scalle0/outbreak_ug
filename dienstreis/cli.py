@@ -1,4 +1,4 @@
-"""Command line: dienstreis {advies,msg,data,run,check,widget,due,zoek,context,uitbraken}."""
+"""Command line: dienstreis {advies,msg,data,run,check,dossier,due,zoek,context,uitbraken,herlabel}."""
 from __future__ import annotations
 
 import argparse
@@ -126,6 +126,9 @@ def cmd_zoek(a):
             for line in str(r.get("reply", "")).splitlines():
                 print(f"    {line}")
         print(f"    {r['dir']}")
+        page = Path(r["dir"]) / "dossier.html"
+        if page.exists():
+            print(f"    {page.resolve().as_uri()}")
     print(f"\n{len(rows)} advies(en).")
 
 
@@ -138,15 +141,22 @@ def cmd_check(a):
     sys.exit(1 if issues else 0)
 
 
-def cmd_widget(a):
-    from .mail import check_text, widget
-    txt = Path(a.text).read_text(encoding="utf-8")
-    sug = Path(a.suggestions).read_text(encoding="utf-8").strip().splitlines() if a.suggestions else []
-    issues = check_text(txt)
-    if issues:
-        print("Niet gebouwd:", "; ".join(issues)); sys.exit(1)
-    Path(a.out).write_text(widget(txt, sug, a.title), encoding="utf-8")
-    print(a.out)
+def cmd_dossier(a):
+    """Rebuild the dossier of a run, after reply.txt was edited by hand; the checks run again."""
+    import webbrowser
+    from . import dossier
+    out = Path(a.out)
+    if not (out / "summary.json").exists():
+        print(f"Geen run in {out}: summary.json ontbreekt."); sys.exit(1)
+    page = dossier.build(out, rebuilt=True)
+    checks = json.loads((out / dossier.DATA).read_text(encoding="utf-8"))["checks"]
+    for x in checks["notes"]:
+        print(f"  let op: {x}")
+    print(page)
+    if not a.no_open:
+        webbrowser.open(page.resolve().as_uri())
+    if checks["issues"]:
+        print("Kopiëren staat uit: " + "; ".join(checks["issues"])); sys.exit(1)
 
 
 def cmd_due(a):
@@ -163,7 +173,7 @@ def main(argv=None):
             pass
     p = argparse.ArgumentParser(prog="dienstreis")
     s = p.add_subparsers(dest="cmd", required=True)
-    v = s.add_parser("advies", help="volledige workflow: .msg in, widget en conceptmail uit (LLM enkel voor oordeel)")
+    v = s.add_parser("advies", help="volledige workflow: .msg in, kort antwoord, intern dossier en conceptmail uit (LLM enkel voor oordeel)")
     v.add_argument("file", help=".msg, .eml of .txt met de aanvraag, of een map met alle mails van één aanvraag")
     v.add_argument("--llm", default=os.environ.get("DIENSTREIS_LLM", "claude-code"),
                    choices=["claude-code", "api", "manual"], help="LLM-backend (standaard: claude-code)")
@@ -181,7 +191,7 @@ def main(argv=None):
     v.add_argument("--no-number-check", action="store_true",
                    help="cijfers in de mail niet vergelijken met de berekende gegevens")
     v.add_argument("--outlook", action="store_true", help="conceptmail met bijlagen in Outlook (Windows)")
-    v.add_argument("--no-open", action="store_true", help="widget niet in de browser openen")
+    v.add_argument("--no-open", action="store_true", help="het dossier niet in de browser openen")
     v.add_argument("--out"); v.add_argument("--asof"); v.add_argument("--refresh", action="store_true")
     v.set_defaults(f=cmd_advies)
     x = s.add_parser("context", help="context.md openen (eerdere adviezen, open toezeggingen)")
@@ -201,8 +211,11 @@ def main(argv=None):
     hl.add_argument("--uitbraak", action="append", metavar="ID")
     hl.add_argument("--reden", required=True)
     hl.set_defaults(f=cmd_herlabel)
-    c = s.add_parser("check", help="controle van een mailtekst of widget"); c.add_argument("file"); c.set_defaults(f=cmd_check)
-    w = s.add_parser("widget", help="HTML-widget uit afgewerkte mailtekst"); w.add_argument("text"); w.add_argument("--suggestions"); w.add_argument("--out", required=True); w.add_argument("--title", default="Reply Team Actueel"); w.set_defaults(f=cmd_widget)
+    c = s.add_parser("check", help="controle van een mailtekst of dossier"); c.add_argument("file"); c.set_defaults(f=cmd_check)
+    w = s.add_parser("dossier", help="het interne dossier opnieuw opbouwen, na een aanpassing van reply.txt")
+    w.add_argument("out", help="de map van de run (out_...)")
+    w.add_argument("--no-open", action="store_true", help="niet in de browser openen")
+    w.set_defaults(f=cmd_dossier)
     u = s.add_parser("due", help="adviezen die opnieuw bekeken moeten worden"); u.set_defaults(f=cmd_due)
     z = s.add_parser("zoek", help="eerdere adviezen zoeken op plaats, zone, provincie, reiziger of notitie")
     z.add_argument("term", nargs="?", default="")

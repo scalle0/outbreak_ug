@@ -20,8 +20,7 @@ def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:40]
 
 
-def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str | None, multi: bool,
-                draw: bool = True) -> dict:
+def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str | None, multi: bool) -> dict:
     """One outbreak: its figures, the risk per stop, and its map and curve (file names carry its id when
     there are several). A profile without figures (`geen`) gives the stops at country level only."""
     from . import data, figures, mail, outbreak, risk
@@ -37,9 +36,7 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
             r.flags.append(f"geen cijfers voor {spec.name}: de tabel is leeg")
     sfx = f"_{spec.id}" if multi else ""
     epi = mp = curve = None
-    if ob is not None and not draw:        # a case letter: the numbers, no figures
-        epi = figures.epicurve(ob, None, src["ecdc"], draw=False)
-    elif ob is not None:
+    if ob is not None:
         curve = out / f"epicurve{sfx}_{ob.asof:%Y%m%d}.png"
         epi = figures.epicurve(ob, str(curve), src["ecdc"])
         if not epi.get("path"):
@@ -49,7 +46,9 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
         sub = (f"{trip.get('traveller', '')}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
                f"{last.year if last else ''}. Nationaal: {mail.n(epi['last_total'])} gevallen, "
                f"{mail.n(epi['last_deaths'])} overlijdens (data tot {ob.asof:%d-%m-%Y})")
-        mp = figures.itinerary_map(rs, ob, spec.figures["map_title"], sub, str(out / f"kaart_{tag}{sfx}.png"))
+        # a question without a place has no itinerary to draw
+        mp = figures.itinerary_map(rs, ob, spec.figures["map_title"], sub,
+                                   str(out / f"kaart_{tag}{sfx}.png")) if rs else None
 
     ecdc, who = src["ecdc"], src["who"]
     qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"] if ob is not None else None,
@@ -85,7 +84,7 @@ def _stops(rs) -> list[dict]:
 
 
 def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = None, log_it: bool = False,
-            spec=None, specs=None, draw: bool = True) -> dict:
+            spec=None, specs=None) -> dict:
     """Deterministic core: data, risk per stop, map, epicurve, facts, QA. Returns summary.
 
     `spec` or `specs` name the outbreaks to assess the trip against; by default those of the trip
@@ -98,7 +97,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     specs = [spec] if spec else list(specs or route.outbreaks_for(trip))
     multi = len(specs) > 1
     tag = _slug(trip.get("traveller", "trip"))
-    parts = [_assess_one(trip, s, out, tag, refresh, asof, multi, draw) for s in specs]
+    parts = [_assess_one(trip, s, out, tag, refresh, asof, multi) for s in specs]
     order = {lv: i for i, lv in enumerate(outbreak.LEVELS)}
     parts.sort(key=lambda p: order.get(p["level"], len(order)))       # strictest first, stable
     main, others = parts[0], parts[1:]

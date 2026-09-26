@@ -1,4 +1,4 @@
-"""The facts a reply is written from, the checks on the reply, the HTML copy widget, and sources.
+"""The facts a reply is written from, the checks on the reply, and sources.
 
 The facts file (`feiten.txt`) holds the rule verdict, the calculated facts per stop, the state of
 the outbreak and the conditions. It is not a letter frame: An gets a short answer written by the
@@ -8,7 +8,6 @@ what is about the country (FOD pages, the pretravel line) from the country regis
 """
 from __future__ import annotations
 
-import html
 import re
 
 from . import countries, outbreak
@@ -292,30 +291,6 @@ def verdict_note(txt: str, overall: str | None) -> str | None:
     if re.search(_VERDICT[want], txt, re.I):
         return None
     return f"regeloordeel '{want}' komt niet terug in de mail (regels: {overall}); bedoeld of niet?"
-
-
-def widget(mail_text: str, suggestions: list[str], title: str) -> str:
-    sug = "\n".join(f"      <li>{html.escape(s)}</li>" for s in suggestions) or "      <li>No flags. Reply ready to send.</li>"
-    return f"""<!DOCTYPE html>
-<html lang="nl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{html.escape(title)}</title>
-<style>
-:root {{ --bg:#fff; --fg:#1a1a1a; --box:#f5f5f5; --border:#ddd; --muted:#555; }}
-@media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --bg:#1e1e1e; --fg:#eaeaea; --box:#2a2a2a; --border:#444; --muted:#aaa; }} }}
-:root[data-theme="dark"] {{ --bg:#1e1e1e; --fg:#eaeaea; --box:#2a2a2a; --border:#444; --muted:#aaa; }}
-body {{ margin:16px; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; }}
-.w {{ max-width:760px; }} .box {{ background:var(--box); border:1px solid var(--border); border-radius:6px; padding:16px;
-font-family:monospace; font-size:.85rem; white-space:pre-wrap; word-break:break-word; margin-top:8px; }}
-button {{ padding:5px 12px; border:1px solid var(--border); border-radius:5px; background:var(--box); color:var(--fg); cursor:pointer; }}
-hr {{ margin:20px 0; border:none; border-top:1px solid var(--border); }} .s {{ font-size:.85rem; color:var(--muted); }}
-</style></head><body><div class="w">
-  <button onclick="c()">Kopieer</button>
-  <pre id="t" class="box">{html.escape(mail_text)}</pre>
-  <hr><div class="s"><strong>SUGGESTIONS - NOT PART OF REPLY MAIL</strong><ul>
-{sug}
-  </ul></div></div>
-<script>function c(){{navigator.clipboard.writeText(document.getElementById('t').innerText).then(()=>{{const b=document.querySelector('button');b.textContent='Gekopieerd!';setTimeout(()=>b.textContent='Kopieer',1500);}});}}</script>
-</body></html>"""
 
 
 def pretravel_line(rs: list[StopRisk]) -> str:

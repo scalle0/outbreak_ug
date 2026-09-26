@@ -209,8 +209,8 @@ def _overlaps(texts, fig) -> int:
     return sum(1 for i in range(len(boxes)) for j in range(i + 1, len(boxes)) if boxes[i].overlaps(boxes[j]))
 
 
-def epicurve(ob, out: str | None, ecdc: dict | None = None, draw: bool = True) -> dict:
-    """National curve and its numbers. `draw=False` gives the numbers only (a case letter has no figures)."""
+def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
+    """National curve and its numbers."""
     spec = getattr(ob, "spec", None) or outbreak.default()
     nat = ob.national.copy()
     nat["cases"] = nat.cases.cummax()
@@ -219,15 +219,10 @@ def epicurve(ob, out: str | None, ecdc: dict | None = None, draw: bool = True) -
     inc = wk.diff().clip(lower=0).iloc[1:]
     last = nat.dropna(subset=["cases"]).iloc[-1]
     if len(inc) < 2:        # a hand-kept table with one or two report dates: no curve to draw
-        return {"path": None, "weekly_cases_last4_full_weeks": {}, "last_total": int(last.cases),
+        return {"path": None, "weekly_cases_last4_full_weeks": {}, "weeks_last8": [], "last_total": int(last.cases),
                 "last_deaths": int(last.deaths) if pd.notna(last.deaths) else 0,
                 "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
     last_full = inc.index[-1] if nat.index[-1] >= inc.index[-1] else inc.index[-2]
-    if not draw:
-        recent = inc.loc[:last_full].tail(4)
-        return {"path": None, "weekly_cases_last4_full_weeks": {f"{d:%d-%m}": int(v) for d, v in recent.cases.items()},
-                "last_total": int(last.cases), "last_deaths": int(last.deaths),
-                "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
 
     fig, (a, b) = plt.subplots(2, 1, figsize=(11, 8.6), dpi=300, sharex=True, gridspec_kw={"height_ratios": [1.1, 1]})
     a.plot(nat.index, nat.cases, color="#333333", lw=2, label=f"{cap(spec.case_words['cases'])} (cumulatief)")
@@ -260,4 +255,12 @@ def epicurve(ob, out: str | None, ecdc: dict | None = None, draw: bool = True) -
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
     recent = inc.loc[:last_full].tail(4)
     return {"path": out, "weekly_cases_last4_full_weeks": {f"{d:%d-%m}": int(v) for d, v in recent.cases.items()},
+            "weeks_last8": _weeks(inc, last_full),
             "last_total": int(last.cases), "last_deaths": int(last.deaths), "cfr": round(cfr, 1)}
+
+
+def _weeks(inc, last_full) -> list[dict]:
+    """The last eight full weeks (ending on Sunday) with new cases and deaths, for the dossier."""
+    return [{"week": f"{d:%Y-%m-%d}", "cases": int(r.cases),
+             "deaths": int(r.deaths) if pd.notna(r.deaths) else None}
+            for d, r in inc.loc[:last_full].tail(8).iterrows()]

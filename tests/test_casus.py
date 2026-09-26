@@ -99,7 +99,10 @@ def test_a_case_takes_its_own_road(env):
                             asof="2026-09-19", health_ok=True, uitbraken=["mpox_cod_2026"])
     out = Path(res["out"])
     assert set(fake.prompts) == {"stops", "web_consult", "consult"}
-    assert not list(out.glob("*.png")) and res["summary"]["attachments"] == []
+    # map and curve are drawn for the dossier, and none of them goes with the letter
+    assert list(out.glob("*.png")) and res["summary"]["attachments"]
+    assert json.loads((out / "dossier.json").read_text(encoding="utf-8"))["attachments_sent"] == []
+    assert "data:image/png;base64," in (out / "dossier.html").read_text(encoding="utf-8")
     p = fake.prompts["consult"][0]
     assert "<feiten>" in p and "Feiten uit de cijfers" in p and "UGent-home" in p and "<skelet>" not in p
     assert "vermoede en bevestigde gevallen" in p                    # the mpox figures for Kinshasa
