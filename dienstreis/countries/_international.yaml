@@ -1,0 +1,17 @@
+# Bodies that apply to every country and every outbreak. The web step reads these first; a
+# country's own file adds its government sources and news outlets.
+verified: 2026-09-25
+bodies:
+  - {name: WHO, what: Disease Outbreak News, url: "https://www.who.int/emergencies/disease-outbreak-news"}
+  - {name: WHO AFRO, what: situatierapporten voor Afrika, url: "https://www.afro.who.int"}
+  - {name: ECDC, what: epidemiologische updates en risicobeoordelingen, url: "https://www.ecdc.europa.eu"}
+  - {name: US CDC, what: Travel Health Notices, url: "https://wwwnc.cdc.gov/travel/notices"}
+  - {name: Africa CDC, what: epidemic intelligence, url: "https://africacdc.org"}
+  - {name: ITG, what: reisgeneeskunde en infectieziekten (Antwerpen), url: "https://www.itg.be"}
+  - {name: Sciensano, what: Belgische volksgezondheid, url: "https://www.sciensano.be"}
+  - {name: Departement Zorg, what: infectieziektebestrijding Vlaanderen, url: "https://www.departementzorg.be"}
+news:
+  - {name: Reuters, url: "https://www.reuters.com"}
+  - {name: AP, url: "https://apnews.com"}
+excluded:                              # sources the clinician does not want used or proposed
+  - {domain: wanda.be, reason: "op vraag van Steven weggelaten (F-005, 2026-09-22)"}

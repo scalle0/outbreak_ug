@@ -1,9 +1,12 @@
 """LLM layer: the only place where the package calls a language model.
 
-The model is used for three judgement steps and nothing else:
+The model is used for these judgement steps and nothing else:
   stops  : turn the request mail into a structured itinerary (stops.yaml), for the user to confirm
-  web    : optional check of FOD/CDC advisories and recent news that is not yet in the data
-  reply  : write the Dutch reply from the skeleton, the risk table and the context
+  web    : optional check of FOD/CDC advisories, recent news not yet in the data, and newer guidance
+           than the fiche and its documents (web_consult for a case or a question)
+  reply  : write the short Dutch reply and the dossier fields from the facts, the risk table and the context
+           (consult for a case or a question)
+  fiche  : once per disease, a draft fiche and its key documents from sources, for the clinician to confirm
 
 Backends
   claude-code : `claude -p` (Claude Code CLI, uses the user's own subscription); default
@@ -24,6 +27,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from . import outbreak
+
 PROMPTS = Path(__file__).parent / "prompts"
 DEFAULT_API_MODEL = "claude-opus-5"
 
@@ -32,13 +37,14 @@ class LLMError(RuntimeError):
     pass
 
 
-def load_prompt(step: str) -> str:
-    return (PROMPTS / f"{step}.md").read_text(encoding="utf-8")
+def load_prompt(step: str, specs=None) -> str:
+    """The step's instructions, with the passages about the outbreak taken from its profile."""
+    return outbreak.fill((PROMPTS / f"{step}.md").read_text(encoding="utf-8"), specs)
 
 
-def build_prompt(step: str, inputs: dict) -> str:
+def build_prompt(step: str, inputs: dict, specs=None) -> str:
     """Instruction file for the step followed by the inputs as clearly delimited JSON blocks."""
-    parts = [load_prompt(step), "", "# Invoer", ""]
+    parts = [load_prompt(step, specs), "", "# Invoer", ""]
     for k, v in inputs.items():
         body = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, indent=1, default=str)
         parts += [f"<{k}>", body, f"</{k}>", ""]
@@ -90,12 +96,29 @@ class ClaudeCode(Backend):
     from, and an unrelated edit to a CLAUDE.md would silently change the wording of a medical advice.
     `--bare` would isolate too, but forces ANTHROPIC_API_KEY authentication and never reads the
     subscription login, so it cannot be used here.
+
+    The call runs on the claude.ai login, never on a key that happens to be in the environment: with
+    ANTHROPIC_API_KEY set, `claude` sends its calls with the key and bills them to it while still
+    reporting the subscription login (seen 2026-09-26). So the key is taken out of the environment of
+    the call; `--llm api` is the backend for a key.
+
+    A failure names claude's own reason (in the JSON on stdout; stderr only carries warnings), and a
+    busy or rate-limited API gets one more try, so a confirmed itinerary is not lost to a hiccup.
     """
     name = "claude-code"
 
     # nothing from the machine, only the prompt
     ISOLATION = ["--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
                  "--permission-prompts", "none", "--no-session-persistence"]
+    # a fiche opens some twenty documents once. An advice's web step checks the advisories per country and
+    # province, border measures, WHO, news, newer case figures and every key document of the fiche: it ran
+    # 450-550 s on 25 turns in September and ran out of them on 2026-10-07 (error_max_turns)
+    WEB_TURNS = {"fiche": 80, "web": 60, "web_consult": 60}
+    WEB_SECONDS = {"fiche": 2400, "web": 1800, "web_consult": 1800}
+    # auth that would take precedence over the subscription login
+    HIDDEN_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+    TRANSIENT = re.compile(r"overload|rate.?limit|too many requests|\b(429|500|502|503|529)\b|timed? ?out", re.I)
+    RETRY_SECONDS = 30
 
     def __init__(self, model: str | None = None, workdir: Path | None = None, timeout: int = 900):
         self.bin = os.environ.get("DIENSTREIS_CLAUDE") or shutil.which("claude") or shutil.which("claude.exe")
@@ -108,21 +131,46 @@ class ClaudeCode(Backend):
         cmd = [self.bin, "-p", "Volg de instructies in de invoer. Antwoord uitsluitend met het gevraagde JSON-object.",
                "--output-format", "json", *self.ISOLATION]
         if web:   # only web tools, pre-approved so that print mode never waits for a permission prompt
-            cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch", "--max-turns", "25"]
+            cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch",
+                    "--max-turns", str(self.WEB_TURNS.get(step, 60))]
         else:     # pure text step: no tools at all
             cmd += ["--tools", "", "--max-turns", "2"]
         if self.model:
             cmd += ["--model", self.model]
-        with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
-            r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                               timeout=self.timeout, cwd=neutral)
-        if r.returncode != 0:
-            raise LLMError(f"claude -p faalde ({r.returncode}): {r.stderr.strip()[:500]}")
+        env = {k: v for k, v in os.environ.items() if k not in self.HIDDEN_ENV}
+        limit = max(self.timeout, self.WEB_SECONDS.get(step, 0))
+        for attempt in (1, 2):
+            with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
+                try:
+                    r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+                                       timeout=limit, cwd=neutral, env=env)
+                except subprocess.TimeoutExpired:   # not retried: a second try would take as long
+                    raise LLMError(f"claude -p gaf geen antwoord binnen {limit} s (stap {step})") from None
+            out = self._envelope(r.stdout)
+            if r.returncode == 0 and not out.get("is_error"):
+                return out.get("result", "") if out else r.stdout
+            why = self._why(r, out)
+            if attempt == 1 and self.TRANSIENT.search(why):
+                print(f"  claude -p: {why}; nieuwe poging over {self.RETRY_SECONDS} s", flush=True)
+                time.sleep(self.RETRY_SECONDS)
+                continue
+            raise LLMError(f"claude -p faalde ({r.returncode}): {why}")
+        raise AssertionError("unreachable")
+
+    @staticmethod
+    def _envelope(stdout: str) -> dict:
         try:
-            env = json.loads(r.stdout)
-            return env.get("result", "") if isinstance(env, dict) else r.stdout
+            d = json.loads(stdout)
         except json.JSONDecodeError:
-            return r.stdout
+            return {}
+        return d if isinstance(d, dict) else {}
+
+    @staticmethod
+    def _why(r, out: dict) -> str:
+        """claude's own reason for a failed call: the JSON on stdout first; stderr without the notices."""
+        parts = [str(out[k]) for k in ("subtype", "result", "error") if out.get(k) not in (None, "", "success")]
+        notes = [ln for ln in r.stderr.splitlines() if ln.strip() and "connectors are disabled" not in ln]
+        return "; ".join(parts + notes)[:500] or r.stdout.strip()[:500] or "geen uitleg van claude"
 
 
 class Api(Backend):
@@ -202,10 +250,11 @@ def trace_of(backend: Backend) -> list[dict]:
 
 
 def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web: bool = False,
-             repair: bool = False) -> dict:
+             repair: bool = False, specs=None) -> dict:
     """One step. `repair` marks a second pass over the same step after the checks rejected it,
-    so the trace tells a repair round apart from a retry on unusable JSON."""
-    prompt = build_prompt(step, inputs)
+    so the trace tells a repair round apart from a retry on unusable JSON. `specs` are the outbreak
+    profiles whose passages go into the instructions (default: the default profile)."""
+    prompt = build_prompt(step, inputs, specs)
     last = None
     for attempt in range(2):
         t0 = time.time()
@@ -223,6 +272,6 @@ def ask_json(backend: Backend, step: str, inputs: dict, required: list[str], web
         except (LLMError, json.JSONDecodeError) as e:
             last = str(e)
         entry["geweigerd"] = last
-        prompt = build_prompt(step, inputs) + f"\n\nJe vorige antwoord was onbruikbaar ({last}). " \
+        prompt = build_prompt(step, inputs, specs) + f"\n\nJe vorige antwoord was onbruikbaar ({last}). " \
                                                 "Geef enkel het JSON-object met alle gevraagde velden."
     raise LLMError(f"stap {step}: {last}")

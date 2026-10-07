@@ -4,6 +4,15 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 
 | ID | Feature | Status | Gevraagd |
 |---|---|---|---|
+| F-018 | Adviezen verwijderen (proefruns), en zelf een proefrun doen die niets bewaart | klaar | 2026-09-26 |
+| F-017 | Opvolging na het advies: de go/no-go-check en reizigers ter plaatse, op de actuele cijfers | klaar | 2026-09-26 |
+| F-016 | Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement | klaar | 2026-09-26 |
+| F-015 | Kort antwoord aan An, een intern dossier voor Steven, een vaste fiche per ziekte | klaar | 2026-09-26 |
+| F-014 | Een map per aanvraag: meerdere mails samen lezen | klaar | 2026-09-25 |
+| F-013 | Casusvragen: een reiziger die al ter plaatse is (ziek, blootgesteld, in quarantaine) | klaar | 2026-09-25 |
+| F-012 | Handmatig bijgehouden cijfertabel per uitbraak, en mpox (DRC) als tweede profiel | klaar | 2026-09-25 |
+| F-011 | Routering naar de uitbraken die gelden, meerdere uitbraken per advies, landniveau zonder uitbraak | klaar | 2026-09-25 |
+| F-010 | Generieke kern: ebola wordt het eerste uitbraakprofiel, zonder gedragswijziging | klaar | 2026-09-25 |
 | F-009 | Kortere mail aan Team Actueel | klaar | 2026-09-22 |
 | F-008 | Kaart sneller: elk advies ruim een minuut korter | klaar | 2026-09-22 |
 | F-007 | Regels kunnen overrulen, met vastgelegde reden | klaar | 2026-09-22 |
@@ -13,6 +22,230 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
 | F-003 | Hardening van `advies`: promptisolatie, reisschemavalidatie, cijfercontrole | klaar | 2026-09-22 |
 | F-002 | Alles lokaal in één commando: `dienstreis advies`, LLM enkel voor oordeel | klaar | 2026-09-22 |
 | F-001 | dienstreis-advies 0.1.0: uitbraakrisico voor UGent-dienstreizen | klaar | 2026-09-22 |
+
+## F-018 · Adviezen verwijderen, en een proefrun die niets bewaart
+- **Gevraagd:** 2026-09-26 — "I want to be able to delete previous advices (for example the last mpox advice ran three times, because I tested it), how do I delete these entries and in future, how can I do a dry run myself?"
+- **Status:** klaar (2026-09-26)
+- **Aanleiding:** de mail van 25/09 liep drie keer als proef en staat nu drie keer in het archief, de log en `context.md`. Daardoor verschijnt dezelfde student drie keer in de opvolging (F-017) en bij de eerdere adviezen voor Kinshasa.
+- **Gebouwd:**
+  - `dienstreis verwijder <map of mapnaam> ...` haalt een advies of meerdere tegelijk uit het archief, de log en `context.md`. De map gaat naar een prullenbak (`~/.config/dienstreis/verwijderd/`), met in `verwijderd.json` de weggehaalde logregels en contextregel. `dienstreis verwijder --herstel <naam>` zet alle drie terug. Het vraagt altijd eerst bevestiging; `--ja` slaat de vraag over.
+  - Een advies bewaart voortaan de regel die het aan `context.md` toevoegde (`context_line` in `advies.json`), zodat verwijderen precies die regel weghaalt. Bij een ouder advies worden de regels van zijn datum een voor een gevraagd; onder `--ja` blijven die staan.
+  - `dienstreis advies <mail> --proef` is een proefrun. Alles loopt, ook het model, en de map van de run met het dossier wordt geschreven; het dossier toont een banner "proefrun". Er komt niets in het archief, de log of `context.md`, er is geen Outlook-concept, en wat de webstap voorstelt wordt getoond maar niet overgenomen.
+  - Tests: `test_verwijder.py` (7) en een proefrun in de pijplijntest. Alle 298 tests groen.
+- **Beslissingen (uitvoering):**
+  - Een prullenbak in plaats van echt wissen: het archief is het enige verslag van wat verstuurd is, dus een vergissing moet terug te draaien zijn. Echt wissen gebeurt met de hand in `verwijderd/`.
+  - In het echte archief staan drie mpox-casussen: het advies van 25/09 uit versie 0.2 (herlabeld van ebolareis naar mpox-casus, waarschijnlijk het verstuurde), en de proefruns van 25/09 (`_2`) en 26/09. Welke weg mogen, beslist Steven; de tool verwijdert niets vanzelf.
+
+## F-017 · Opvolging na het advies: de go/no-go-check en reizigers ter plaatse
+- **Gevraagd:** 2026-09-26 — "Make indeed a module for 1 and 2": (1) de go/no-go-check een week voor vertrek automatisch opnieuw beoordelen op de actuele cijfers, (2) reizigers die ter plaatse zijn of binnenkort vertrekken opvolgen en een zone melden die verandert.
+- **Status:** klaar (2026-09-26)
+- **Gebouwd:**
+  - `dienstreis/opvolging.py` en `dienstreis opvolging [zoekterm]`. Het volgt elk bewaard advies dat nog loopt: de reiziger is ter plaatse of vertrekt binnen 30 dagen (`--dagen`), casussen inbegrepen. Een vraag volgt het niet. Een nieuwer advies voor dezelfde reiziger vervangt het oudere. Met een zoekterm (op vraag van An) telt ook een vertrek verder vooruit.
+  - Elk advies wordt op de cijfers van vandaag opnieuw beoordeeld, per uitbraak en zonder model. Per halte staat de categorie volgens de regels toen naast die van nu, zodat een overrule blijft staan maar een wijziging eronder zichtbaar is. Ernaast staan de gevallen, de recente gevallen, de dagen sinds het laatste geval, en het FOD- en CDC-niveau.
+  - Per advies één status: strenger, nieuwe gevallen, milder of ongewijzigd. Strenger is een strengere categorie, een FOD dat nu formeel afraadt, een hoger CDC-niveau, of een uitbraak die nu geldt en toen niet.
+  - Go/no-go: een advies waarvan de go/no-go-datum gekomen is en de reiziger nog niet vertrok, staat bovenaan. Voor zo'n advies, en voor elke reis die strenger werd, worden kaart en curve opnieuw getekend op de cijfers van vandaag. `--klaar <map of mapnaam> --notitie "..."` noteert de beslissing in het bewaarde advies; na vertrek loopt de opvolging ter plaatse verder.
+  - Het rapport (`~/.config/dienstreis/opvolging/<datum>/opvolging.html` en `.json`) heeft de opmaak van het dossier, met een link naar het dossier van elk advies.
+  - Planning door de gebruiker zelf: `--plannen weekdagen|dagelijks|wekelijks|uit` en `--uur 08:00` maken of verwijderen een taak in de Windows Taakplanner. Die draait `dienstreis opvolging --stil`: het rapport wordt altijd geschreven, maar de pagina opent enkel als er iets veranderde sinds de vorige check.
+  - Het archief bewaart voortaan het bevestigde reisschema (`stops.yaml`), overrules inbegrepen. Een ouder advies wordt opnieuw opgebouwd uit zijn samenvatting, zonder overrules, en het rapport zegt dat.
+  - Tests: `test_opvolging.py` (15), deels op de gecachte cijfers van 19/09. Alle 290 tests groen. Een run op het echte archief: drie lopende adviezen, alle drie de mpox-student van 25/09 onder drie namen uit de proefruns, ongewijzigd.
+- **Beslissingen (uitvoering):**
+  - Vergeleken wordt op de categorie volgens de regels, niet op de categorie na een overrule. Een overrule is een oordeel over de toestand van toen; verandert de regel eronder, dan moet Steven dat zien.
+  - Twee adviezen met dezelfde plaatsen en data maar een andere naam worden niet samengevoegd: twee collega's op dezelfde reis zouden er net zo uitzien.
+  - Een geplande run opent de pagina enkel bij iets nieuws. Anders zou een blijvende wijziging elke ochtend opnieuw openen.
+- **Beslissingen (Steven, 2026-09-26):**
+  - Voorlopig met de hand, bijvoorbeeld op vraag van An. Later kan het automatisch lopen, gepland door de gebruiker zelf, met een frequentie die hij kiest.
+  - Enkel feiten, geen model en geen brief: het rapport toont per halte het advies van toen naast de toestand nu. Steven beslist en start zelf een nieuw advies of schrijft.
+  - Gevolgd worden reizigers die nu ter plaatse zijn en reizen die binnen 30 dagen vertrekken, casussen inbegrepen.
+
+## F-016 · Claude Code-stap faalt met een API-sleutel in de omgeving; elke run op het abonnement
+- **Gevraagd:** 2026-09-26 — Steven meldde een run die stopte met `LLMError: claude -p faalde (1): ⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login`.
+- **Status:** klaar (2026-09-26)
+- **Oorzaak:**
+  - `ANTHROPIC_API_KEY` staat als Windows-gebruikersvariabele en zit dus in elke shell. `claude -p` stuurt zijn oproepen dan met die sleutel en rekent ze daarop aan, terwijl `claude auth status` nog `authMethod: claude.ai` toont (`apiKeySource: ANTHROPIC_API_KEY`). De README beloofde het omgekeerde: dat de standaardbackend altijd op het abonnement draait.
+  - Sinds de sleutel gezet is, liepen de runs dus op de sleutel. Dat geldt ook voor de twee conceptfiches van F-015 (ebola en mpox), die dezelfde ochtend opgesteld zijn.
+  - De foutmelding toonde enkel de waarschuwing op stderr. De eigenlijke reden stond in de JSON op stdout en werd weggegooid, dus waarom de run van Steven faalde is niet meer te achterhalen. Die ochtend liepen drie `claude`-processen tegelijk (de twee fiches en zijn run), dus een drukke of begrensde API is waarschijnlijk.
+- **Gebouwd:**
+  - `llm.ClaudeCode` haalt `ANTHROPIC_API_KEY` en `ANTHROPIC_AUTH_TOKEN` uit de omgeving van elke oproep, zodat die op de claude.ai-login draait. De sleutel blijft voor `--llm api`.
+  - Een mislukte oproep noemt de reden uit de JSON (subtype, result), en die van stderr zonder de waarschuwing over connectors. Een antwoord met `is_error` geldt ook als fout wanneer de exitcode 0 is.
+  - Een drukke of begrensde API (overload, rate limit, 429, 5xx, timeout) krijgt na 30 seconden nog één poging.
+  - Nagekeken: een echte oproep met de sleutel in de shell geeft een antwoord via het abonnement. Tests: `test_llm_backend.py` (4), zonder `claude` of netwerk.
+- **Beslissingen:**
+  - De sleutel wordt voor elke oproep uit de omgeving gehaald in plaats van dat Steven hem moet weghalen. Een sleutel voor `--llm api` mag blijven staan zonder dat de standaardruns ongemerkt op de sleutel draaien.
+
+## F-015 · Kort antwoord aan An, een intern dossier, een vaste fiche per ziekte
+- **Gevraagd:** 2026-09-26 — "the program is responding way too broadly to the general question. So what I would like is to have a report that I can use internally with the maps and the tables and the epidemiology and the treatment, the presentation, the risks, [...] any important documents from Belgian, European, world, US guidelines, and then have a very concise response to the actual question that was in the email sent by the office"
+- **Status:** klaar (2026-10-07)
+- **Aanleiding:** de echte mail van 25/09, opnieuw door de tool op 25/09: juist herkend als casus, maar een mail van 547 woorden (situatie, vier lange antwoorden, zes aanbevelingen, richtlijnen met datums), terwijl wat Steven zelf nodig had als losse lijst in `sugg.txt` stond, zonder kaart, epidemiologie, klinisch beeld of richtlijnenoverzicht.
+- **Beslissingen (Steven, 2026-09-26):**
+  - Mail aan An: kort, ongeveer 120 woorden en hoogstens 200: het antwoord, een of twee zinnen per vraag, hoogstens drie acties; kaart en curve als bijlage ("Short with map"). Bij een casus of vraag gaan er geen bijlagen mee; de figuren staan in het dossier.
+  - Dossier: een HTML-pagina per advies, met de mail bovenaan en een kopieerknop, bewaard in het archief.
+  - Klinisch beeld, behandeling, vaccinatie en de Belgische, Europese, WHO- en Amerikaanse richtlijnen: een vaste fiche per ziekte, eenmaal opgesteld uit bronnen en door Steven bevestigd; de webstap meldt nieuwere richtlijnen en stelt ze voor.
+- **Plan:** vier stappen, elk met een eigen commit: (1) de korte mail, (2) de dossierpagina, (3) fiche en documenten per ziekte, (4) een proefrun op verzonnen mails, die Steven leest voor de tak samengevoegd wordt.
+- **Gebouwd, stap 1 (de korte mail):**
+  - `prompts/reply.md` en `prompts/consult.md`: richt op 120 woorden, hoogstens 200. De mail is het antwoord (een of twee zinnen), per expliciete vraag van An een of twee zinnen, hoogstens drie acties en bij een reisadvies een halve zin over de bijlagen. Geen alinea per luik, geen stand van zaken, geen bronnenlijst, tenzij een zin het antwoord draagt.
+  - Het model geeft een `dossier`-object terug in plaats van de vrije lijst `suggestions`: `vragen` (elke vraag met de zin die ze beantwoordt), `beoordeling`, `weggelaten`, `na_te_kijken`, `toezeggingen`, `vragen_aan_behandelaar`. Tot de dossierpagina er is, gaan die velden met een label naar `sugg.txt`; een oud antwoord met `suggestions` wordt nog gelezen.
+  - `reply_skeleton.txt` wordt `feiten.txt`: het regeloordeel, de feiten per luik, de stand van zaken en de voorwaarden voor de reiziger, zonder briefkader of `[[CLAUDE]]`-plaatshouders. Het model krijgt het als `feiten`, "om te weten, niet om over te schrijven"; de cijfercontrole leest het zoals vroeger. De plaatshouders zijn ook uit de profielen (`conditions`) gehaald: de go/no-go is nu een van de drie acties.
+  - De doorverwijzing naar steven.callens@uzgent.be zet de code zelf in de mail (`mail.with_redirect`), niet meer het model.
+  - Bijlagen: kaart en curve gaan enkel mee bij een reisadvies, en het model krijgt hun bestandsnamen (`bijlagen`), zodat de mail geen curve belooft die er niet is.
+  - Controles: `length_note` waarschuwt boven 200 woorden (50 meer per bijkomende uitbraak, was 500 en 100); nieuw is `questions_note`, die waarschuwt als een vraag van An geen antwoord kreeg in `dossier.vragen`. Beide sturen de herstelronde en blokkeren nooit.
+  - Tests: 245 groen. Goldens: `feiten.txt` vervangt `reply_skeleton.txt` en bevat dezelfde feitenalinea's zonder het kader; in `summary.json` is `skeleton_issues` leeg (de vier plaatshouders waren het kader); de mailprompt heeft de nieuwe secties en krijgt `<feiten>` en `<bijlagen>` in plaats van `<skelet>`.
+- **Gebouwd, stap 2 (het dossier):**
+  - `dienstreis/dossier.py`: een HTML-pagina per advies (`dossier.html`) met elf delen: antwoord aan An, aanvraag, oordeel, epidemiologie, risico, ziektefiche (leeg tot stap 3), richtlijnen, beoordeling, web, eerdere adviezen, bronnen.
+  - Bovenaan staat de mail met een kopieerknop, het aantal woorden tegenover de grens en de opmerkingen van de controles. Bij elke vraag van An staat de zin die ze beantwoordt, of "geen antwoord gekoppeld".
+  - De pagina komt uit de bestanden van de run plus `dossier.json`, dat bewaart wat geen ander bestand heeft: de aanvraag, de beoordeling van het model, de controles, eerdere adviezen, logregels en de relevante regels uit `context.md`. Zo bouwt `dienstreis dossier <map>` de pagina opnieuw na een handmatige aanpassing van `reply.txt`, en doet het de controles opnieuw. Dat commando vervangt `dienstreis widget`; `mail.widget` is weg.
+  - Kaart en curve worden ook voor een casus of vraag getekend, voor het dossier; enkel een reisadvies stuurt ze mee. `epi` heeft nu ook de laatste acht volle weken met overlijdens (`weeks_last8`), enkel voor het dossier: de mailstap krijgt ze niet.
+  - De figuren staan in de pagina, verkleind tot 1600 pixels (Pillow, nu een expliciete afhankelijkheid), zodat de kopie in het archief zonder de map van de run opent. `dienstreis zoek` toont de link naar het dossier.
+  - Opmaak volgens ScAIdev: inktkleurige bovenbalk met het knooppuntmerk, papieren achtergrond, Space Grotesk, Inter en JetBrains Mono, groen voor de hoofdknop, blauw voor info, zand voor wat blokkeert, Lucide-lijniconen, een afdrukstijl voor PDF.
+  - Tests: `test_dossier.py`, 14 tests op een verzonnen run zonder netwerk. Alle 259 tests groen. Goldens: `summary.json` krijgt `weeks_last8`; de prompts zijn ongewijzigd.
+- **Gebouwd, stap 3 (fiche en documenten per ziekte):**
+  - `dienstreis/fiche.py`: per uitbraakprofiel `fiche.md` (front matter `status: concept | bevestigd`, `verified`, `bevestigd_door`, `bevestigd_op`, en elf vaste secties, van verwekker tot terugkeer naar België) en `documents.yaml` (sleuteldocumenten per niveau `be`, `eu`, `who`, `us`: id, organisatie, titel, datum, url, kernboodschap).
+  - Een uitspraak in de fiche verwijst naar haar document als `[id]`. Een lokale kopie in `~/.config/dienstreis/outbreaks/<id>/` wint zolang ze recenter nagekeken is, net zoals bij het landenregister.
+  - `dienstreis fiche <id>` toont de stand: status, ontbrekende secties, documenten per niveau en verwijzingen zonder document.
+  - `dienstreis fiche <id> --opstellen [--repo]` laat met webzoeken een concept opstellen (`prompts/fiche.md`). Het concept komt lokaal, of met `--repo` in de map van het profiel. Een bevestigde fiche wordt nooit overschreven: het concept komt dan als `fiche_concept.md` ernaast. Het modelspoor blijft lokaal (`fiche_trace.json`). De `fiche`-stap krijgt 80 beurten en 40 minuten, de webstap van een advies 25.
+  - De mailstap krijgt enkel een bevestigde fiche (`fiche`). Wat de mail zegt over isolatie, vaccinatie of vrijgave steunt daarop, en de getallen erin tellen als bron voor de cijfercontrole. Een concept komt nooit in de mail.
+  - De webstap krijgt bij elk advies de documenten en de fiche (`fiches`). Hij stelt nieuwere of nieuwe documenten voor (`document_updates`); die komen na een ja in de lokale `documents.yaml`, met dezelfde vraag als het landenregister. Een uitspraak die een nieuwere richtlijn tegenspreekt (`fiche_flags`), staat in de terminal en in het dossier en wordt nooit toegepast.
+  - Dossier: de fiche per uitbraak, met een zandkleurige banner zolang ze een concept is, verwijzingen die naar het document linken, en de vlaggen van de webstap. Onder Richtlijnen staan de documenten per niveau, de voorstellen van de webstap en de documenten van een land (`documents` in `countries/<ISO3>.yaml`). De Markdown van de fiche toont ruwe HTML als tekst en laat enkel web- en paginalinks door. Nieuwe afhankelijkheid: `markdown`.
+  - Tests: `test_fiche.py` (10) en een pijplijntest: de bevestigde fiche gaat naar de mail, een concept niet, en haar getallen gelden niet als verzonnen. De goldens zien geen fiche (bevroren in `test_golden.py`), zodat ze de analyse en de prompts vastleggen en niet de tekst van de fiche. De webprompt krijgt de nieuwe opdracht en `<fiches>`, de mailprompt de regel over de bevestigde fiche.
+- **Stap 4, proefrun op verzonnen mails (2026-10-07, door Steven doorgenomen op 2026-10-07):** vier verzonnen aanvragen in `examples/proefmails/` (reis naar Kisangani en Yangambi, reis naar Oeganda vlak bij de grens, casus met koorts in Kisangani, algemene vraag over mpox-vaccinatie), elk als `--proef` met het echte model. De dossiers staan in `out_proef_1` tot `out_proef_4` (lokaal, niet in de repo). Alle vier de mails blijven onder 200 woorden (185, 186, 188, 178); de webstap duurde 460 tot 580 s.
+  - Gevonden en hersteld: een vraag over een plaats zonder data werd geweigerd (`trip.validate`); een vraag zonder reiziger liep vast op de mapnaam (`_slug(None)`); een algemene vraag kreeg de toestemmingsvraag voor gezondheidsgegevens, die volgens de beslissing van F-013 enkel voor een casus geldt; de kaart van een reis die volledig buiten de cijfers blijft (Oeganda) crashte op een lege laag; het kaderje op zo'n kaart zei "geen gevallen in het getoonde gebied" terwijl er zones met gevallen op stonden (nu: "geen halte in een zone met ..."); de foutmelding bij een onbruikbaar reisschema onder `--yes` raadde aan `stops.yaml` te verbeteren en `advies` opnieuw te draaien, maar dat leest de mail opnieuw en overschrijft de verbetering.
+  - Voor Steven om na te lezen: de vraag over mpox-vaccinatie (4) zegt dat de Hoge Gezondheidsraad geen doelgroep zorgpersoneel kent, terwijl de voorwaarden van het mpox-profiel MVA-BN "aanbevolen bij zorg- of humanitair werk" noemen (HGR-advies 9900). De mails doen ook toezeggingen in naam van de dienst (terugkoppeling voor 21/10, uitklaren met Departement Zorg); die staan onder `toezeggingen` in het dossier.
+  - In de Oeganda-run las het model de Entebbe-transit als 9 tot 10/12; de validatie hield dat tegen en het is in de bewerkstap verbeterd, zoals Steven dat zou doen.
+  - Tests: `test_kaart.py` (nieuw), twee in `test_casus.py`.
+- **Concepten opgesteld (2026-09-26):** met `dienstreis fiche <id> --opstellen --repo`, voor `ebola_cod_2026` (documenten: be 8, eu 5, who 6, us 8) en `mpox_cod_2026` (6 per niveau). Beide zijn `concept` tot Steven ze nagelezen heeft. Wat de drafts zelf als na te kijken melden:
+  - Sciensano: de themapagina's over ebola en mpox gaven een 404. De Belgische procedure rust daarom op de federale richtlijnen (health.belgium.be) en op Departement Zorg.
+  - Departement Zorg: de pagina's dragen geen datum. De datum van raadpleging staat er in de plaats.
+  - Ebola: de Hoge Gezondheidsraad heeft geen vaccinatieadvies. De monoklonale antilichamen uit de federale procedure zijn enkel geregistreerd voor Zaire-ebola, niet voor Bundibugyo. De bronnen geven geen vrijgavecriterium op PCR en geen PEP met bewezen effect.
+  - Mpox: HGR-advies 9900 voorziet MVA-BN voor reizigers met hoog risico, maar Departement Zorg en het ITG zeggen dat er in Vlaanderen nu geen preventieve vaccinatie is. EMA en ECDC raden tecovirimat af, terwijl CDC het via expanded access behoudt. De fiche geeft voor beide punten de twee standpunten naast elkaar.
+- **Meegenomen:** een voorstel dat je aanvaardde op de dag dat de versie in het pakket nagekeken was, viel weg: bij gelijke datum won het pakket. Dat bleek toen de conceptfiches er waren. De lokale kopie is gemaakt uit de versie die won plus wat aanvaard is, en wint nu bij gelijke datum. Dat geldt voor de documenten, de fiche en het landenregister (sinds F-011 met dezelfde fout).
+- **Commits:** a8022e7 (stap 1), 63d1a55 (stap 2), dd5d641 (stap 3), 49d4af8 (herstel webstap), 8f8f9e2 (uitleg categorieën), 030751b (stap 4)
+- **Open:** de mpox-vaccinatie bij zorg- of stagewerk: de proefvraag (4) zegt dat de HGR geen doelgroep zorgpersoneel kent, de voorwaarden van het mpox-profiel noemen MVA-BN "aanbevolen bij zorg- of humanitair werk" (HGR 9900). Dat beslist Steven bij het nalezen van de mpox-fiche, die nog een concept is. De tak `uitbraakprofielen` is nog niet in `main` samengevoegd.
+- **Herstel (2026-10-07):** `dienstreis advies` stopte bij de webstap met `claude -p faalde (1): error_max_turns`. De webstap van een advies had 25 beurten, gekozen toen hij enkel reisadviezen en nieuws nakeek; sinds de cijfertabel (F-012) en de documenten en de fiche (stap 3) zoekt hij veel meer op.
+  - De webstap van een advies (`web`, `web_consult`) krijgt 60 beurten en 30 minuten (was 25 beurten en 15 minuten). In september duurde hij 450 tot 550 s; meer beurten zonder meer tijd zou de fout naar de tijdslimiet verschuiven.
+  - Een `claude -p` die niet op tijd antwoordt, geeft een leesbare fout in plaats van een Python-crash, zonder tweede poging.
+  - Faalt de webstap toch, dan loopt het advies verder zonder: de terminal, `sugg.txt` en het dossier zeggen dat FOD, CDC, grensmaatregelen, WHO, nieuws en richtlijnen niet live nagekeken zijn. Zo gaat een bevestigd reisschema niet verloren, net zoals bij een bron die niet bereikbaar is.
+  - Tests: drie nieuwe (`test_llm_backend.py`, `test_advies_pipeline.py`). De goldens falen al zonder deze wijziging (4 in `test_golden.py`, waarschijnlijk dagen sinds het laatste geval die met de datum van vandaag meeschuiven); dat staat los hiervan.
+- **Uitleg bij de categorieën (gevraagd en klaar 2026-10-07):** "in oordeel staat cat A tot E, maar geen uitleg hierover, kun je dat beter toelichten?"
+  - Het deel Oordeel van het dossier heeft per uitbraak een tabel "Wat de categorieën betekenen": per categorie wanneer een halte erin valt (met de vensters van het profiel, bij ebola en mpox 21 en 42 dagen), het oordeel per halte en hoe ze weegt voor de reis. De categorieën van het advies staan vet. Eronder: de strengste halte bepaalt het oordeel voor de reis, en FOD, CDC, familieverblijf of een lang verblijf veranderen de categorie niet.
+  - De omschrijvingen staan in `risk.definition`, naast de regels die de categorie toekennen. Oordeel en gewicht komen uit `outbreak.yaml` van het profiel, zodat de uitleg met het profiel meeverandert. Een profiel zonder cijfers (`geen`) krijgt geen tabel.
+  - Test: `test_the_categories_are_explained` in `test_dossier.py`.
+- **Beslissingen (uitvoering):**
+  - Zonder `dossier` in het antwoord zwijgt `questions_note`: er is dan niets om de vragen mee te vergelijken, en een melding zou een vraag onbeantwoord noemen die misschien wel beantwoord is.
+  - De sleutel `skeleton_issues` in `summary.json` blijft zo heten, zodat oude en nieuwe samenvattingen dezelfde vorm houden.
+  - Het dossier wordt ook gebouwd als een blokkerende controle faalt (een verzonnen getal, een em-dash), want Steven heeft het nodig om de mail te verbeteren. De kopieerknop staat dan uit: een mail die de controles niet haalt, is nooit één klik van Outlook, zoals de widget vroeger niet gebouwd werd.
+  - DesignSync kon niet inloggen in deze sessie. De ScAIdev-tokens komen uit de kopie in `permanentiefile/prototype/scaidev-tokens.css`, die uit `colors_and_type.css` v2 van het Claude Design-project genomen is.
+  - `dienstreis dossier` bouwt de pagina in de map van de run opnieuw, niet in het archief: daar blijft wat de run schreef, zoals voor `reply.txt` en `advies.json`.
+  - Het dossier bevat de aanvraag en de casus, zoals het archief. Het blijft op deze pc en gaat nergens heen.
+  - De lettertypes komen van Google Fonts, zoals in `permanentiefile`. Zonder internet valt de pagina terug op de systeemletters. Een pagina die als bestand opent, stuurt geen verwijzer mee.
+  - De fiche en de documenten kregen een eigen module (`fiche.py`) in plaats van een plaats in `outbreak.py`: die blijft over het profiel zelf gaan.
+  - Een fiche verwijst naar een vast id (`[who-ebola-factsheet]`), niet naar een nummer. Een nummer zou verschuiven telkens de webstap een document toevoegt, en de fiche zou dan naar het verkeerde document wijzen. Een nieuwere versie van een document houdt daarom ook het id van de vorige.
+  - Een nieuwere richtlijn die de fiche tegenspreekt, verandert de mail niet: de mail volgt de bevestigde fiche en zet de tegenspraak in `na_te_kijken`, zodat Steven beslist.
+
+## F-014 · Een map per aanvraag: meerdere mails samen lezen
+- **Gevraagd:** 2026-09-25 — "I will make a folder per request, rather than a msg file, because I now have three emails for one request in one hour time"
+- **Status:** klaar (2026-09-25)
+- **Commits:** 813c908
+- **Gebouwd:** `dienstreis advies <map>` (en `dienstreis msg <map>`) leest elke `.msg`, `.eml` en `.txt` in de map als één aanvraag (`msg.parse_folder`). De volgorde komt uit de verzenddatum in de mail zelf: bij `.msg` uit de eigenschappenstroom (verzendtijd, anders ontvangsttijd), bij `.eml` uit de kop `Date`; enkel een mail zonder datum valt terug op de bestandsdatum, en de kop van die mail zegt dat. Elke mail krijgt een kop `===== Mail i van n: datum | afzender | onderwerp =====`. Losse `.docx`, `.pdf` en `.xlsx` tellen als bijlage, andere bestanden niet. Onderwerp, afzender en ontvangers zijn die van de laatste mail, zodat het Outlook-concept daarop antwoordt; of de draad het ugent.be-adres gebruikte en of de reiziger de uitbraak noemde, geldt als een van de mails het zegt. De tekstgrens per stap (12 000 tekens voor het reisschema, 6 000 voor de mail) geldt per mail. `prompts/stops.md` zegt dat een latere mail een eerdere verbetert en dat het verschil in `contradictions` hoort. Tests: `test_request_folder.py`.
+- **Beslissingen:**
+  - De datum in de mail beslist, niet de bestandsnaam of de bestandsdatum: bestanden die uit Outlook bewaard worden, krijgen de datum van het bewaren, niet van het verzenden.
+  - Bij een tegenstrijdigheid geldt de laatste mail, en het verschil gaat naar `contradictions`, zodat het op het bevestigingsscherm staat en niet stil verdwijnt.
+  - Meegenomen: een adres aan het einde van een zin werd met het punt erbij gelezen (`collega@example.org.`); het adrespatroon eindigt nu op een domeinlabel.
+
+## F-013 · Casusvragen: een reiziger die al ter plaatse is
+- **Gevraagd:** 2026-09-25 — "we should be able to add in messages from other diseases and countries"; bij de keuze van aanvraagtypes: casusvragen erbij
+- **Status:** klaar (2026-09-25)
+- **Aanleiding:** de mpox-aanvraag van 25/09 (een reiziger in quarantaine ter plaatse, geen reisschema) liep door `dienstreis advies` en kwam eruit als ebola-pretraveladvies: categorie F, "geen ebola-gerelateerd bezwaar", ebolakaart en -curve, een go/no-go-datum drie maanden in het verleden. Het model schreef zelf "Dossiermismatch" in `sugg.txt`, maar de pijplijn kon daar niets mee.
+- **Commits:** fb34be2
+- **Gebouwd:**
+  - De reisschemastap geeft `type` (`reisadvies`, `casus`, `vraag`) en voor een casus of vraag `situation`, twee of drie zinnen over de toestand zoals de mail ze beschrijft; beide staan op het bevestigingsscherm en in `stops.yaml`.
+  - Een reisadvies met een go/no-go-datum in het verleden wordt geweigerd met de vraag of het een casus is: zo liep de mail van 25/09 fout. De controle rekent met `--asof` als dat gegeven is, zodat tests niet op de kalender breken.
+  - Een casus of vraag: de cijfers van de uitbraken op de plaats als feiten (`mail.facts`), zonder kaart, curve of oordeel; een webstap die eerst officiële richtlijnen zoekt (`prompts/web_consult.md`: isolatie, terugreis, aankomst in België, contacten; ITG, Sciensano, Departement Zorg, Hoge Gezondheidsraad, WHO, ECDC) en een mail vanuit de werkgever (`prompts/consult.md`: de behandelende arts beslist, UGent adviseert, criteria in plaats van datums, niets wat tussen artsen hoort). Een vraag zonder plaats gaat naar de actieve uitbraken die haar ziekten noemen, anders `geen`.
+  - Gezondheidsgegevens: een mail met woorden als quarantaine, isolatie, ziek, besmet, symptomen of een positieve test wordt vóór de eerste modelstap getoond, en het programma vraagt toestemming. `--yes` beantwoordt die vraag niet; `--gezondheidsgegevens-ok` wel; `--llm manual` stuurt niets. Mist de woordenlijst een casus die het model wel herkent, dan komt de vraag voor de web- en mailstap, met de mededeling dat de mail al een keer verstuurd is.
+  - Archief en log: `type` en `situation`; een casus vindt eerdere adviezen over dezelfde persoon; `dienstreis zoek --type`. `dienstreis herlabel` labelt een bewaard advies opnieuw (type, uitbraken) met reden; de brief blijft, de oude labels staan in `herlabeld`, de logregel volgt.
+  - Het record en de logregel van 25/09 zijn opnieuw gelabeld als casus over mpox (met een kopie van archief en log vooraf).
+  - Tests: `test_casus.py`, met een verzonnen casusmail (`tests/fixtures/casus_mpox.txt`).
+- **Proefdraai (2026-09-25):** de verzonnen casusmail met de echte Claude Code-backend, met een tijdelijk register. De eerste run stopte: het model las de casus juist, maar liet de einddatum van een verblijf dat nog loopt leeg, en dat weigerde de reisschemacontrole. Een casus mag nu een open einddatum hebben ("sinds 30 juni"); een reis niet. De tweede run (517 s) gaf een brief die op criteria plant, bronnen en datums noemt, de drie vragen van An beantwoordt, per partij zegt wie wat doet en klinische details voor de behandelende arts in de notities houdt. Twee dingen hersteld: WHO heette "niet bereikbaar" terwijl er enkel geen recent mpox-bericht was (nu `none_found`, geen onbereikbare bron), en de webstap stelde wanda.be voor, dat in F-005 weggelaten was (nu `excluded` in `_international.yaml`: de prompts zeggen het en het register weigert zo'n bron).
+- **Open:** de echte mail van 25/09 (map `MPox`) is niet opnieuw door het model gegaan: toestemming om die gezondheidsgegevens te versturen is aan Steven. `dienstreis advies` op die map, met het antwoord op de toestemmingsvraag, maakt de vergelijking met de brief die toen vertrokken is.
+- **Beslissingen:**
+  - Privacy (Steven, 2026-09-25: "Ask each time"): voor een casusmail met gezondheidsgegevens toont het programma wat er naar het model gaat en vraagt het toestemming voor het verstuurd wordt.
+  - Het archiefrecord en de logregel van 25/09 (de mpox-casus, als ebolareis bewaard) worden opnieuw gelabeld als casusvraag over mpox zodra die velden bestaan; de tekst blijft zoals ze was (Steven, 2026-09-25).
+
+## F-012 · Handmatige cijfertabel per uitbraak, mpox (DRC) als tweede profiel
+- **Gevraagd:** 2026-09-25 — keuze "hand-kept table" voor uitbraken zonder INRB-achtige databron
+- **Status:** klaar (2026-09-25)
+- **Plan:** eerst nagaan of er een gecureerde mpox-bron bestaat; anders een adapter `table` op een `cases.csv` per uitbraak (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), grenzen van INRB voor de DRC en geoBoundaries voor andere landen. De webstap stelt updates voor, de arts bevestigt. Een verouderde tabel wordt in de QA en bovenaan de notities gemeld.
+- **Commits:** 6aad83e, 45d4be7
+- **Gebouwd (deel 1, tabel en concept):**
+  - Adapter `table` (`data.py`): een met de hand bijgehouden `cases.csv` in de profielmap (datum, provincie, zone, cumulatieve gevallen en overlijdens, casusdefinitie, bron), op de zonegrenzen van een ander profiel, per provincie samengevoegd en in de cache bewaard. Een rij `NATIONAAL` geeft het nationale totaal, anders wordt opgeteld. Een lokale kopie in `~/.config/dienstreis/outbreaks/<id>/` wint zodra ze even ver of verder reikt. Ouder dan `stale_days`: bovenaan de notities, want A en B rusten op recente gevallen. Een lege tabel geeft een advies zonder cijfers voor die uitbraak, nooit een "geen bezwaar". Met een enkele rapportdatum geen curve, en dan belooft de mail er ook geen.
+  - De webstap krijgt per tabeluitbraak de laatste cijfers (`tabellen`) en stelt nieuwere officiële cijfers voor (`case_updates`); wat je aanvaardt komt in de lokale tabel.
+  - `outbreaks/mpox_cod_2026/`: mpox (clade I) in de DRC per provincie, als concept en niet actief. De klinische parameters staan gemarkeerd als CONCEPT. Een aanvraag die mpox noemt, krijgt een notitie die naar het concept wijst; `--uitbraak mpox_cod_2026` gebruikt het nu al.
+  - Tests: `test_table_adapter.py`; `test_route.py` en `test_multi.py` aangevuld. Een proef met echte ebolacijfers en het lege mpox-concept op de reis Kinshasa-Durba toonde dat een lege tabel "geen mpox-gerelateerd bezwaar" opleverde; dat zegt nu "geen cijfers".
+- **Beslissingen:**
+  - Een mpox-profiel per land (Steven, 2026-09-25: "Per country"), toegevoegd naarmate aanvragen binnenkomen. Eerst `mpox_cod_2026` voor de DRC; de tabeladapter is generiek, zodat een volgend land een nieuwe map met een eigen tabel is.
+- **Gebouwd (deel 2, mpox actief):**
+  - Bronnenonderzoek (2026-09-25): er is geen gecureerde feed van mpox in de DRC onder het nationale niveau. INRB-UMIE heeft enkel ebola; de INSP-rapporten stoppen in april 2025; OWID en de WHO-API zijn nationaal. Het enige actuele bestand is het WHO-mpoxdashboard, met per gezondheidszone vermoede en bevestigde gevallen sinds 2024, de laatste zes weken en de laatste rapportdatum (data tot 16 augustus 2026), en een nationale weekreeks. Dus een handmatige tabel, gevuld uit dat dashboard; de webstap stelt nieuwere cijfers voor.
+  - `outbreaks/mpox_cod_2026/cases.csv`: 200 zones (per zone een rij voor het zesweekse venster en een op de laatste rapportdatum) en de nationale weekreeks sinds 2023. `zone_overrides.csv` voor 14 WHO-spellingen; Dingila (Bas-Uele) heeft geen eigen zone in de INRB-shapefile en blijft ongematcht.
+  - Nieuw in een profiel: `case_words` (hoe de brief de cijfers noemt; ebola: "bevestigde gevallen"), `windows.recent` (venster voor nieuwe gevallen; mpox 42, ebola 14), `flags.rising_recent`, en `national_check: false` als zone- en nationale cijfers een andere basis hebben. De zinnen per luik nemen het oordeel per categorie uit het profiel in plaats van het vast te schrijven. Ebola blijft byte voor byte gelijk.
+  - Het profiel is actief: elke reis door de DRC of een buurland krijgt mpox naast ebola, met een eigen kaart en curve. In het blok "Voor <ziekte>:" staan enkel de haltes waar die uitbraak meeweegt.
+  - Tests: `test_mpox.py` (de gevulde tabel, de voorbeeldreizen, de woorden in de brief). De golden- en pijplijntests blijven op ebola vastgepind: ze bewaken de ebola-uitvoer en de werking van `advies`, de routering heeft eigen tests.
+- **Beslissingen (Steven, 2026-09-25):**
+  - Cijfers: "Zones, all cases": per gezondheidszone, vermoede en bevestigde gevallen, uit het WHO-dashboard. Met bevestigde gevallen per provincie waren A en B niet te scheiden geweest: het dashboard geeft per provincie geen datum van het laatste bevestigde geval.
+  - Regels: "Confirm as drafted": een zone met een geval in 21 dagen maakt de reis voorwaardelijk, nooit afraden; de rest geen bezwaar; voorwaarden over nauw contact, MVA-BN volgens advies 9900 van de Hoge Gezondheidsraad (zorg- of humanitair werk: aanbevolen; familiebezoek: geval per geval; seksueel risicocontact: altijd), en koorts of uitslag tot 21 dagen na terugkeer.
+  - Verouderd na 60 dagen.
+  - wanda.be staat niet in de bronnen, zoals beslist in F-005; het advies van de Hoge Gezondheidsraad is recenter.
+- **Open:** `rising_recent: 60` is afgeleid, niet bevestigd: de bevestigde drempel was 20 bevestigde gevallen in 14 dagen, de tabel telt vermoede en bevestigde gevallen over 42 dagen. Wie houdt de tabel bij (de webstap stelt voor, de arts aanvaardt)? Een mpox-profiel voor een volgend land wordt een nieuwe map, als een aanvraag erom vraagt.
+
+## F-011 · Routering, meerdere uitbraken per advies, landniveau
+- **Gevraagd:** 2026-09-25 — "A lot of the question come for ebola, but we should be able to add in messages from other diseases and countries"; keuze: meerdere uitbraken per advies
+- **Status:** klaar (2026-09-25)
+- **Plan:** elke halte krijgt een landcode (`places.csv` of Natural Earth op `ADM0_A3`); een uitbraak geldt als een halte in een van haar landen ligt of binnen `radius_km` van een actieve zone. Per uitbraak een risicotabel, kaart en curve; het strengste oordeel wint. Landfeiten (FOD, pretravelregel) in `config/countries.yaml`, los van de CDC-niveaus die per ziekte gelden. Een reis zonder bekende uitbraak krijgt een advies op landniveau zonder kaart; een ziekte in de mail zonder profiel wordt bovenaan gemeld, nooit gelezen als "geen uitbraak".
+- **Bronnenregister per land** (2026-09-25): "when identifying new diseases or countries a source database could be made not to repeat the same exercise again and again (for example the shp files of the country, the trusted sources of the government, most important news outlets, and the international bodies...)". Wordt de landlaag van deze feature: een bestand per land in plaats van alleen FOD-links, met grenzen (bron en niveau, de bestanden zelf in de cache), de betrouwbare overheidsbronnen (ministerie, nationaal volksgezondheidsinstituut), de nieuwsmedia die de webstap mag gebruiken, taal, FOD-pagina's en pretravelregel, elk met een `verified`-datum. Daarnaast een korte lijst internationale instanties die voor elk land gelden (WHO, ECDC, CDC, Africa CDC, ITG, Sciensano). De webstap leest het register in plaats van telkens opnieuw te zoeken, en stelt nieuwe bronnen voor die de arts bevestigt, zoals nu al bij de reisadviezen.
+- **Commits:** 2fc9734, 4e46d7c, 12a8641
+- **Gebouwd (deel 1, landenregister):**
+  - `dienstreis/countries/<ISO3>.yaml`: per land de FOD-pagina's en het FOD-advies (land en provincie, met reden), het CDC-niveau per uitbraakprofiel, de pretravelregel, betrouwbare overheidsbronnen en nieuwsmedia, de landgrenzen en de grensmaatregelen per uitbraak, elk met datum. `_international.yaml`: WHO, WHO AFRO, ECDC, US CDC, Africa CDC, ITG, Sciensano, Departement Zorg, Reuters, AP. Het register begint met de DRC en haar negen buurlanden (grenzen berekend uit Natural Earth); van de buurlanden staan enkel naam, grenzen en de notities uit het oude `advisories.yaml` erin, de rest zoekt de webstap op.
+  - `dienstreis/countries.py`: lezen, controleren, en een lokale kopie in `~/.config/dienstreis/countries/` die wint zolang ze recenter nagekeken is. Het `advisories.yaml` van 0.2 wordt nog gelezen zolang het recenter is.
+  - `risk` haalt FOD en CDC per halte uit het register; een halte buiten het gebied van de cijfers krijgt de grensmaatregelen van haar land en, als het register ze kent, het FOD- en CDC-advies van dat land. De pretravelregel in de mail en de FOD-links in `sources.txt` komen uit de landen van de reis. `config/advisories.yaml` is weg.
+  - De webstap krijgt het register, de buurlanden van het uitbraakland op de reis en de internationale instanties; hij kijkt per land de adviezen na, per buurland de grensmaatregelen, en stelt nieuwe bronnen voor. Wat je aanvaardt gaat naar het lokale register, met de datum van vandaag.
+  - QA noemt per land wie nog nooit nagekeken is (`advisories_unverified`), in plaats van een enkele datum voor alles.
+  - Tests: `test_countries.py`. Goldens: de mailskeletten en bronnenlijsten zijn ongewijzigd; `summary.json` krijgt het id van de uitbraak en de nooit nagekeken landen (Zambia, Congo-Brazzaville); de webprompt is herschreven.
+- **Gebouwd (deel 2, routering en meerdere uitbraken):**
+  - `route.py`: het land van elke halte (`places.csv`, of voor lat/lon de Natural Earth-contouren: `ISO_A3`, en `ADM0_A3` enkel waar `ISO_A3` -99 is; andersom zou Zuid-Soedan SDS worden in plaats van SSD). Een uitbraak geldt als een halte in een van haar landen of in een buurland ligt; geldt er geen, dan het profiel `geen`.
+  - `advies` zet de uitkomst als `outbreaks:` in `stops.yaml` en toont ze op het bevestigingsscherm; na een bewerking volgt ze de haltes, tenzij de gebruiker ze zelf aanpaste of `--uitbraak` gaf. `dienstreis uitbraken` toont de profielen met hun landen en buurlanden.
+  - `pipeline.analyse` beoordeelt de reis per uitbraak op haar eigen cijfers, met een eigen kaart en curve. De strengste staat bovenaan in `summary.json` en in de mail; de andere staan in `summary.outbreaks`, in het skelet onder "Voor <ziekte>:" (enkel de haltes waar ze meetellen) en in de mailstap als `andere_uitbraken`. Een overrule noemt de uitbraak die ze opzij zet; een halte kan er een per uitbraak hebben; het eindoordeel blijft een voor alles.
+  - Profiel `geen` (`outbreaks/geen/`): een advies op landniveau, zonder cijfers, kaart of curve; elke halte met FOD, CDC en grensmaatregelen van haar land, en een webstap die eerst naar een uitbraak op de bestemming zoekt.
+  - De reisschemastap geeft `diseases_mentioned`; een ziekte zonder profiel komt op het bevestigingsscherm, bovenaan de notities, en in de web- en mailstap.
+  - Log en archief: kolom en veld `outbreaks`, en `countries` in het archief. Oude logregels en adviezen worden als ebola gelezen; het log krijgt de nieuwe kolom eenmalig, het archief wordt nooit herschreven. `for_trip` zet eerdere adviezen over dezelfde uitbraak eerst; `dienstreis zoek --uitbraak`.
+  - Controles: de vensters van elke geldende uitbraak zijn toegelaten getallen; de lengtegrens krijgt 100 woorden per bijkomende uitbraak; een mail die een geldende uitbraak niet noemt, krijgt een notitie.
+  - Tests: `test_route.py`, `test_multi.py` (een verzonnen tweede uitbraak op kleine zones, zonder netwerk). Goldens: skeletten, risicotabellen en bronnenlijsten ongewijzigd; `summary.json` krijgt `overall_level` en `attachments`; de drie prompts hebben de nieuwe passages.
+- **Proefdraai (2026-09-25):** een verzonnen aanvraag voor een congres in Nairobi met de vraag "is er mpox?", met de echte Claude Code-backend en een tijdelijk register. Nairobi staat niet in `places.csv`: het model gaf coördinaten en de kaart gaf Kenia. Geen profiel geldt, dus landniveau zonder kaart of curve. De webstap vond wat de profielen niet kennen: mpox in Kenia (1 298 bevestigde gevallen, 320 in Nairobi, per 6 september), de vier FOD-pagina's, de screening aan de grenzen en de reisverzekeringsplicht. De notities beginnen met "De aanvraag noemt mpox, maar daarvoor bestaat geen uitbraakprofiel", en de mail noemt het advies "voorlopig". Drie gaten in het register dat hij voor Kenia schreef, meteen hersteld: een nieuw land kreeg geen naam en geen buurlanden (nu uit Natural Earth, `NAME_NL`), het model hing CDC-niveaus en maatregelen aan vrije ziektenamen die geen advies ooit terugvindt (nu onder een bekend profiel-id, met de ziekte in `about`), en de webstap wist niet welke uitbraak-id's golden (nu in de invoer).
+- **Beslissingen:**
+  - Categorie C voor de hele reis (2026-09-25): "yes, if the advice was not to visit worst stop or reevaluate before going there". Geen bezwaar dus alleen als het luik geschrapt of voor vertrek herbekeken wordt: dat is een voorwaardelijk oordeel. C weegt voortaan als `voorwaardelijk` in het reisoordeel (was `geen_bezwaar` sinds 0.1.0), en de categorietabel in de mailprompt noemt beide mogelijkheden. Geen van de voorbeeldreizen had C als zwaarste halte, dus de goldens veranderen alleen in die ene tabelregel.
+  - Geen afstandsstraal (2026-09-25): "No: other: borders are usually closed of screening is done: those countries should be checked". Een uitbraak geldt voor een reis als een halte in een van haar landen ligt of in een buurland daarvan. Voor een halte in een buurland worden elke run de grensmaatregelen nagekeken (gesloten grens, screening, quarantaine voor wie uit het uitbraakland komt) en met datum en bron in het landbestand van het register bewaard. Het register begint met de DRC en haar negen buurlanden.
+
+## F-010 · Generieke kern: ebola wordt het eerste uitbraakprofiel
+- **Gevraagd:** 2026-09-25 — "I thought we had made this repo non diseases specific. [...] Can we rebuild this? What would be your advice?"
+- **Status:** klaar (2026-09-25)
+- **Gebouwd:**
+  - `dienstreis/outbreak.py`: een uitbraakprofiel (`OutbreakSpec`) wordt gelezen en gecontroleerd voor het gebruikt wordt; een onbruikbaar profiel wordt geweigerd met alle problemen tegelijk. `fill` zet de passages van het profiel in de prompts waar `{{uitbraak:<naam>}}` staat.
+  - `dienstreis/outbreaks/ebola_cod_2026/`: `outbreak.yaml` (databron, landen, vensters 21/42, oordeel per categorie en gewicht in het reisoordeel, eindoordelen, vlagteksten en drempels, voorwaarden, ECDC- en WHO-bron, teksten op kaart en curve), `prompt.md` (acht passages uit `reply.md` en `web.md`, letterlijk) en `zone_overrides.csv` (verhuisd uit `config/`).
+  - `data.load` kiest de adapter uit het profiel (enkel `inrb` voorlopig) en geeft de reeksen aan een gedeelde `derive`; ECDC en WHO worden gelezen met de URL en titelpatronen van het profiel; een bron die het profiel niet noemt, telt niet als onbereikbaar. `risk`, `mail`, `figures`, `pipeline`, `geo`, `msg` en `llm` halen uit het profiel wat ze vroeger zelf wisten.
+  - Tests: `test_golden.py` (de uitvoer van de vier voorbeeldreizen en de drie prompts, vastgelegd voor de herstructurering) en `test_outbreak.py` (profielen, passages, bronnen).
+  - Daarna, apart: twee fouten die de goldens zichtbaar maakten. Zonenamen verloren hun hoofdletters ("Gezondheidszone makiso kisangani", door `.capitalize()`), en de ECDC-datum stond met een Engelse maand in de Nederlandse mail ("data tot 19 September"). De goldens zijn voor precies die zeven regels bijgewerkt; `test_skeleton.py` houdt beide vast.
+- **Commits:** da3d465 (goldens), 1d25c9c, 6dbd5dd, 1dc9284
+- **Bewezen:** alle goldens byte voor byte gelijk, regressietests ongewijzigd groen, 150+ tests groen. Figuren: de vier epicurves en twee van de vier kaarten byte voor byte gelijk; op de andere twee verschuiven enkele labels een paar pixels. Dat gebeurt ook tussen twee runs van dezelfde code, dus het komt niet van de herstructurering (zie Voorstellen).
+- **Beslissingen:**
+  - Herstructureren in plaats van een nieuwe repo: ongeveer 60 procent van de code (mail lezen, de drie modelstappen, controles, overrules, archief, log, widget) is al ziekte-onafhankelijk (Steven, 2026-09-25).
+  - Volgorde: eerst de generieke kern, dan routering en meerdere uitbraken, dan de cijfertabel en mpox, dan casusvragen (Steven, 2026-09-25).
+  - Klinische parameters staan in het profiel en worden door de arts bevestigd; de code verzint ze niet.
+  - `Nom` en `PROVINCE` blijven de kolomnamen die een adapter levert: hernoemen tijdens de herstructurering zou de tests aanpassen die de herstructurering net moeten bewaken.
+  - `advisories.yaml` blijft in deze stap ongewijzigd, net als de FOD-links in `mail.py` en de pretravelregel in de voorwaarden: dat zijn landfeiten, geen ziektefeiten, en ze verhuizen in F-011 naar het bronnenregister per land.
+  - De valkuilen uit `reply.md` zijn als een blok naar het ebolaprofiel verhuisd. Welke ervan voor elke ziekte gelden, blijkt pas naast een tweede profiel; dan worden ze gesplitst, met een nagekeken diff.
+  - De kolom `new21` is weg: ze werd berekend en nergens gelezen.
+  - De bewaarde kaartcontouren dragen nu het id van de uitbraak in hun naam. De eerste run na de update bouwt ze eenmalig opnieuw op (ongeveer anderhalve minuut).
+- **Beslissingen:**
+  - Herstructureren in plaats van een nieuwe repo: ongeveer 60 procent van de code (mail lezen, de drie modelstappen, controles, overrules, archief, log, widget) is al ziekte-onafhankelijk (Steven, 2026-09-25).
+  - Volgorde: eerst de generieke kern, dan routering en meerdere uitbraken, dan de cijfertabel en mpox, dan casusvragen (Steven, 2026-09-25).
+  - Klinische parameters staan in het profiel en worden door de arts bevestigd; de code verzint ze niet.
+  - `Nom` en `PROVINCE` blijven de kolomnamen die een adapter levert: hernoemen tijdens de herstructurering zou de tests aanpassen die de herstructurering net moeten bewaken.
 
 ## F-009 · Kortere mail aan Team Actueel
 - **Gevraagd:** 2026-09-22 — "the mail indeed has to be much shorter"
@@ -61,6 +294,16 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - De WHO-pagina wordt niet gescrapet maar via de JSON-API gelezen: de pagina wordt client-side opgebouwd, een regex over de HTML vindt niets (nagegaan, leverde eerst "no DRC Ebola item" op).
   - FOD en CDC blijven in de webstap in plaats van deterministisch gescrapet te worden: het zijn lopende teksten, en het verschil tussen "formeel afgeraden om veiligheidsredenen" en "om gezondheidsredenen" bepaalt de formulering van het advies.
   - Een `--asof`-run haalt geen live bronnen op: de pagina's van vandaag horen niet bij de cijfers van vorige maand.
+- **Herstel (gevraagd en klaar 2026-10-07):** "make this more solid: WHO niet bereikbaar tijdens de run (ReadTimeout ... read timeout=40)". De WHO-API stuurde de volledige tekst van de 20 laatste DON's mee (614 kB), voor drie velden; er was geen tweede poging.
+  - De WHO-vraag vraagt enkel titel, datum en link (`$select`): 3,4 kB in plaats van 614 kB.
+  - WHO en ECDC krijgen drie pogingen (na 5 en 15 s) bij een time-out, een verbroken verbinding of een drukke server (429, 5xx); een andere 4xx is een antwoord en krijgt geen tweede poging (`data._get`).
+  - Blijft WHO onbereikbaar, dan staat het item van de laatste geslaagde lezing in de plaats (`~/.cache/dienstreis/who_last.json`), gemarkeerd met `from_cache` en de dag van lezing. Het telt niet als onbereikbaar maar staat in `sources_cached`; de terminal, de notities en het QA-blok van het dossier zeggen welk item het is en van wanneer. De webstap zoekt sowieso of er een nieuwer DON is.
+  - ECDC krijgt geen terugval: de ECDC-cijfers zijn een kruiscontrole van de dagcijfers, en cijfers van een vorige dag zouden die controle vervalsen.
+  - Tests: vijf nieuwe in `test_sources.py`; de goldens krijgen enkel de nieuwe sleutel `sources_cached` (de 4 goldens die al faalden, falen nog op hetzelfde).
+- **ECDC-controle leesbaar (gevraagd en klaar 2026-10-07):** "what is meant by this? QA faalde: ['ecdc_matches']". De controle vergeleek het ECDC-totaal met het nationale totaal zonder naar de datum te kijken; ECDC liep twee dagen voor (8 603 tot 4/10 tegenover 8 442 tot 2/10), dus faalde ze.
+  - `mail.ecdc_check` vergelijkt enkel als beide tot dezelfde dag lopen. Loopt ECDC voor of achter, dan is dat geen fout maar een notitie met de cijfers, de data en het verschil in dagen en gevallen. Twee verschillende totalen op dezelfde dag blijven een gefaalde controle.
+  - De notities, de terminal en het QA-blok van het dossier geven een zin in plaats van `['ecdc_matches']`, ook voor de som van de zones, per uitbraak (`advies._figure_checks`).
+  - Tests: vijf in `test_sources.py`. De goldens veranderen niet: zonder live ECDC (`--asof`) is er geen controle.
 
 ## F-004 · Kaartgegevens apart van de dagcijfers verversen
 - **Gevraagd:** 2026-09-22 — "The maps we make: are these downloaded every time?"
@@ -110,4 +353,5 @@ Een fout gevonden en hersteld: de mail schreef "het laatste geval dateert van va
 Aandachtspunt, geen fout: de mail telde 1 642 woorden. De cijfercontrole bewijst dat een getal ergens uit de invoer komt, niet dat het waar is; cijfers die uit de webstap komen (het aantal gehospitaliseerden, de cholera-aantallen, de WHO-cijfers van DON617) zijn zo betrouwbaar als de webpagina die het model gelezen heeft. Het veld `checked_how` in `web.json` zegt of de pagina zelf gelezen is of enkel een zoekresultaat.
 
 ## Voorstellen (nog niet gevraagd)
+- Kaarten reproduceerbaar maken. Twee runs van dezelfde code op dezelfde gegevens plaatsen enkele labels een paar pixels anders (gezien op de kaarten Yangambi en Haut-Uele, 2026-09-25); zones, kleuren en route zijn gelijk. adjustText zet zelf een vaste seed en `PYTHONHASHSEED=0` helpt niet, dus de oorzaak zit elders. Zolang dat zo is, kunnen de kaarten niet mee in de goldentests.
 - Een echte `.msg` als testfixture. De OLE-parser in `msg.py` wordt nu enkel handmatig getest; `.eml` en `.txt` zitten wel in de tests. Een `.msg` maken vraagt Outlook, en een bestaande aanvraag committen vraagt eerst een beslissing over anonimisering.

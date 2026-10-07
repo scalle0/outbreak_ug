@@ -3,7 +3,7 @@
 #   fod:  formeel_afgeraden | niet_essentieel_afgeraden   (FOD Buitenlandse Zaken, Belgium)
 #   fod_reason: why the FOD advises against (security vs health) - matters for wording
 #   cdc:  1-4 (CDC Travel Health Notice level for Ebola)
-verified: 2026-09-22
+verified: 2099-01-01   # frozen for the golden tests: always newer than the package table
 sources:
   fod: https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo
   fod_update: https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/laatste-update-de-democratische-republiek-congo

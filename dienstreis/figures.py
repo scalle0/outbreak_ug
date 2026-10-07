@@ -1,4 +1,7 @@
-"""Figures: itinerary map on health zones, reconstructed epidemic curve. Both check themselves."""
+"""Figures: itinerary map on the outbreak's zones, reconstructed epidemic curve. Both check themselves.
+
+Titles, legend and credit lines are the outbreak profile's (`figures` in outbreak.yaml).
+"""
 from __future__ import annotations
 
 import warnings
@@ -12,7 +15,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
 
-from . import data
+from . import data, outbreak
+from .mail import cap, nl_months
 
 warnings.filterwarnings("ignore", message=".*geographic CRS.*")
 BLUE, RED = "#1f4e9e", "#b30000"
@@ -70,9 +74,11 @@ def _extent(rs, zones, pad=1.6, min_span=6.0, near_km=450):
 
 
 def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbours: bool = True) -> dict:
+    spec = getattr(ob, "spec", None) or outbreak.default()
     # simplified outlines for drawing only; the risk assessment used the exact boundaries
-    zones, prov = data.display_geometry(ob.zones)
+    zones, prov = data.display_geometry(ob.zones, spec=spec)
     zones["fc"] = zones.cases.map(_colour)
+    cw = spec.case_words
     countries = data.fetch_countries()
     (x0, x1, y0, y1), far = _extent(rs, zones)
 
@@ -80,10 +86,14 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     countries.plot(ax=ax, color="#eef3ee", edgecolor="#9aa89a", linewidth=0.7)
     zones.plot(ax=ax, color=zones.fc, edgecolor="#c9c4bb", linewidth=0.2)
     prov.plot(ax=ax, facecolor="none", edgecolor="#555555", linewidth=0.8)
+    # an empty layer cannot be plotted (geopandas takes its aspect from the bounds): a trip that stays
+    # outside the figures has no destination zone (proefrun 2026-10-07, Uganda)
     act = zones[zones.new14 > 0]
-    act.plot(ax=ax, facecolor="none", edgecolor="#000000", linewidth=1.1, hatch="....")
+    if not act.empty:
+        act.plot(ax=ax, facecolor="none", edgecolor="#000000", linewidth=1.1, hatch="....")
     dest = zones[zones.Nom.isin({r.zone for r in rs if r.zone})]
-    dest.plot(ax=ax, facecolor="none", edgecolor=BLUE, linewidth=2.4)
+    if not dest.empty:
+        dest.plot(ax=ax, facecolor="none", edgecolor=BLUE, linewidth=2.4)
 
     texts = []
     inside = [r for r in rs if r not in far]
@@ -111,7 +121,8 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     if all(r.category in "FX" for r in rs):   # trip far from the outbreak: say how far instead
         na = min((r.nearest_active for r in rs if r.nearest_active), key=lambda x: x["km"], default=None)
         if na:
-            ax.text(0.02, 0.97, f"Geen bevestigde gevallen in het getoonde gebied.\nDichtstbijzijnde zone met recente gevallen: "
+            # about the stops, not the frame: near the border the frame shows zones with cases (proefrun 2026-10-07)
+            ax.text(0.02, 0.97, f"Geen halte in een zone met {cw['none']}.\nDichtstbijzijnde zone met recente gevallen: "
                     f"{na['zone']} ({na['province']}), circa " + f"{round(na['km'], -1):,.0f}".replace(",", " ") + " km",
                     transform=ax.transAxes, va="top", fontsize=9, color="#333",
                     bbox=dict(boxstyle="round,pad=0.5", fc="white", ec="#999", lw=0.8), zorder=12)
@@ -122,15 +133,16 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     except Exception:
         pass
 
-    legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(BINS)] + [
-        mpatches.Patch(fc="none", ec="#000", hatch="....", label="Nieuwe gevallen laatste 14 dagen"),
-        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label="Gezondheidszone van een stop"),
+    bins = [(lo, c, f"Geen {cw['none']}" if lo == 0 else l) for lo, c, l in BINS]
+    legend = [mpatches.Patch(fc=c, ec="#999", label=l) for _, c, l in reversed(bins)] + [
+        mpatches.Patch(fc="none", ec="#000", hatch="....", label=f"Nieuwe gevallen laatste {spec.recent} dagen"),
+        mpatches.Patch(fc="none", ec=BLUE, lw=2.2, label=f"{cap(spec.unit)} van een stop"),
         Line2D([0], [0], marker="s", color=BLUE, ls=(0, (4, 3)), mfc=BLUE, mec="white", ms=8, label="Reisschema")]
     inset_corner, legend_corner = _free_corners(inside, (x0, x1, y0, y1))
     leg = ax.legend(handles=legend, loc=legend_corner, fontsize=8.3, framealpha=0.96, edgecolor="#999",
-                    title="Bevestigde BVD-gevallen per gezondheidszone", title_fontsize=8.8)
+                    title=spec.figures["legend_title"], title_fontsize=8.8)
 
-    # locator inset (whole DRC), shows far stops such as Kinshasa; placed in a corner without stops
+    # locator inset (the whole area of the figures), shows far stops such as Kinshasa; placed in a corner without stops
     axi = ax.inset_axes(CORNERS[inset_corner], zorder=20)
     countries.plot(ax=axi, color="#f4f4f4", edgecolor="#bbbbbb", linewidth=0.3)
     prov.plot(ax=axi, color="#eeeeee", edgecolor="#999999", linewidth=0.3)
@@ -152,8 +164,7 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
 
     ax.set_title(f"{title}\n{subtitle}", fontsize=11.2, pad=10)
     ax.text(0.0, -0.015,
-             f"Onafhankelijke kaart. Gevallen per gezondheidszone: INSP/RDC situatierapporten, verwerkt door INRB-UMIE "
-             f"(github.com/INRB-UMIE/Ebola_DRC_2026), data tot {ob.asof:%d-%m-%Y}. Zonegrenzen: INRB/GRID3.\n"
+             spec.figures["map_credit"].format(asof=f"{ob.asof:%d-%m-%Y}") + "\n"
              "Landgrenzen: Natural Earth. Posities van stops benaderend; route tussen stops hemelsbreed, niet de werkelijke weg.",
              fontsize=7.1, color="#444444", transform=ax.transAxes, va="top")
     fig.canvas.draw()
@@ -204,16 +215,23 @@ def _overlaps(texts, fig) -> int:
 
 
 def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
+    """National curve and its numbers."""
+    spec = getattr(ob, "spec", None) or outbreak.default()
     nat = ob.national.copy()
     nat["cases"] = nat.cases.cummax()
     nat["deaths"] = nat.deaths.ffill().cummax()
     wk = nat.resample("W-SUN").last().ffill()
     inc = wk.diff().clip(lower=0).iloc[1:]
+    last = nat.dropna(subset=["cases"]).iloc[-1]
+    if len(inc) < 2:        # a hand-kept table with one or two report dates: no curve to draw
+        return {"path": None, "weekly_cases_last4_full_weeks": {}, "weeks_last8": [], "last_total": int(last.cases),
+                "last_deaths": int(last.deaths) if pd.notna(last.deaths) else 0,
+                "cfr": round(100 * last.deaths / last.cases, 1) if last.cases else 0.0}
     last_full = inc.index[-1] if nat.index[-1] >= inc.index[-1] else inc.index[-2]
 
     fig, (a, b) = plt.subplots(2, 1, figsize=(11, 8.6), dpi=300, sharex=True, gridspec_kw={"height_ratios": [1.1, 1]})
-    a.plot(nat.index, nat.cases, color="#333333", lw=2, label="Bevestigde gevallen (cumulatief)")
-    a.plot(nat.index, nat.deaths, color="#999999", lw=2, label="Bevestigde overlijdens (cumulatief)")
+    a.plot(nat.index, nat.cases, color="#333333", lw=2, label=f"{cap(spec.case_words['cases'])} (cumulatief)")
+    a.plot(nat.index, nat.deaths, color="#999999", lw=2, label=f"{cap(spec.case_words['deaths'])} (cumulatief)")
     a.fill_between(nat.index, nat.deaths, color="#999999", alpha=0.12)
     last = nat.dropna(subset=["cases"]).iloc[-1]
     cfr = 100 * last.deaths / last.cases
@@ -233,13 +251,21 @@ def epicurve(ob, out: str, ecdc: dict | None = None) -> dict:
     b.grid(axis="y", color="#e0e0e0"); b.set_axisbelow(True)
     b.text(-0.06, 1.03, "B", transform=b.transAxes, fontsize=16, fontweight="bold")
     b.xaxis.set_major_formatter(mdates.DateFormatter("%d %b")); b.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=2))
-    fig.suptitle(f"Ebola (Bundibugyo-virus), DRC: epidemiecurve uit officiële cumulatieve cijfers, tot {ob.asof:%d-%m-%Y}", fontsize=12.5)
-    src = "INSP/RDC nationale cumulatieve reeks via INRB-UMIE; per rapportdatum, niet per symptoomdatum."
+    fig.suptitle(spec.figures["epicurve_title"].format(asof=f"{ob.asof:%d-%m-%Y}"), fontsize=12.5)
+    src = spec.figures["epicurve_source"]
     if ecdc and ecdc.get("ok"):
-        src += f" ECDC-controle: {ecdc['cases']:,} gevallen (data tot {ecdc['data_until']}).".replace(",", " ")
+        src += f" ECDC-controle: {ecdc['cases']:,} gevallen (data tot {nl_months(ecdc['data_until'])}).".replace(",", " ")
     fig.text(0.08, 0.01, src, fontsize=7.4, color="#444")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white"); plt.close(fig)
     recent = inc.loc[:last_full].tail(4)
     return {"path": out, "weekly_cases_last4_full_weeks": {f"{d:%d-%m}": int(v) for d, v in recent.cases.items()},
+            "weeks_last8": _weeks(inc, last_full),
             "last_total": int(last.cases), "last_deaths": int(last.deaths), "cfr": round(cfr, 1)}
+
+
+def _weeks(inc, last_full) -> list[dict]:
+    """The last eight full weeks (ending on Sunday) with new cases and deaths, for the dossier."""
+    return [{"week": f"{d:%Y-%m-%d}", "cases": int(r.cases),
+             "deaths": int(r.deaths) if pd.notna(r.deaths) else None}
+            for d, r in inc.loc[:last_full].tail(8).iterrows()]

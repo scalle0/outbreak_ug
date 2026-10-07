@@ -128,6 +128,12 @@ def test_custom_verdict_is_not_matched_against_the_rule_words():
     assert mail.verdict_note("Wat dan ook.", "goedkeuren mits compound") is None
 
 
+def test_a_trip_whose_worst_stop_is_c_is_conditional():
+    """No objection only if the C leg is dropped or re-evaluated before departure (F-011, 2026-09-25)."""
+    assert risk.rule_overall([_risk("F"), _risk("C")]).startswith("voorwaardelijk")
+    assert risk.rule_overall([_risk("F"), _risk("X")]).startswith("geen")
+
+
 def test_rule_overall_reports_what_the_rules_said_not_the_override():
     """The bug this guards: recomputing from the overridden categories loses the rule verdict."""
     rs = [risk._apply_override(_risk("A"), {"category": "F", "reason": REASON})]

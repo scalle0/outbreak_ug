@@ -95,16 +95,31 @@ def test_word_count_ignores_salutation_and_signature():
 
 def test_a_long_reply_is_flagged():
     note = mail.length_note(_mail(900))
-    assert note and "900" in note and "notities" in note
+    assert note and "900" in note and "dossier" in note and "120" in note
 
 
 def test_a_normal_reply_is_not_flagged():
-    assert mail.length_note(_mail(340)) is None
+    assert mail.length_note(_mail(150)) is None
+    assert mail.length_note(_mail(340)) is not None             # the length of the letters before F-015
 
 
 def test_the_limit_is_the_boundary():
     assert mail.length_note(_mail(mail.MAX_WORDS)) is None
     assert mail.length_note(_mail(mail.MAX_WORDS + 1)) is not None
+
+
+def test_a_question_without_an_answer_gets_a_note():
+    qs = ["Geldt de 21-dagenregel?", "Mag hij naar Kinshasa?"]
+    one = {"vragen": [{"vraag": qs[0], "antwoord": "Ja, tot 21 dagen na terugkeer."}, {"vraag": qs[1], "antwoord": ""}]}
+    assert "1 van de 2" in mail.questions_note(one, qs)
+    both = {"vragen": [{"vraag": q, "antwoord": "Ja."} for q in qs]}
+    assert mail.questions_note(both, qs) is None
+    assert mail.questions_note(None, []) is None                 # no questions, nothing to answer
+
+
+def test_a_reply_without_a_dossier_is_not_held_against_it():
+    """Older replies and a model that leaves the dossier out: nothing to pair the questions with."""
+    assert mail.questions_note(None, ["Geldt de 21-dagenregel?"]) is None
 
 
 def test_length_never_blocks_a_correct_reply():

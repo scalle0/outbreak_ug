@@ -1,0 +1,9 @@
+stop,van,tot,nachten,zone,provincie,cat,oordeel,gevallen,nieuw14d,dagen_sinds_laatste,actieve_buren,dichtstbij_actief,FOD,CDC,regel_cat,signalen
+Ndola,2026-10-04,2026-10-04,0,-,ZMB,X,zie landnotitie,0,0,,-,Kayna 1344 km,-,-,-,no cases reported
+Sakania,2026-10-04,2026-10-10,6,Sakania,Haut-Katanga,F,geen bezwaar,0,0,,-,Kayna 1319 km,niet_essentieel_afgeraden,2,-,
+Lubumbashi,2026-10-10,2026-10-11,1,Lubumbashi,Haut-Katanga,F,geen bezwaar,0,0,,-,Kayna 1211 km,niet_essentieel_afgeraden,2,-,
+Kinshasa,2026-10-11,2026-10-14,3,Barumbu,Kinshasa,F,geen bezwaar,0,0,,-,Bulu 871 km,niet_essentieel_afgeraden,2,-,
+Kisangani,2026-10-14,2026-10-14,0,Makiso Kisangani,Tshopo,A,afraden,20,10,0.0,"Kabondo (5), Mangobo (4)",Makiso Kisangani 0 km,formeel_afgeraden,3,-,FOD raadt provincie formeel af (veiligheidssituatie); CDC niveau 3; stijgend in de zone: 10 nieuwe gevallen in 14 dagen
+Yangambi,2026-10-14,2026-10-25,11,Isangi,Tshopo,E,voorwaardelijk,0,0,,-,Makiso Kisangani 69 km,formeel_afgeraden,3,-,FOD raadt provincie formeel af (veiligheidssituatie); CDC niveau 3; overnachting(en) in getroffen gebied: 11
+Kisangani,2026-10-25,2026-10-26,1,Makiso Kisangani,Tshopo,A,afraden,20,10,0.0,"Kabondo (5), Mangobo (4)",Makiso Kisangani 0 km,formeel_afgeraden,3,-,FOD raadt provincie formeel af (veiligheidssituatie); CDC niveau 3; overnachting(en) in getroffen gebied: 1; stijgend in de zone: 10 nieuwe gevallen in 14 dagen
+Kinshasa,2026-10-26,2026-10-27,1,Barumbu,Kinshasa,F,geen bezwaar,0,0,,-,Bulu 871 km,niet_essentieel_afgeraden,2,-,

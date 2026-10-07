@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from dienstreis import advies, archive, llm, log, risk
+from dienstreis import advies, archive, countries, llm, log, outbreak
 
 REQ = """Beste Steven,
 
@@ -41,7 +41,10 @@ BAD = GOOD.replace("Kinshasa kan,", "Kinshasa kan — cruciaal punt —")
 def env(tmp_path, monkeypatch):
     monkeypatch.setattr(advies, "CONTEXT", tmp_path / "context.md")
     monkeypatch.setattr(log, "LOG", tmp_path / "log.csv")
-    monkeypatch.setattr(risk, "LOCAL_ADVISORIES", tmp_path / "advisories.yaml")
+    monkeypatch.setattr(countries, "LEGACY", tmp_path / "advisories.yaml")
+    monkeypatch.setattr(countries, "LOCAL", tmp_path / "countries")
+    # these tests are about the advies mechanics on the Ebola trip; routing has its own tests
+    monkeypatch.setattr(outbreak, "active", lambda: [outbreak.default()])
     monkeypatch.setattr(archive, "ARCHIVE", tmp_path / "adviezen")
     (tmp_path / "context.md").write_text("- 2026-09-10: Kisangani-luik Hubeau afgeraden\n", encoding="utf-8")
     req = tmp_path / "aanvraag.txt"
@@ -60,14 +63,16 @@ def test_pipeline_with_repair(env, monkeypatch):
     out = Path(res["out"])
     # deterministic categories unchanged by the LLM
     assert "".join(s["category"] for s in res["summary"]["stops"]) == "FA"
-    # the reply prompt carried the skeleton, the risk table, An's question and the context
+    # the reply prompt carried the facts, the attachments, the risk table, An's question and the context
     p = fake.prompts["reply"][0]
-    assert "<skelet>" in p and "Makiso Kisangani" in p and "21-dagenregel" in p and "Hubeau" in p
+    assert "<feiten>" in p and "Makiso Kisangani" in p and "21-dagenregel" in p and "Hubeau" in p
+    assert "<skelet>" not in p and "kaart_reiziger_t.png" in p
     # first answer failed the text checks -> exactly one repair round with the problems listed
     assert len(fake.prompts["reply"]) == 2 and "em-dash" in fake.prompts["reply"][1]
     assert (out / "reply.txt").read_text(encoding="utf-8").startswith("Beste An,")
     assert "—" not in (out / "reply.txt").read_text(encoding="utf-8")
-    assert list(out.glob("reply_*.html")) and list(out.glob("kaart_*.png")) and (out / "stops.yaml").exists()
+    assert (out / "dossier.html").exists() and list(out.glob("kaart_*.png")) and (out / "stops.yaml").exists()
+    assert (Path(res["advice_dir"]) / "dossier.html").exists()      # archived with the advice
     assert "Reiziger T" in (tmp / "context.md").read_text(encoding="utf-8")
     assert "Reiziger T" in (tmp / "log.csv").read_text(encoding="utf-8")
 
@@ -77,7 +82,7 @@ INVENTED = GOOD.replace("2. Kisangani: af te raden.",
 
 
 def test_invented_number_triggers_a_repair_round(env):
-    """A case count that is in no calculated figure must not reach the widget."""
+    """A case count that is in no calculated figure must not reach the letter."""
     tmp, req = env
     replies = iter([{"reply": INVENTED, "suggestions": []},
                     {"reply": GOOD, "suggestions": []}])
@@ -88,14 +93,16 @@ def test_invented_number_triggers_a_repair_round(env):
     assert res["issues"] == [] and "8 421" not in (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
 
 
-def test_widget_is_not_built_when_checks_still_fail(env):
-    """The widget is the copy-to-Outlook page: never built around text that failed the checks."""
+def test_copying_stays_off_when_checks_still_fail(env):
+    """The dossier is built all the same (Steven needs it), but its copy button stays off: a letter that
+    failed the checks is never one click away from Outlook, as the old widget was never built around it."""
     tmp, req = env
     fake = llm.Fake({"stops": STOPS, "reply": {"reply": INVENTED, "suggestions": []}})
     res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
                             open_browser=False, llm_backend=fake, web=False)
     out = Path(res["out"])
-    assert res["widget"] is None and not list(out.glob("reply_*.html"))
+    page = (out / "dossier.html").read_text(encoding="utf-8")
+    assert 'onclick="kopieer()" disabled' in page and "dienstreis dossier" in page
     assert any("8421" in i for i in res["issues"])
     assert (out / "reply.txt").exists()            # the text is kept so it can be corrected by hand
     assert "8421" in (out / "sugg.txt").read_text(encoding="utf-8")
@@ -200,6 +207,25 @@ def test_no_web_skips_it(env):
     assert "web" not in fake.prompts
 
 
+def test_a_failed_web_step_does_not_stop_the_advice(env):
+    """2026-10-07: `claude -p` ran out of turns in the web step and the whole advice was lost."""
+    tmp, req = env
+
+    def web(prompt):
+        raise llm.LLMError("claude -p faalde (1): error_max_turns")
+
+    fake = llm.Fake({"stops": STOPS, "web": web, "reply": {"reply": GOOD, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    out = Path(res["out"])
+    assert (out / "reply.txt").exists() and not (out / "web.json").exists()
+    assert "(niet beschikbaar)" in fake.prompts["reply"][0]
+    sugg = (out / "sugg.txt").read_text(encoding="utf-8")
+    assert "De webstap faalde (claude -p faalde (1): error_max_turns)" in sugg and "niet live nagekeken" in sugg
+    page = (out / "dossier.html").read_text(encoding="utf-8")
+    assert "De webstap faalde" in page and "--no-web" not in page
+
+
 def test_trace_marks_the_repair_round(env):
     """A repair round and a retry on unusable JSON must be distinguishable afterwards."""
     tmp, req = env
@@ -211,3 +237,67 @@ def test_trace_marks_the_repair_round(env):
     reply_calls = [e for e in trace if e["step"] == "reply"]
     assert [e["repair"] for e in reply_calls] == [False, True]
     assert all(e["repair"] is False for e in trace if e["step"] == "stops")
+
+
+def test_the_dossier_fields_reach_the_notes_and_the_question_is_checked(env):
+    """F-015: the letter stays short; the reasoning goes to Steven, and An's question must be answered."""
+    tmp, req = env
+    unanswered = {"reply": GOOD, "dossier": {"vragen": [], "beoordeling": ["Kisangani: categorie A, 13 gevallen."]}}
+    answered = {"reply": GOOD, "dossier": {
+        "vragen": [{"vraag": "Geldt de 21-dagenregel?", "antwoord": "Kisangani: af te raden."}],
+        "beoordeling": ["Kisangani: categorie A."], "weggelaten": ["de stand van zaken: staat in de curve"],
+        "na_te_kijken": ["de interne 21-dagenregel bij de ambassade"], "toezeggingen": ["go/no-go op 20/11"],
+        "vragen_aan_behandelaar": []}}
+    replies = iter([unanswered, answered])
+    fake = llm.Fake({"stops": {**STOPS, "sent_to_ugent_address": True},
+                     "reply": lambda p: json.dumps(next(replies), ensure_ascii=False)})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake, web=False)
+    assert len(fake.prompts["reply"]) == 2 and "vragen van An zonder antwoord" in fake.prompts["reply"][1]
+    sugg = (Path(res["out"]) / "sugg.txt").read_text(encoding="utf-8")
+    assert "Uit de mail gelaten: de stand van zaken" in sugg and "Na te kijken: de interne 21-dagenregel" in sugg
+    assert "Toezegging in de mail: go/no-go op 20/11" in sugg
+    reply = (Path(res["out"]) / "reply.txt").read_text(encoding="utf-8")
+    assert "steven.callens@uzgent.be" in reply                    # added by the code, not by the model
+
+
+def test_a_confirmed_fiche_goes_to_the_letter_and_its_numbers_count(env):
+    """F-015: answers about isolation or vaccination rest on the fiche Steven confirmed; a concept never."""
+    from dienstreis import fiche
+    tmp, req = env
+    d = fiche.LOCAL / "ebola_cod_2026"
+    d.mkdir(parents=True)
+    (d / "fiche.md").write_text("---\nstatus: bevestigd\nverified: 2099-01-01\nbevestigd_door: Steven Callens\n"
+                                "bevestigd_op: 2026-09-27\n---\n\n## Incubatie\n\nOpvolging tot 4812 uur [x].\n",
+                                encoding="utf-8")
+    reply = GOOD.replace("2. Kisangani: af te raden.", "2. Kisangani: af te raden. Opvolging tot 4812 uur.")
+    fake = llm.Fake({"stops": STOPS, "web": {"advisories": [], "news": [], "who": {}},
+                     "reply": {"reply": reply, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    assert "<fiches>" in fake.prompts["web"][0]                       # the web step checks it for newer guidance
+    assert "<fiche>" in fake.prompts["reply"][0] and "4812 uur" in fake.prompts["reply"][0]
+    assert res["issues"] == [] and len(fake.prompts["reply"]) == 1    # the fiche's number is no invention
+    (d / "fiche.md").write_text((d / "fiche.md").read_text(encoding="utf-8").replace("bevestigd\n", "concept\n", 1),
+                                encoding="utf-8")
+    fake2 = llm.Fake({"stops": STOPS, "reply": {"reply": GOOD, "suggestions": []}})
+    advies.run_advies(str(req), out=str(tmp / "out2"), yes=True, asof="2026-09-19",
+                      open_browser=False, llm_backend=fake2, web=False)
+    assert "<fiche>" not in fake2.prompts["reply"][0]
+
+
+def test_a_dry_run_keeps_nothing(env, monkeypatch):
+    """F-018: every step runs, the dossier is written in the run's folder, and nothing else is kept."""
+    tmp, req = env
+    before = (tmp / "context.md").read_text(encoding="utf-8")
+    fake = llm.Fake({"stops": STOPS, "reply": {"reply": GOOD, "suggestions": [],
+                                                "context_update": "2026-09-26: Reiziger T, proef"}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19", open_browser=False,
+                            llm_backend=fake, web=False, proef=True)
+    assert res["advice_dir"] is None and archive.all_advices() == [] and not log.LOG.exists()
+    assert (tmp / "context.md").read_text(encoding="utf-8") == before
+    page = (Path(res["out"]) / "dossier.html").read_text(encoding="utf-8")
+    assert "proefrun" in page and "niet in het archief" in page
+    monkeypatch.setattr("builtins.input", lambda *a: pytest.fail("a dry run asks nothing about the registry"))
+    assert advies.maybe_apply_web({"measures": [{"country": "UGA", "text": "screening", "changed": True}]},
+                                  apply_web=False, proef=True) is False

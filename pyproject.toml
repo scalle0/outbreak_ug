@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dienstreis-advies"
-version = "0.2.0"
-description = "Outbreak travel-risk advice for UGent dienstreizen (Ebola BVD DRC 2026): zone-level risk, maps, epicurve, Dutch reply skeleton"
+version = "0.3.0"
+description = "Outbreak travel-risk advice for UGent dienstreizen: zone-level risk per outbreak profile (first: Ebola BVD DRC 2026), maps, epicurve, Dutch reply"
 requires-python = ">=3.10"
 dependencies = ["pandas>=2", "geopandas>=0.14", "shapely>=2", "matplotlib>=3.7", "pyyaml", "requests",
-                "olefile", "adjustText>=1.0", "tabulate", "python-docx", "pypdf"]
+                "olefile", "adjustText>=1.0", "tabulate", "python-docx", "pypdf", "pillow", "markdown"]
 
 [project.optional-dependencies]
 api = ["anthropic"]
@@ -22,4 +22,4 @@ dienstreis = "dienstreis.cli:main"
 packages = ["dienstreis"]
 
 [tool.setuptools.package-data]
-dienstreis = ["config/*", "prompts/*.md"]
+dienstreis = ["config/*", "prompts/*.md", "outbreaks/*/*", "countries/*.yaml"]

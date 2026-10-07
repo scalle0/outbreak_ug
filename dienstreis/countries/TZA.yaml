@@ -1,0 +1,16 @@
+# Tanzania: everything that is the same whatever the disease. Not yet verified: the web step looks up
+# the FOD pages, the advisory, the border measures and trusted sources, and offers them for you to confirm.
+iso3: TZA
+name_nl: Tanzania
+name_en: Tanzania
+letter_nl: Tanzania
+neighbours: [BDI, COD, KEN, MOZ, MWI, RWA, UGA, ZMB]
+verified: null
+
+fod: {pages: [], default: null, regions: {}}
+cdc: {}
+pretravel: null
+government: []
+news: []
+
+measures: []                           # entry and exit measures tied to an outbreak elsewhere, as last verified

@@ -1,0 +1,422 @@
+{
+ "asof": "2026-09-19",
+ "outbreak": "ebola_cod_2026",
+ "overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
+ "rule_overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
+ "overrides": [],
+ "epi": {
+  "path": "epicurve_20260919.png",
+  "weekly_cases_last4_full_weeks": {
+   "23-08": 569,
+   "30-08": 586,
+   "06-09": 586,
+   "13-09": 572
+  },
+  "weeks_last8": [
+   {
+    "week": "2026-07-26",
+    "cases": 839,
+    "deaths": 470
+   },
+   {
+    "week": "2026-08-02",
+    "cases": 540,
+    "deaths": 270
+   },
+   {
+    "week": "2026-08-09",
+    "cases": 579,
+    "deaths": 304
+   },
+   {
+    "week": "2026-08-16",
+    "cases": 564,
+    "deaths": 314
+   },
+   {
+    "week": "2026-08-23",
+    "cases": 569,
+    "deaths": 317
+   },
+   {
+    "week": "2026-08-30",
+    "cases": 586,
+    "deaths": 308
+   },
+   {
+    "week": "2026-09-06",
+    "cases": 586,
+    "deaths": 276
+   },
+   {
+    "week": "2026-09-13",
+    "cases": 572,
+    "deaths": 284
+   }
+  ],
+  "last_total": 7672,
+  "last_deaths": 3699,
+  "cfr": 48.2
+ },
+ "stops": [
+  {
+   "place": "Ndola",
+   "start": "2026-10-04",
+   "end": "2026-10-04",
+   "nights": 0,
+   "lodging": null,
+   "transit_only": true,
+   "country": "ZMB",
+   "zone": null,
+   "province": null,
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1344,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "X",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": null,
+   "fod_reason": null,
+   "cdc": null,
+   "flags": [
+    "no cases reported"
+   ],
+   "verdict": "zie landnotitie",
+   "label": "buiten de DRC"
+  },
+  {
+   "place": "Sakania",
+   "start": "2026-10-04",
+   "end": "2026-10-10",
+   "nights": 6,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Sakania",
+   "province": "Haut-Katanga",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1319,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  },
+  {
+   "place": "Lubumbashi",
+   "start": "2026-10-10",
+   "end": "2026-10-11",
+   "nights": 1,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Lubumbashi",
+   "province": "Haut-Katanga",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Kayna",
+    "province": "Nord-Kivu",
+    "km": 1211,
+    "cases": 1,
+    "days_since_last": 15
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  },
+  {
+   "place": "Kinshasa",
+   "start": "2026-10-11",
+   "end": "2026-10-14",
+   "nights": 3,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Barumbu",
+   "province": "Kinshasa",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Bulu",
+    "province": "Sud-Ubangi",
+    "km": 871,
+    "cases": 1,
+    "days_since_last": 9
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  },
+  {
+   "place": "Kisangani",
+   "start": "2026-10-14",
+   "end": "2026-10-14",
+   "nights": 0,
+   "lodging": null,
+   "transit_only": true,
+   "country": "COD",
+   "zone": "Makiso Kisangani",
+   "province": "Tshopo",
+   "cases": 20,
+   "deaths": 9,
+   "new14": 10,
+   "days_since_last": 0.0,
+   "province_cases": 39,
+   "province_active_zones": 4,
+   "neighbours_active": [
+    {
+     "zone": "Kabondo",
+     "province": "Tshopo",
+     "cases": 5,
+     "new14": 1,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Mangobo",
+     "province": "Tshopo",
+     "cases": 4,
+     "new14": 1,
+     "days_since_last": 6
+    }
+   ],
+   "nearest_active": {
+    "zone": "Makiso Kisangani",
+    "province": "Tshopo",
+    "km": 0,
+    "cases": 20,
+    "days_since_last": 0
+   },
+   "category": "A",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "formeel_afgeraden",
+   "fod_reason": "veiligheidssituatie",
+   "cdc": 3,
+   "flags": [
+    "FOD raadt provincie formeel af (veiligheidssituatie)",
+    "CDC niveau 3",
+    "stijgend in de zone: 10 nieuwe gevallen in 14 dagen"
+   ],
+   "verdict": "afraden",
+   "label": "getroffen zone, recent geval (<= 21 d)"
+  },
+  {
+   "place": "Yangambi",
+   "start": "2026-10-14",
+   "end": "2026-10-25",
+   "nights": 11,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Isangi",
+   "province": "Tshopo",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 39,
+   "province_active_zones": 4,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Makiso Kisangani",
+    "province": "Tshopo",
+    "km": 69,
+    "cases": 20,
+    "days_since_last": 0
+   },
+   "category": "E",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "formeel_afgeraden",
+   "fod_reason": "veiligheidssituatie",
+   "cdc": 3,
+   "flags": [
+    "FOD raadt provincie formeel af (veiligheidssituatie)",
+    "CDC niveau 3",
+    "overnachting(en) in getroffen gebied: 11"
+   ],
+   "verdict": "voorwaardelijk",
+   "label": "vrije zone in provincie met actieve transmissie"
+  },
+  {
+   "place": "Kisangani",
+   "start": "2026-10-25",
+   "end": "2026-10-26",
+   "nights": 1,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Makiso Kisangani",
+   "province": "Tshopo",
+   "cases": 20,
+   "deaths": 9,
+   "new14": 10,
+   "days_since_last": 0.0,
+   "province_cases": 39,
+   "province_active_zones": 4,
+   "neighbours_active": [
+    {
+     "zone": "Kabondo",
+     "province": "Tshopo",
+     "cases": 5,
+     "new14": 1,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Mangobo",
+     "province": "Tshopo",
+     "cases": 4,
+     "new14": 1,
+     "days_since_last": 6
+    }
+   ],
+   "nearest_active": {
+    "zone": "Makiso Kisangani",
+    "province": "Tshopo",
+    "km": 0,
+    "cases": 20,
+    "days_since_last": 0
+   },
+   "category": "A",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "formeel_afgeraden",
+   "fod_reason": "veiligheidssituatie",
+   "cdc": 3,
+   "flags": [
+    "FOD raadt provincie formeel af (veiligheidssituatie)",
+    "CDC niveau 3",
+    "overnachting(en) in getroffen gebied: 1",
+    "stijgend in de zone: 10 nieuwe gevallen in 14 dagen"
+   ],
+   "verdict": "afraden",
+   "label": "getroffen zone, recent geval (<= 21 d)"
+  },
+  {
+   "place": "Kinshasa",
+   "start": "2026-10-26",
+   "end": "2026-10-27",
+   "nights": 1,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Barumbu",
+   "province": "Kinshasa",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Bulu",
+    "province": "Sud-Ubangi",
+    "km": 871,
+    "cases": 1,
+    "days_since_last": 9
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  }
+ ],
+ "qa": {
+  "zone_sum_matches_national": true,
+  "ecdc_matches": null,
+  "ecdc": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who_days_old": null,
+  "sources_unreachable": [],
+  "sources_cached": [],
+  "unmatched_zone_names": [],
+  "advisories_unverified": [
+   "ZMB"
+  ],
+  "far_stops_in_inset": [
+   "Ndola",
+   "Sakania",
+   "Lubumbashi",
+   "Kinshasa",
+   "Kinshasa"
+  ],
+  "skeleton_issues": [],
+  "overrules_count": 0
+ },
+ "who": {
+  "ok": false,
+  "reason": "asof run"
+ },
+ "map": "kaart_reiziger_c.png",
+ "epicurve": "epicurve_20260919.png",
+ "departure": "2026-10-04",
+ "table": "      stop        van        tot  nachten             zone    provincie cat         oordeel  gevallen  nieuw14d  dagen_sinds_laatste            actieve_buren      dichtstbij_actief                       FOD CDC regel_cat\n     Ndola 2026-10-04 2026-10-04        0                -          ZMB   X zie landnotitie         0         0                  NaN                        -          Kayna 1344 km                         -   -         -\n   Sakania 2026-10-04 2026-10-10        6          Sakania Haut-Katanga   F    geen bezwaar         0         0                  NaN                        -          Kayna 1319 km niet_essentieel_afgeraden   2         -\nLubumbashi 2026-10-10 2026-10-11        1       Lubumbashi Haut-Katanga   F    geen bezwaar         0         0                  NaN                        -          Kayna 1211 km niet_essentieel_afgeraden   2         -\n  Kinshasa 2026-10-11 2026-10-14        3          Barumbu     Kinshasa   F    geen bezwaar         0         0                  NaN                        -            Bulu 871 km niet_essentieel_afgeraden   2         -\n Kisangani 2026-10-14 2026-10-14        0 Makiso Kisangani       Tshopo   A         afraden        20        10                  0.0 Kabondo (5), Mangobo (4)  Makiso Kisangani 0 km         formeel_afgeraden   3         -\n  Yangambi 2026-10-14 2026-10-25       11           Isangi       Tshopo   E  voorwaardelijk         0         0                  NaN                        - Makiso Kisangani 69 km         formeel_afgeraden   3         -\n Kisangani 2026-10-25 2026-10-26        1 Makiso Kisangani       Tshopo   A         afraden        20        10                  0.0 Kabondo (5), Mangobo (4)  Makiso Kisangani 0 km         formeel_afgeraden   3         -\n  Kinshasa 2026-10-26 2026-10-27        1          Barumbu     Kinshasa   F    geen bezwaar         0         0                  NaN                        -            Bulu 871 km niet_essentieel_afgeraden   2         -",
+ "overall_level": "afraden",
+ "attachments": [
+  "kaart_reiziger_c.png",
+  "epicurve_20260919.png"
+ ],
+ "type": "reisadvies"
+}

@@ -25,6 +25,7 @@ Thumbs.db
 *.ost
 !tests/fixtures/*.eml
 out_*/
+out_*.log
 stops*.yaml
 !examples/*.yaml
 reply*.txt
@@ -40,3 +41,6 @@ advice_log.csv
 context.md
 advisories.yaml
 !dienstreis/config/advisories.yaml
+
+# golden files: invented itineraries and frozen outputs, no personal data (tests/test_golden.py)
+!tests/golden/**

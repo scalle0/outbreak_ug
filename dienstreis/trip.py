@@ -19,9 +19,14 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
+from . import outbreak
+
 PLACES = Path(__file__).parent / "config" / "places.csv"
 LODGING = {"hotel", "family", "guesthouse", "camp", "compound", "unknown"}
 CATEGORIES = set("ABCDEFX")
+# reisadvies: a planned trip; casus: a traveller already abroad (or just back) who is ill, exposed or
+# in quarantine; vraag: a general question with no trip or case
+TYPES = ("reisadvies", "casus", "vraag")
 MIN_REASON = 15
 # the DRC and its neighbours, wide enough for a stopover in Europe or southern Africa
 LAT_RANGE, LON_RANGE = (-35.0, 60.0), (-25.0, 60.0)
@@ -76,6 +81,7 @@ def _as_bool(v):
 def coerce(trip: dict) -> dict:
     """Types the deterministic core expects. Unreadable values are left alone for validate to report."""
     t = dict(trip)
+    t["type"] = str(t.get("type") or "reisadvies").strip().lower()
     if t.get("review_on") is not None:
         t["review_on"] = parse_date(t["review_on"]) or t["review_on"]
     prof = dict(t.get("profile") or {})
@@ -86,6 +92,8 @@ def coerce(trip: dict) -> dict:
     for s in t.get("stops") or []:
         s = dict(s)
         for k in DATE_KEYS:
+            if isinstance(s.get(k), str) and not s[k].strip():
+                s[k] = None                      # an empty date is no date: a case may leave `to` open
             if s.get(k) is not None:
                 s[k] = parse_date(s[k]) or s[k]
         if "transit_only" in s:
@@ -98,16 +106,22 @@ def coerce(trip: dict) -> dict:
                     pass
         if isinstance(s.get("place"), str):
             s["place"] = s["place"].strip()
-        if isinstance(s.get("override"), dict):
-            o = dict(s["override"])
-            if isinstance(o.get("category"), str):
-                o["category"] = o["category"].strip().upper()
-            if isinstance(o.get("reason"), str):
-                o["reason"] = o["reason"].strip()
-            s["override"] = o
+        if isinstance(s.get("override"), (dict, list)):
+            s["override"] = (_coerce_override(s["override"]) if isinstance(s["override"], dict)
+                             else [_coerce_override(o) if isinstance(o, dict) else o for o in s["override"]])
         stops.append(s)
     t["stops"] = stops
+    if isinstance(t.get("outbreaks"), str):
+        t["outbreaks"] = [t["outbreaks"]]
     return t
+
+
+def _coerce_override(o: dict) -> dict:
+    o = dict(o)
+    for k in ("category", "reason", "outbreak"):
+        if isinstance(o.get(k), str):
+            o[k] = o[k].strip().upper() if k == "category" else o[k].strip()
+    return o
 
 
 def validate(trip: dict, *, known_places, today: date | None = None) -> list[str]:
@@ -115,12 +129,16 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
     today = today or date.today()
     known = {str(p).lower() for p in known_places}
     issues: list[str] = []
+    kind = trip.get("type") or "reisadvies"
+    if kind not in TYPES:
+        issues.append(f"onbekend type '{kind}' (kies uit {', '.join(TYPES)})")
 
-    if not str(trip.get("traveller") or "").strip():
+    if not str(trip.get("traveller") or "").strip() and kind != "vraag":
         issues.append("geen reiziger in de aanvraag herkend")
     stops = trip.get("stops") or []
     if not stops:
-        issues.append("geen enkele halte herkend")
+        if kind == "reisadvies":             # a case or a question can do without a place
+            issues.append("geen enkele halte herkend")
         return issues
     lodging = (trip.get("profile") or {}).get("lodging")
     if lodging is not None and str(lodging).lower() not in LODGING:
@@ -135,6 +153,10 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
 
         start, end = s.get("from"), s.get("to")
         for k, v in (("from", start), ("to", end)):
+            if k == "to" and v is None and kind != "reisadvies":
+                continue                         # a stay that is still going on, with no end date yet
+            if v is None and kind == "vraag":
+                continue                         # a question about a place, not about a stay there
             if not isinstance(v, date):
                 issues.append(f"{tag}: datum '{k}' onleesbaar ({v!r}); verwacht JJJJ-MM-DD")
         if isinstance(start, date) and isinstance(end, date):
@@ -160,7 +182,7 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
         sl = s.get("lodging")
         if sl is not None and str(sl).lower() not in LODGING:
             issues.append(f"{tag}: onbekende verblijfsvorm '{sl}'")
-        issues += _check_override(s.get("override"), tag)
+        issues += _check_stop_overrides(s.get("override"), tag, trip.get("outbreaks") or [])
 
     # the year is the classic failure: a trip from December into March crosses into the next year
     dates = [d for s in stops for d in (s.get("from"), s.get("to")) if isinstance(d, date)]
@@ -176,9 +198,35 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
             issues.append(f"laatste datum {last} ligt meer dan drie jaar in de toekomst; "
                           f"controleer de jaartallen")
     issues += _check_override(trip.get("override"), "overrule van het eindoordeel", overall=True)
+    known_ids = set(outbreak.ids())
+    for oid in trip.get("outbreaks") or []:
+        if oid not in known_ids:
+            issues.append(f"onbekende uitbraak '{oid}' in outbreaks (bekend: {', '.join(sorted(known_ids))})")
     rv = trip.get("review_on")
     if rv is not None and not isinstance(rv, date) and str(rv).strip():
         issues.append(f"go/no-go-datum onleesbaar ({rv!r})")
+    if kind == "reisadvies" and isinstance(rv, date) and rv < today:
+        # the 25/09 mpox mail: a traveller already abroad, read as a trip with a go/no-go three months back
+        issues.append(f"go/no-go-datum {rv} ligt in het verleden: is dit een casus (de reiziger is al ter "
+                      f"plaatse)? Zet dan type: casus; anders een datum voor vertrek")
+    return issues
+
+
+def _check_stop_overrides(o, tag: str, outbreaks: list[str]) -> list[str]:
+    """One overrule, or a list of them; with several outbreaks each must say which one it sets aside."""
+    if o is None:
+        return []
+    items = o if isinstance(o, list) else [o]
+    issues = [x for it in items for x in _check_override(it, tag)]
+    named = [it.get("outbreak") for it in items if isinstance(it, dict)]
+    if len(outbreaks) > 1 and not all(named):
+        issues.append(f"{tag}: er gelden meerdere uitbraken ({', '.join(outbreaks)}); zeg in de overrule "
+                      f"welke ze opzij zet (outbreak: ...)")
+    for oid in named:
+        if oid and outbreaks and oid not in outbreaks:
+            issues.append(f"{tag}: overrule voor '{oid}', maar die uitbraak geldt niet voor deze reis")
+    if len(named) != len(set(named)):
+        issues.append(f"{tag}: meer dan een overrule voor dezelfde uitbraak")
     return issues
 
 
@@ -206,7 +254,7 @@ def _check_override(o, tag: str, overall: bool = False) -> list[str]:
             issues.append(f"{tag}: geef 'category' (een van {' '.join(sorted(CATEGORIES))})")
         elif cat not in CATEGORIES:
             issues.append(f"{tag}: onbekende categorie '{cat}' (kies uit {' '.join(sorted(CATEGORIES))})")
-    unknown = set(o) - {"category", "reason", "verdict"}
+    unknown = set(o) - {"category", "reason", "verdict", "outbreak"}
     if unknown:
         issues.append(f"{tag}: onbekende sleutel(s) in override: {', '.join(sorted(unknown))}")
     return issues

@@ -1,0 +1,316 @@
+{
+ "asof": "2026-09-19",
+ "outbreak": "ebola_cod_2026",
+ "overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
+ "rule_overall": "niet goedkeuren in huidige vorm (minstens een luik af te raden)",
+ "overrides": [],
+ "epi": {
+  "path": "epicurve_20260919.png",
+  "weekly_cases_last4_full_weeks": {
+   "23-08": 569,
+   "30-08": 586,
+   "06-09": 586,
+   "13-09": 572
+  },
+  "weeks_last8": [
+   {
+    "week": "2026-07-26",
+    "cases": 839,
+    "deaths": 470
+   },
+   {
+    "week": "2026-08-02",
+    "cases": 540,
+    "deaths": 270
+   },
+   {
+    "week": "2026-08-09",
+    "cases": 579,
+    "deaths": 304
+   },
+   {
+    "week": "2026-08-16",
+    "cases": 564,
+    "deaths": 314
+   },
+   {
+    "week": "2026-08-23",
+    "cases": 569,
+    "deaths": 317
+   },
+   {
+    "week": "2026-08-30",
+    "cases": 586,
+    "deaths": 308
+   },
+   {
+    "week": "2026-09-06",
+    "cases": 586,
+    "deaths": 276
+   },
+   {
+    "week": "2026-09-13",
+    "cases": 572,
+    "deaths": 284
+   }
+  ],
+  "last_total": 7672,
+  "last_deaths": 3699,
+  "cfr": 48.2
+ },
+ "stops": [
+  {
+   "place": "Kinshasa",
+   "start": "2026-11-28",
+   "end": "2026-12-06",
+   "nights": 8,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Barumbu",
+   "province": "Kinshasa",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 0,
+   "province_active_zones": 0,
+   "neighbours_active": [],
+   "nearest_active": {
+    "zone": "Bulu",
+    "province": "Sud-Ubangi",
+    "km": 871,
+    "cases": 1,
+    "days_since_last": 9
+   },
+   "category": "F",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 2,
+   "flags": [],
+   "verdict": "geen bezwaar",
+   "label": "niet getroffen"
+  },
+  {
+   "place": "Kisangani",
+   "start": "2026-12-06",
+   "end": "2026-12-14",
+   "nights": 8,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Makiso Kisangani",
+   "province": "Tshopo",
+   "cases": 20,
+   "deaths": 9,
+   "new14": 10,
+   "days_since_last": 0.0,
+   "province_cases": 39,
+   "province_active_zones": 4,
+   "neighbours_active": [
+    {
+     "zone": "Kabondo",
+     "province": "Tshopo",
+     "cases": 5,
+     "new14": 1,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Mangobo",
+     "province": "Tshopo",
+     "cases": 4,
+     "new14": 1,
+     "days_since_last": 6
+    }
+   ],
+   "nearest_active": {
+    "zone": "Makiso Kisangani",
+    "province": "Tshopo",
+    "km": 0,
+    "cases": 20,
+    "days_since_last": 0
+   },
+   "category": "A",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "formeel_afgeraden",
+   "fod_reason": "veiligheidssituatie",
+   "cdc": 3,
+   "flags": [
+    "FOD raadt provincie formeel af (veiligheidssituatie)",
+    "CDC niveau 3",
+    "verblijf bij familie: blootstelling via zorg voor zieken en begrafenissen",
+    "overnachting(en) in getroffen gebied: 8",
+    "stijgend in de zone: 10 nieuwe gevallen in 14 dagen"
+   ],
+   "verdict": "afraden",
+   "label": "getroffen zone, recent geval (<= 21 d)"
+  },
+  {
+   "place": "Isiro",
+   "start": "2026-12-14",
+   "end": "2026-12-22",
+   "nights": 8,
+   "lodging": null,
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Isiro",
+   "province": "Haut-Uele",
+   "cases": 98,
+   "deaths": 42,
+   "new14": 6,
+   "days_since_last": 4.0,
+   "province_cases": 307,
+   "province_active_zones": 6,
+   "neighbours_active": [
+    {
+     "zone": "Wamba",
+     "province": "Haut-Uele",
+     "cases": 99,
+     "new14": 16,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Pawa",
+     "province": "Haut-Uele",
+     "cases": 68,
+     "new14": 28,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Viadana",
+     "province": "Bas-Uele",
+     "cases": 3,
+     "new14": 2,
+     "days_since_last": 4
+    },
+    {
+     "zone": "Rungu",
+     "province": "Haut-Uele",
+     "cases": 2,
+     "new14": 0,
+     "days_since_last": 17
+    }
+   ],
+   "nearest_active": {
+    "zone": "Isiro",
+    "province": "Haut-Uele",
+    "km": 0,
+    "cases": 98,
+    "days_since_last": 4
+   },
+   "category": "A",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 3,
+   "flags": [
+    "CDC niveau 3",
+    "verblijf bij familie: blootstelling via zorg voor zieken en begrafenissen",
+    "overnachting(en) in getroffen gebied: 8",
+    "stijgend in de zone: 6 nieuwe gevallen in 14 dagen"
+   ],
+   "verdict": "afraden",
+   "label": "getroffen zone, recent geval (<= 21 d)"
+  },
+  {
+   "place": "Durba",
+   "start": "2026-12-22",
+   "end": "2027-03-01",
+   "nights": 69,
+   "lodging": "family",
+   "transit_only": false,
+   "country": "COD",
+   "zone": "Watsa",
+   "province": "Haut-Uele",
+   "cases": 0,
+   "deaths": 0,
+   "new14": 0,
+   "days_since_last": null,
+   "province_cases": 307,
+   "province_active_zones": 6,
+   "neighbours_active": [
+    {
+     "zone": "Mongbwalu",
+     "province": "Ituri",
+     "cases": 686,
+     "new14": 54,
+     "days_since_last": 0
+    },
+    {
+     "zone": "Damas",
+     "province": "Ituri",
+     "cases": 40,
+     "new14": 10,
+     "days_since_last": 4
+    },
+    {
+     "zone": "Mambasa",
+     "province": "Ituri",
+     "cases": 21,
+     "new14": 4,
+     "days_since_last": 3
+    }
+   ],
+   "nearest_active": {
+    "zone": "Dungu",
+    "province": "Haut-Uele",
+    "km": 41,
+    "cases": 1,
+    "days_since_last": 0
+   },
+   "category": "D",
+   "rule_category": null,
+   "override_reason": null,
+   "fod": "niet_essentieel_afgeraden",
+   "fod_reason": "algemene volatiliteit",
+   "cdc": 3,
+   "flags": [
+    "CDC niveau 3",
+    "verblijf bij familie: blootstelling via zorg voor zieken en begrafenissen",
+    "lang verblijf (>= 14 nachten) in risicogebied"
+   ],
+   "verdict": "voorwaardelijk",
+   "label": "vrije zone, grenst aan actieve zone"
+  }
+ ],
+ "qa": {
+  "zone_sum_matches_national": true,
+  "ecdc_matches": null,
+  "ecdc": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who": {
+   "ok": false,
+   "reason": "asof run"
+  },
+  "who_days_old": null,
+  "sources_unreachable": [],
+  "sources_cached": [],
+  "unmatched_zone_names": [],
+  "advisories_unverified": [],
+  "far_stops_in_inset": [
+   "Kinshasa"
+  ],
+  "skeleton_issues": [],
+  "overrules_count": 0
+ },
+ "who": {
+  "ok": false,
+  "reason": "asof run"
+ },
+ "map": "kaart_reiziger_d.png",
+ "epicurve": "epicurve_20260919.png",
+ "departure": "2026-11-28",
+ "table": "     stop        van        tot  nachten             zone provincie cat        oordeel  gevallen  nieuw14d  dagen_sinds_laatste                                 actieve_buren     dichtstbij_actief                       FOD  CDC regel_cat\n Kinshasa 2026-11-28 2026-12-06        8          Barumbu  Kinshasa   F   geen bezwaar         0         0                  NaN                                             -           Bulu 871 km niet_essentieel_afgeraden    2         -\nKisangani 2026-12-06 2026-12-14        8 Makiso Kisangani    Tshopo   A        afraden        20        10                  0.0                      Kabondo (5), Mangobo (4) Makiso Kisangani 0 km         formeel_afgeraden    3         -\n    Isiro 2026-12-14 2026-12-22        8            Isiro Haut-Uele   A        afraden        98         6                  4.0 Wamba (99), Pawa (68), Viadana (3), Rungu (2)            Isiro 0 km niet_essentieel_afgeraden    3         -\n    Durba 2026-12-22 2027-03-01       69            Watsa Haut-Uele   D voorwaardelijk         0         0                  NaN     Mongbwalu (686), Damas (40), Mambasa (21)           Dungu 41 km niet_essentieel_afgeraden    3         -",
+ "overall_level": "afraden",
+ "attachments": [
+  "kaart_reiziger_d.png",
+  "epicurve_20260919.png"
+ ],
+ "type": "reisadvies"
+}

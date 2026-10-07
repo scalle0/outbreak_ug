@@ -1,0 +1,16 @@
+# Rwanda: everything that is the same whatever the disease. Not yet verified: the web step looks up
+# the FOD pages, the advisory, the border measures and trusted sources, and offers them for you to confirm.
+iso3: RWA
+name_nl: Rwanda
+name_en: Rwanda
+letter_nl: Rwanda
+neighbours: [BDI, COD, TZA, UGA]
+verified: null
+
+fod: {pages: [], default: null, regions: {}}
+cdc: {}
+pretravel: null
+government: []
+news: []
+
+measures: []                           # entry and exit measures tied to an outbreak elsewhere, as last verified

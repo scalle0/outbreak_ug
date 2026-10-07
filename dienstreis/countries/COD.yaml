@@ -1,0 +1,42 @@
+# Democratic Republic of the Congo: everything that is the same whatever the disease.
+#
+# The web step checks the advisories against the live pages on every run and offers changes; what
+# you accept goes to a local copy (~/.config/dienstreis/countries/COD.yaml), which wins while it
+# is verified more recently than this file. Put a lasting change here as well.
+iso3: COD
+name_nl: Democratische Republiek Congo
+name_en: Democratic Republic of the Congo
+letter_nl: de DRC                      # how a letter names the country ("reizen naar de DRC")
+neighbours: [AGO, BDI, CAF, COG, RWA, SSD, TZA, UGA, ZMB]    # land borders (Natural Earth, 2026-09-25)
+verified: 2026-09-22                   # FOD and CDC below last checked against the live pages
+
+fod:                                   # FOD Buitenlandse Zaken (Belgium)
+  pages:
+    - ["FOD Buitenlandse Zaken, algemene veiligheid DRC", "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/algemene-veiligheid-de-democratische-republiek-congo"]
+    - ["FOD Buitenlandse Zaken, laatste update DRC", "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/laatste-update-de-democratische-republiek-congo"]
+    - ["FOD Buitenlandse Zaken, gezondheid en hygiene DRC", "https://diplomatie.belgium.be/nl/landen/congo-democratische-republiek/reizen-naar-de-democratische-republiek-congo-reisadvies/gezondheid-en-hygiene-de-democratische-republiek-congo"]
+  # level: formeel_afgeraden | niet_essentieel_afgeraden; reason: security versus health matters for the wording
+  default: {level: niet_essentieel_afgeraden, reason: algemene volatiliteit}
+  regions:                             # provinces where the FOD differs from the default
+    Ituri: {level: formeel_afgeraden, reason: veiligheidssituatie}
+    Nord-Kivu: {level: formeel_afgeraden, reason: gewapend conflict}
+    Sud-Kivu: {level: formeel_afgeraden, reason: gewapend conflict}
+    Tshopo: {level: formeel_afgeraden, reason: veiligheidssituatie}
+    Tanganyika: {level: formeel_afgeraden, reason: veiligheidssituatie}
+    Maniema: {level: formeel_afgeraden, reason: veiligheidssituatie}
+    Haut-Uele: {level: niet_essentieel_afgeraden, reason: algemene volatiliteit}
+
+cdc:                                   # CDC Travel Health Notice level (1-4), per outbreak profile
+  ebola_cod_2026:
+    default: 2
+    regions: {Ituri: 4, Nord-Kivu: 4, Sud-Kivu: 2, Tshopo: 3, Tanganyika: 2, Maniema: 2, Haut-Uele: 3}
+
+pretravel: gele koorts verplicht, malariaprofylaxe   # goes into the pretravel condition of the letter
+
+government:                            # trusted national sources
+  - {name: INSP, what: situatierapporten, url: "https://insp.cd/"}
+news:                                  # outlets the web step may rely on
+  - {name: Radio Okapi, url: "https://www.radiookapi.net"}
+  - {name: Actualite.cd, url: "https://actualite.cd"}
+
+measures: []                           # entry and exit measures tied to an outbreak elsewhere, as last verified

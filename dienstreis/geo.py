@@ -9,7 +9,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 CONFIG = Path(__file__).parent / "config"
-METRIC = 32735  # UTM 35S: fine for distances across the DRC
+METRIC = 32735  # UTM 35S: fine for distances across the DRC; a profile sets its own (metric_epsg)
 
 
 def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -34,12 +34,12 @@ def locate(name: str, lat: float | None = None, lon: float | None = None) -> dic
     return {"name": r["name"], "lat": r.lat, "lon": r.lon, "country": r.country, "source": "places.csv"}
 
 
-def zone_of(zones: gpd.GeoDataFrame, lat: float, lon: float) -> pd.Series | None:
+def zone_of(zones: gpd.GeoDataFrame, lat: float, lon: float, metric: int = METRIC) -> pd.Series | None:
     pt = Point(lon, lat)
     hit = zones[zones.geometry.contains(pt)]
     if hit.empty:  # points on a border or just outside (lakes, rivers): take nearest within 5 km
-        ptm = gpd.GeoSeries([pt], crs=zones.crs).to_crs(METRIC).iloc[0]
-        d = zones.to_crs(METRIC).geometry.distance(ptm)
+        ptm = gpd.GeoSeries([pt], crs=zones.crs).to_crs(metric).iloc[0]
+        d = zones.to_crs(metric).geometry.distance(ptm)
         if d.min() < 5000:
             return zones.loc[d.idxmin()]
         return None
@@ -52,13 +52,14 @@ def neighbours(zones: gpd.GeoDataFrame, nom: str) -> gpd.GeoDataFrame:
     return nb
 
 
-def nearest_active(zones: gpd.GeoDataFrame, lat: float, lon: float, max_days: int = 21) -> dict | None:
+def nearest_active(zones: gpd.GeoDataFrame, lat: float, lon: float, max_days: int = 21,
+                   metric: int = METRIC) -> dict | None:
     """Nearest zone with a new case in the last `max_days` days (edge distance, km)."""
     act = zones[zones.days_since_last.notna() & (zones.days_since_last <= max_days)]
     if act.empty:
         return None
-    pt = gpd.GeoSeries([Point(lon, lat)], crs=zones.crs).to_crs(METRIC).iloc[0]
-    d = act.to_crs(METRIC).geometry.distance(pt) / 1000
+    pt = gpd.GeoSeries([Point(lon, lat)], crs=zones.crs).to_crs(metric).iloc[0]
+    d = act.to_crs(metric).geometry.distance(pt) / 1000
     i = d.idxmin()
     return {"zone": act.loc[i, "Nom"], "province": act.loc[i, "PROVINCE"], "km": round(float(d.loc[i])),
             "cases": int(act.loc[i, "cases"]), "days_since_last": int(act.loc[i, "days_since_last"])}

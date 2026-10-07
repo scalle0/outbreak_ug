@@ -1,0 +1,17 @@
+# Uganda: everything that is the same whatever the disease. Not yet verified: the web step looks up
+# the FOD pages, the advisory, the border measures and trusted sources, and offers them for you to confirm.
+iso3: UGA
+name_nl: Oeganda
+name_en: Uganda
+letter_nl: Oeganda
+neighbours: [COD, KEN, RWA, SSD, TZA]
+verified: null
+
+fod: {pages: [], default: null, regions: {}}
+cdc: {}
+pretravel: null
+government: []
+news: []
+
+measures:                              # entry and exit measures tied to an outbreak elsewhere, as last verified
+  - {outbreak: ebola_cod_2026, text: "Uganda outbreak declared over (WHO 25 Aug 2026); DRC border closed", verified: 2026-09-22, source: advisories.yaml (0.2)}

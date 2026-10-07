@@ -1,7 +1,18 @@
-"""Data layer: INRB-UMIE curated INSP situation reports, health-zone shapes, ECDC cross-check.
+"""Data layer: the figures of an outbreak per zone, the zone shapes, and the ECDC and WHO checks.
 
 All numbers used downstream come from here, so every function returns data together with
 the date it refers to. Nothing in this module makes judgements.
+
+Where the figures come from is set by the outbreak profile (`adapter` in outbreak.yaml):
+
+    inrb    a GitHub repository with INSP situation reports per health zone and the zone shapefile
+            (INRB-UMIE, Ebola DRC 2026)
+    table   a hand-kept case table in the profile folder (cases.csv), per province or health zone,
+            on the zone outlines of another profile; the web step proposes new rows, you confirm
+            them into a local copy (~/.config/dienstreis/outbreaks/<id>/cases.csv)
+
+Every adapter hands its series to `derive`, so the fields the risk rules read are computed the
+same way whatever the source.
 """
 from __future__ import annotations
 
@@ -20,28 +31,46 @@ import geopandas as gpd
 import pandas as pd
 import requests
 
-INRB_REPO = "https://github.com/INRB-UMIE/Ebola_DRC_2026.git"
-ECDC_URL = "https://www.ecdc.europa.eu/en/ebola-outbreak-democratic-republic-congo-and-uganda"
+from . import outbreak
+
 WHO_DON_URL = "https://www.who.int/emergencies/disease-outbreak-news"
 WHO_DON_API = "https://www.who.int/api/news/diseaseoutbreaknews"
 UA = "Mozilla/5.0 (compatible; dienstreis-advies)"
 NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/"
                 "geojson/ne_50m_admin_0_countries.geojson")
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
-CONFIG = Path(__file__).parent / "config"
+WHO_LAST = CACHE / "who_last.json"      # the last WHO item read per outbreak, for a run when WHO is unreachable
+RETRY_WAITS = (5, 15)                   # seconds before the second and third try of a source read every run
+
+NOT_CONFIGURED = "not configured for this outbreak"   # a source the profile does not name: not a failure
+LOCAL_OUTBREAKS = Path(os.environ.get("DIENSTREIS_OUTBREAKS", Path.home() / ".config" / "dienstreis" / "outbreaks"))
+TABLE_COLUMNS = ["date", "admin1", "admin2", "cases_cum", "deaths_cum", "case_def", "source_url"]
+NATIONAL = "NATIONAAL"                                 # admin1 of a row that holds the national total
+
+
+class TableEmpty(ValueError):
+    """A case table without figures per unit: the outbreak is assessed without figures, and says so."""
+
 
 # What the analysis reads, split by how often it actually changes. The INSP figures are new every
 # day; the health-zone boundaries are not, and the shapefile is 66 MB. Refreshing both on the same
 # six-hour clock meant re-fetching the geometry several times a day for nothing.
-DAILY = [
-    "data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_cases__daily.csv",
-    "data/insp_sitrep/processed/insp_sitrep__cumulative_confirmed_deaths__daily.csv",
-    "data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_cases__daily.csv",
-    "data/insp_sitrep/processed/insp_sitrep__national_cumulative_confirmed_deaths__daily.csv",
-    "data/aliases.csv",
-]
-SHAPES = [f"data/shapefiles/DRC_Health_zones.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
+def _daily(spec) -> list[str]:
+    return list(spec.adapter["daily"].values())
+
+
+def _shapes(spec) -> list[str]:
+    return [f"{spec.adapter['shapes']}.{e}" for e in ("shp", "shx", "dbf", "prj", "cpg")]
+
+
+# the default profile's files, under the names the rest of the package and the tests use
+_DEFAULT = outbreak.default()
+INRB_REPO = _DEFAULT.adapter["repo"]
+INRB_RAW = _DEFAULT.adapter["raw"]
+DAILY = _daily(_DEFAULT)
+SHAPES = _shapes(_DEFAULT)
 NEEDED = DAILY + SHAPES
+ECDC_URL = _DEFAULT.sources["ecdc"]
 
 # Drawing tolerance in degrees. The map is 12.5 inch at 300 dpi, about 3 750 pixels for a country
 # 2 000 km wide: roughly 500 m per pixel. Detail finer than half a pixel cannot appear on the page.
@@ -51,7 +80,6 @@ DISPLAY_TOLERANCE = 0.0025
 DAILY_MAX_AGE_H = 6.0
 SHAPES_MAX_AGE_H = 30 * 24.0
 
-INRB_RAW = "https://raw.githubusercontent.com/INRB-UMIE/Ebola_DRC_2026/main/"
 HTTP_CACHE = "http_cache.json"
 
 
@@ -63,12 +91,13 @@ def _http_cache() -> dict:
         return {}
 
 
-def _download_needed(repo: Path, files: list[str]) -> None:
+def _download_needed(repo: Path, files: list[str], raw: str | None = None) -> None:
     """Fetch the given files, asking the server whether they changed since last time.
 
     Without git this is the only way in, so a 66 MB shapefile would otherwise come down again on
     every refresh. GitHub answers 304 for an unchanged file and sends no body.
     """
+    raw = raw or INRB_RAW
     meta = _http_cache()
     for f in files:
         p = repo / f
@@ -79,7 +108,7 @@ def _download_needed(repo: Path, files: list[str]) -> None:
                 head["If-None-Match"] = m["etag"]
             if m.get("last_modified"):
                 head["If-Modified-Since"] = m["last_modified"]
-        r = requests.get(INRB_RAW + f, timeout=300, headers=head)
+        r = requests.get(raw + f, timeout=300, headers=head)
         if r.status_code == 304 and p.exists():
             continue
         r.raise_for_status()
@@ -97,7 +126,7 @@ def _git(*args, cwd: Path | None = None):
     return subprocess.run(list(args), check=True, env=env, capture_output=True, text=True, cwd=cwd)
 
 
-def _sparse_clone(repo: Path) -> None:
+def _sparse_clone(repo: Path, url: str | None = None, needed: list[str] | None = None) -> None:
     """Clone only the files the analysis reads.
 
     A plain --depth 1 clone of this repository is about 330 MB: mobility matrices, situation-report
@@ -106,8 +135,8 @@ def _sparse_clone(repo: Path) -> None:
     """
     if repo.exists():
         shutil.rmtree(repo)
-    _git("git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "-q", INRB_REPO, str(repo))
-    _git("git", "-C", str(repo), "sparse-checkout", "set", "--no-cone", *NEEDED)
+    _git("git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "-q", url or INRB_REPO, str(repo))
+    _git("git", "-C", str(repo), "sparse-checkout", "set", "--no-cone", *(needed or NEEDED))
 
 
 def _stale(stamp: Path, max_age_h: float) -> bool:
@@ -116,37 +145,41 @@ def _stale(stamp: Path, max_age_h: float) -> bool:
 
 # ---------------------------------------------------------------- fetching
 def fetch_inrb(refresh: bool = False, max_age_h: float = DAILY_MAX_AGE_H,
-               shapes_max_age_h: float = SHAPES_MAX_AGE_H) -> Path:
+               shapes_max_age_h: float = SHAPES_MAX_AGE_H, spec=None) -> Path:
     """Make sure the cache holds the files the analysis reads, and that they are recent enough.
 
     The daily figures and the zone geometry age on separate clocks; only what is stale is fetched.
     """
-    repo = CACHE / "inrb"
+    spec = spec or outbreak.default()
+    a = spec.adapter
+    daily, shapes = _daily(spec), _shapes(spec)
+    needed = daily + shapes
+    repo = CACHE / a["cache_dir"]
     stamps = {"daily": repo / ".dienstreis_fetched", "shapes": repo / ".dienstreis_shapes"}
     want = []
-    if refresh or _stale(stamps["daily"], max_age_h) or not all((repo / f).exists() for f in DAILY):
-        want += DAILY
-    if refresh or _stale(stamps["shapes"], shapes_max_age_h) or not all((repo / f).exists() for f in SHAPES):
-        want += SHAPES
+    if refresh or _stale(stamps["daily"], max_age_h) or not all((repo / f).exists() for f in daily):
+        want += daily
+    if refresh or _stale(stamps["shapes"], shapes_max_age_h) or not all((repo / f).exists() for f in shapes):
+        want += shapes
     if not want:
         return repo
 
     CACHE.mkdir(parents=True, exist_ok=True)
     if shutil.which("git"):
         if not (repo / ".git").exists():
-            _sparse_clone(repo)                       # includes a download without git left behind
+            _sparse_clone(repo, a["repo"], needed)    # includes a download without git left behind
         else:
             _git("git", "-C", str(repo), "fetch", "--depth", "1", "-q", "origin", "main")
             _git("git", "-C", str(repo), "reset", "--hard", "-q", "origin/main")
         # a shallow clone sometimes leaves tracked files unmaterialised: check them out explicitly
-        _git("git", "-C", str(repo), "checkout", "--", *NEEDED)
+        _git("git", "-C", str(repo), "checkout", "--", *needed)
     else:
-        _download_needed(repo, want)   # no git (typical Windows PC): only the stale files
+        _download_needed(repo, want, a["raw"])   # no git (typical Windows PC): only the stale files
 
-    missing = [f for f in NEEDED if not (repo / f).exists()]
+    missing = [f for f in needed if not (repo / f).exists()]
     if missing:
         raise RuntimeError(f"INRB files missing after fetch: {missing}")
-    for key, group in (("daily", DAILY), ("shapes", SHAPES)):
+    for key, group in (("daily", daily), ("shapes", shapes)):
         if any(f in want for f in group):
             stamps[key].touch()
     return repo
@@ -194,11 +227,12 @@ def norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
-def _alias_map(repo: Path, shape_names: list[str]) -> dict[str, str]:
+def _alias_map(repo: Path, shape_names: list[str], spec=None) -> dict[str, str]:
     """Map every observed INSP spelling to a shapefile health-zone name (Nom)."""
-    overrides = pd.read_csv(CONFIG / "zone_overrides.csv", comment="#")
+    spec = spec or outbreak.default()
+    overrides = pd.read_csv(spec.file("zone_overrides.csv"), comment="#")
     ov = {norm(a): b for a, b in zip(overrides.observed, overrides.shapefile_nom)}
-    inrb = pd.read_csv(repo / "data/aliases.csv")
+    inrb = pd.read_csv(repo / spec.adapter["daily"]["aliases"])
     canon = {norm(a): b for a, b in zip(inrb.observed_name, inrb.canonical_nom)}
     by_norm: dict[str, list[str]] = {}
     for n in shape_names:
@@ -225,6 +259,7 @@ class Outbreak:
     asof: pd.Timestamp
     unmatched: list[str]
     checks: dict
+    spec: object = None              # the outbreak profile these figures belong to
 
 
 def _read_long(path: Path) -> pd.DataFrame:
@@ -247,17 +282,149 @@ def _to_wide(df: pd.DataFrame, resolve) -> tuple[pd.DataFrame, list[str]]:
     return wide, unmatched
 
 
-def load(refresh: bool = False, asof: str | None = None) -> Outbreak:
-    repo = fetch_inrb(refresh=refresh)
-    base = repo / "data/insp_sitrep/processed"
-    hz = gpd.read_file(repo / "data/shapefiles/DRC_Health_zones.shp")
-    hz = hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
-    resolve = _alias_map(repo, hz.Nom.tolist())
+def load(refresh: bool = False, asof: str | None = None, spec=None) -> Outbreak:
+    """The figures of one outbreak (default: the default profile), up to `asof` if given."""
+    spec = spec or outbreak.default()
+    kind = spec.adapter["type"]
+    if kind == "inrb":
+        return _load_inrb(spec, refresh, asof)
+    if kind == "table":
+        return _load_table(spec, refresh, asof)
+    raise ValueError(f"{spec.id}: onbekende adapter '{kind}'")
 
-    cw, un1 = _to_wide(_read_long(base / "insp_sitrep__cumulative_confirmed_cases__daily.csv"), resolve)
-    dw, _ = _to_wide(_read_long(base / "insp_sitrep__cumulative_confirmed_deaths__daily.csv"), resolve)
+
+# ---------------------------------------------------------------- the hand-kept table
+def read_table(path: Path) -> pd.DataFrame:
+    """A case table: one row per date and unit, cumulative figures, the case definition and the source."""
+    t = pd.read_csv(path, comment="#", dtype=str, keep_default_na=False)
+    missing = [c for c in TABLE_COLUMNS if c not in t.columns]
+    if missing:
+        raise ValueError(f"{path}: kolommen ontbreken: {', '.join(missing)}")
+    t["date"] = pd.to_datetime(t["date"], errors="coerce")
+    for c in ("cases_cum", "deaths_cum"):
+        t[c] = pd.to_numeric(t[c], errors="coerce")
+    return t.dropna(subset=["date"])
+
+
+def _last(path: Path) -> pd.Timestamp:
+    t = read_table(path)
+    return t["date"].max() if len(t) else pd.Timestamp.min
+
+
+def table_path(spec) -> Path:
+    """The case table: the package copy, or the local one as soon as it reaches the same date or later."""
+    pkg = spec.file(spec.adapter["cases"])
+    loc = LOCAL_OUTBREAKS / spec.id / spec.adapter["cases"]
+    if loc.exists() and (not pkg.exists() or _last(loc) >= _last(pkg)):
+        return loc
+    return pkg
+
+
+def append_local_table(spec, rows: list[dict]) -> Path:
+    """Add confirmed rows to the local case table (a copy of the package table the first time)."""
+    loc = LOCAL_OUTBREAKS / spec.id / spec.adapter["cases"]
+    base = read_table(table_path(spec)) if table_path(spec).exists() else pd.DataFrame(columns=TABLE_COLUMNS)
+    new = pd.DataFrame([{c: r.get(c, "") for c in TABLE_COLUMNS} for r in rows])
+    new["date"] = pd.to_datetime(new["date"], errors="coerce")
+    t = pd.concat([base, new], ignore_index=True).dropna(subset=["date"])
+    t = t.drop_duplicates(subset=["date", "admin1", "admin2"], keep="last").sort_values(["date", "admin1", "admin2"])
+    loc.parent.mkdir(parents=True, exist_ok=True)
+    t.assign(date=t["date"].dt.strftime("%Y-%m-%d")).to_csv(loc, index=False, encoding="utf-8")
+    return loc
+
+
+def boundaries(spec) -> gpd.GeoDataFrame:
+    """The unit outlines of a table outbreak (Nom, PROVINCE, geometry), taken from another profile's zones.
+
+    At admin1 the zones are merged into provinces, once per shapefile, and kept in the cache: the
+    merge takes about a minute, and these are the exact outlines the zone lookup runs on.
+    """
+    src = outbreak.load(spec.adapter["boundaries"]["from"])
+    repo = fetch_inrb(spec=src)
+    level = spec.adapter["level"]
+    if level == "admin2":                 # the zones as they are: read in seconds, nothing to cache
+        hz = gpd.read_file(repo / f"{src.adapter['shapes']}.shp")
+        return hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
+    cached = CACHE / f"units_{src.id}_{level}_{_shape_stamp(repo, src)}.geojson"
+    if cached.exists():
+        return gpd.read_file(cached)
+    hz = gpd.read_file(repo / f"{src.adapter['shapes']}.shp")
+    hz = hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
+    if level == "admin1":
+        hz = hz.dissolve(by="PROVINCE").reset_index()[["PROVINCE", "geometry"]]
+        hz["Nom"] = hz["PROVINCE"]
+        hz = hz[["Nom", "PROVINCE", "geometry"]]
+    for f in CACHE.glob(f"units_{src.id}_{level}_*.geojson"):
+        f.unlink(missing_ok=True)
+    hz.to_file(cached, driver="GeoJSON")
+    return hz
+
+
+def _load_table(spec, refresh: bool, asof: str | None) -> Outbreak:
+    path = table_path(spec)
+    t = read_table(path) if path.exists() else pd.DataFrame(columns=TABLE_COLUMNS)
+    national_rows = t[t["admin1"].str.upper() == NATIONAL]
+    sub = t[(t["admin1"].str.upper() != NATIONAL) & (t["admin1"].str.len() > 0)]
+    if sub.empty:
+        raise TableEmpty(f"{spec.id}: geen cijfers per eenheid in {path}")
+    hz = boundaries(spec)
+    key = spec.adapter["level"]
+    ov_path = spec.file("zone_overrides.csv")
+    ov = {}
+    if ov_path.exists():
+        o = pd.read_csv(ov_path, comment="#")
+        ov = {norm(a): b for a, b in zip(o.observed, o.shapefile_nom)}
+    by_norm = {norm(n): n for n in hz.Nom}
+
+    def resolve(obs: str) -> str | None:
+        k = norm(obs)
+        return ov.get(k) or by_norm.get(k)
+
+    def long(col):
+        return sub[[key, "date", col]].set_axis(["nom", "date", "v"], axis=1)
+    cw, unmatched = _to_wide(long("cases_cum"), resolve)
+    dw, _ = _to_wide(long("deaths_cum"), resolve)
+    if len(national_rows):
+        national = (national_rows.groupby("date")[["cases_cum", "deaths_cum"]].max()
+                    .rename(columns={"cases_cum": "cases", "deaths_cum": "deaths"}).sort_index())
+    else:
+        national = pd.DataFrame({"cases": cw.sum(axis=1),
+                                 "deaths": dw.reindex(cw.index).ffill().fillna(0).sum(axis=1)})
+    ob = derive(hz, cw, dw, national, asof, unmatched, spec)
+    if spec.adapter.get("national_check") is False:   # zone and national figures from different bases
+        ob.checks["zone_sum_matches_national"] = None
+    ob.checks["table"] = str(path)
+    ob.checks["table_last_date"] = str(ob.asof.date())
+    return ob
+
+
+def _load_inrb(spec, refresh: bool, asof: str | None) -> Outbreak:
+    """INRB-UMIE layout: INSP series per zone (long CSV), aliases.csv, a zone shapefile with Nom/PROVINCE."""
+    a = spec.adapter
+    repo = fetch_inrb(refresh=refresh, spec=spec)
+    hz = gpd.read_file(repo / f"{a['shapes']}.shp")
+    hz = hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
+    resolve = _alias_map(repo, hz.Nom.tolist(), spec)
+    d = a["daily"]
+    cw, un1 = _to_wide(_read_long(repo / d["cases"]), resolve)
+    dw, _ = _to_wide(_read_long(repo / d["deaths"]), resolve)
+    nat_c = _read_long(repo / d["national_cases"])
+    nat_d = _read_long(repo / d["national_deaths"])
+    national = (nat_c.groupby("date").v.max().rename("cases").to_frame()
+                .join(nat_d.groupby("date").v.max().rename("deaths"), how="outer").sort_index())
+    return derive(hz, cw, dw, national, asof, un1, spec)
+
+
+def derive(hz: gpd.GeoDataFrame, cw: pd.DataFrame, dw: pd.DataFrame, national: pd.DataFrame,
+           asof: str | None, unmatched: list[str], spec) -> Outbreak:
+    """The fields the risk rules read, from any adapter's series.
+
+    hz        zones: Nom, PROVINCE, geometry
+    cw, dw    date x Nom cumulative confirmed cases and deaths, forward filled
+    national  date -> cases, deaths (national cumulative)
+    """
     if asof:
-        cw, dw = cw.loc[:asof], dw.loc[:asof]
+        cw, dw, national = cw.loc[:asof], dw.loc[:asof], national.loc[:asof]
     t = cw.index.max()
 
     def lag(days):
@@ -269,29 +436,22 @@ def load(refresh: bool = False, asof: str | None = None) -> Outbreak:
     first_case = cw.gt(0).apply(lambda s: s[s].index.min() if s.any() else pd.NaT)
     fig = pd.DataFrame({
         "cases": cw.loc[t], "deaths": dw.reindex(columns=cw.columns).ffill().loc[:t].iloc[-1].fillna(0),
-        "new14": cw.loc[t] - lag(14), "new21": cw.loc[t] - lag(21),
+        "new14": cw.loc[t] - lag(getattr(spec, "recent", 14)),     # new cases over the profile's recent window
         "first_case": first_case, "last_increase": last_inc,
     })
     # a zone whose only report is its first case has no increase row: use first_case then
     fig["last_case"] = fig["last_increase"].fillna(fig["first_case"])
     fig["days_since_last"] = (t - fig["last_case"]).dt.days
     zones = hz.merge(fig, left_on="Nom", right_index=True, how="left")
-    for c in ("cases", "deaths", "new14", "new21"):
+    for c in ("cases", "deaths", "new14"):
         zones[c] = zones[c].fillna(0).astype(int)
-
-    nat_c = _read_long(base / "insp_sitrep__national_cumulative_confirmed_cases__daily.csv")
-    nat_d = _read_long(base / "insp_sitrep__national_cumulative_confirmed_deaths__daily.csv")
-    national = (nat_c.groupby("date").v.max().rename("cases").to_frame()
-                .join(nat_d.groupby("date").v.max().rename("deaths"), how="outer").sort_index())
-    if asof:
-        national = national.loc[:asof]
 
     checks = {"zone_sum": int(zones.cases.sum()),
               "national_at_asof": _at(national.cases, t),
               "zones_with_cases": int((zones.cases > 0).sum()),
               "provinces_with_cases": int(zones.loc[zones.cases > 0, "PROVINCE"].nunique())}
     checks["zone_sum_matches_national"] = checks["zone_sum"] == checks["national_at_asof"]
-    return Outbreak(zones, cw, national, t, un1, checks)
+    return Outbreak(zones, cw, national, t, unmatched, checks, spec)
 
 
 def _at(s: pd.Series, t) -> int | None:
@@ -303,11 +463,14 @@ def _at(s: pd.Series, t) -> int | None:
 _NUM = r"([\d][\d\s  ,]*)"
 
 
-def ecdc_snapshot(timeout: int = 30) -> dict:
+def ecdc_snapshot(timeout: int = 30, spec=None) -> dict:
     """Parse the ECDC landing page headline. Fragile by nature: returns {'ok': False} on failure."""
+    url = (spec or outbreak.default()).sources.get("ecdc")
+    if not url:
+        return {"ok": False, "reason": NOT_CONFIGURED}
     try:
         import html as _html
-        raw = requests.get(ECDC_URL, timeout=timeout).text
+        raw = _get(url, timeout=(10, timeout)).text
         text = _html.unescape(re.sub(r"<[^>]+>", " ", raw))
         text = re.sub(r"\s+", " ", text)
         m = re.search(r"total of " + _NUM + r" confirmed cases, including " + _NUM +
@@ -318,20 +481,28 @@ def ecdc_snapshot(timeout: int = 30) -> dict:
         n = lambda s: int(re.sub(r"\D", "", s))
         return {"ok": True, "cases": n(m.group(1)), "deaths": n(m.group(2)),
                 "data_until": m.group(3), "page_updated": upd.group(1) if upd else None,
-                "url": ECDC_URL}
+                "url": url}
     except Exception as e:  # network or layout change
         return {"ok": False, "reason": repr(e)}
 
 
-def _shape_stamp(repo: Path) -> str:
+def _shape_source(spec):
+    """Where an outbreak's zone outlines live: its own shapefile, or that of the profile a table borrows from."""
+    if spec.adapter["type"] == "table":
+        src = outbreak.load(spec.adapter["boundaries"]["from"])
+        return CACHE / src.adapter["cache_dir"], src
+    return CACHE / spec.adapter["cache_dir"], spec
+
+
+def _shape_stamp(repo: Path, spec=None) -> str:
     """Identity of the health-zone shapefile, so cached outlines follow a refreshed shapefile."""
-    f = repo / "data/shapefiles/DRC_Health_zones.shp"
+    f = repo / f"{(spec or outbreak.default()).adapter['shapes']}.shp"
     st = f.stat()
     return f"{int(st.st_mtime)}_{st.st_size}"
 
 
-def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None,
-                     tolerance: float = DISPLAY_TOLERANCE) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None, tolerance: float = DISPLAY_TOLERANCE,
+                     spec=None) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Zone and province outlines for drawing: simplified, computed once, cached on disk.
 
     Two costs sat in every single advice. Merging the health zones into 26 province outlines takes
@@ -342,9 +513,14 @@ def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None,
     Only what is drawn is simplified. `geo` decides which health zone a place falls in, which zones
     border it and how far the nearest active zone is, and those answers must come from the exact
     boundaries: `zones` itself is never touched here.
+
+    The file names carry the outbreak id, so two outbreaks never clean up each other's outlines.
     """
-    repo = Path(repo or (CACHE / "inrb"))
-    tag = f"{tolerance:g}_{_shape_stamp(repo)}"
+    spec = spec or outbreak.default()
+    own_repo, shp_spec = _shape_source(spec)
+    repo = Path(repo or own_repo)
+    tag = f"{spec.id}_{tolerance:g}_{_shape_stamp(repo, shp_spec)}"
+    stale = re.compile(rf"display_(zones|prov)_({re.escape(spec.id)}_|\d)")   # \d: names from before 0.3
     fz, fp = CACHE / f"display_zones_{tag}.geojson", CACHE / f"display_prov_{tag}.geojson"
 
     if fz.exists() and fp.exists():
@@ -360,7 +536,8 @@ def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None,
             geo_z["geometry"] = geo_z.geometry.simplify(tolerance)
         CACHE.mkdir(parents=True, exist_ok=True)
         for f in CACHE.glob("display_*.geojson"):      # drop outlines of an older shapefile
-            f.unlink(missing_ok=True)
+            if stale.match(f.name):
+                f.unlink(missing_ok=True)
         geo_z.to_file(fz, driver="GeoJSON")
         prov.to_file(fp, driver="GeoJSON")
 
@@ -373,40 +550,93 @@ def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None,
     return out, prov
 
 
-def who_snapshot(timeout: int = 40, top: int = 20) -> dict:
-    """Most recent WHO Disease Outbreak News item about Ebola in the DRC.
+def _get(url: str, *, timeout=(10, 30), **kw) -> requests.Response:
+    """GET that tries again after a timeout, a dropped connection or a busy server (429, 5xx).
+
+    A source read on every run must not drop out of an advice for one slow answer (WHO, 2026-10-07:
+    read timeout). A 4xx other than 429 is an answer, not a hiccup, and is not retried.
+    """
+    for wait in (*RETRY_WAITS, None):
+        try:
+            r = requests.get(url, timeout=timeout, **kw)
+            if wait is None or not (r.status_code == 429 or r.status_code >= 500):
+                return r
+        except (requests.Timeout, requests.ConnectionError):
+            if wait is None:
+                raise
+        time.sleep(wait)
+    raise AssertionError("unreachable")
+
+
+def _who_last(spec_id: str, item: dict | None = None) -> dict | None:
+    """The last WHO item read for this outbreak: written after every live read, read when WHO is unreachable."""
+    try:
+        seen = json.loads(WHO_LAST.read_text(encoding="utf-8"))
+    except Exception:
+        seen = {}
+    if item is None:
+        return seen.get(spec_id)
+    seen[spec_id] = {**item, "read_on": date.today().isoformat()}
+    try:
+        WHO_LAST.parent.mkdir(parents=True, exist_ok=True)
+        WHO_LAST.write_text(json.dumps(seen, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError:
+        pass
+    return None
+
+
+def who_snapshot(timeout=(10, 30), top: int = 20, spec=None) -> dict:
+    """Most recent WHO Disease Outbreak News item about this outbreak (title patterns in the profile).
 
     Read from the DON JSON API, not the page: the page is rendered client-side and a regex over its
-    HTML finds nothing. A headline and a date, not figures; the counts that carry the advice come
-    from INSP. Fails soft like the ECDC check, because a source being unreachable must make itself
-    visible in the QA block, never stop an advice.
+    HTML finds nothing. Only the three fields used are asked for: with the full text of every item
+    the answer was 600 kB and timed out (2026-10-07); now it is a few kB. A headline and a date, not
+    figures; the counts that carry the advice come from INSP.
+
+    Fails soft like the ECDC check, because a source being unreachable must make itself visible in
+    the QA block, never stop an advice. When WHO cannot be reached, the item of the last live read is
+    used, marked `from_cache` with the day it was read: the web step still looks for a newer one.
     """
+    sp = spec or outbreak.default()
+    who = sp.sources.get("who") or {}
+    if not who.get("title"):
+        return {"ok": False, "reason": NOT_CONFIGURED, "url": WHO_DON_URL}
     try:
-        r = requests.get(WHO_DON_API, timeout=timeout, headers={"User-Agent": UA},
-                         params={"$orderby": "PublicationDateAndTime desc", "$top": str(top)})
+        r = _get(WHO_DON_API, timeout=timeout, headers={"User-Agent": UA},
+                 params={"$orderby": "PublicationDateAndTime desc", "$top": str(top),
+                         "$select": "Title,PublicationDateAndTime,ItemDefaultUrl"})
         r.raise_for_status()
         items = r.json().get("value", [])
         for it in items:
             title = str(it.get("Title") or "")
-            if re.search(r"ebola", title, re.I) and re.search(r"congo|DRC", title, re.I):
+            if all(re.search(p, title, re.I) for p in who["title"]):
                 day = str(it.get("PublicationDateAndTime") or "")[:10]
                 link = str(it.get("ItemDefaultUrl") or "").strip("/")
-                return {"ok": True, "date": day or None, "item": title,
-                        "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
-                               if link else WHO_DON_URL,
-                        "days_old": (date.today() - date.fromisoformat(day)).days if day else None}
-        return {"ok": False, "reason": f"no DRC Ebola item in the last {len(items)} DON entries",
-                "url": WHO_DON_URL}
+                found = {"ok": True, "date": day or None, "item": title,
+                         "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
+                                if link else WHO_DON_URL}
+                _who_last(sp.id, found)
+                return {**found, "days_old": _days_old(day)}
+        # read fine, nothing about this outbreak: not the same as a source that could not be reached
+        return {"ok": False, "reason": f"no {who.get('label', 'matching')} item in the last {len(items)} DON entries",
+                "url": WHO_DON_URL, "none_found": True}
     except Exception as e:   # network, API change or unparseable payload
+        last = _who_last(sp.id)
+        if last and last.get("ok"):
+            return {**last, "days_old": _days_old(last.get("date")), "from_cache": True, "reason": repr(e)}
         return {"ok": False, "reason": repr(e), "url": WHO_DON_URL}
 
 
-def sources_snapshot(asof: str | None = None) -> dict:
+def _days_old(day: str | None) -> int | None:
+    return (date.today() - date.fromisoformat(day)).days if day else None
+
+
+def sources_snapshot(asof: str | None = None, spec=None) -> dict:
     """The sources checked on every run, next to the INSP figures.
 
     ECDC and WHO are read here; FOD and CDC are prose pages that resist parsing, so they are checked
-    in the web step (prompts/web.md) and recorded in advisories.yaml with the date they were verified.
+    in the web step (prompts/web.md) and kept in the country registry with the date they were verified.
     """
     if asof:
         return {"ecdc": {"ok": False, "reason": "asof run"}, "who": {"ok": False, "reason": "asof run"}}
-    return {"ecdc": ecdc_snapshot(), "who": who_snapshot()}
+    return {"ecdc": ecdc_snapshot(spec=spec), "who": who_snapshot(spec=spec)}
