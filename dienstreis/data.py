@@ -41,6 +41,9 @@ NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
 WHO_LAST = CACHE / "who_last.json"      # the last WHO item read per outbreak, for a run when WHO is unreachable
 RETRY_WAITS = (5, 15)                   # seconds before the second and third try of a source read every run
+# where the INRB daily figures are read from, when not from the cache: the golden tests set it to a frozen
+# copy, because INRB revises past rows (2026-10-07: the last case in Isiro moved from 15/09 to 14/09)
+DAILY_FROM: Path | None = None
 
 NOT_CONFIGURED = "not configured for this outbreak"   # a source the profile does not name: not a failure
 LOCAL_OUTBREAKS = Path(os.environ.get("DIENSTREIS_OUTBREAKS", Path.home() / ".config" / "dienstreis" / "outbreaks"))
@@ -404,12 +407,13 @@ def _load_inrb(spec, refresh: bool, asof: str | None) -> Outbreak:
     repo = fetch_inrb(refresh=refresh, spec=spec)
     hz = gpd.read_file(repo / f"{a['shapes']}.shp")
     hz = hz.dissolve(by="Nom", aggfunc="first").reset_index()[["Nom", "PROVINCE", "geometry"]]
-    resolve = _alias_map(repo, hz.Nom.tolist(), spec)
+    figs = DAILY_FROM or repo
+    resolve = _alias_map(figs, hz.Nom.tolist(), spec)
     d = a["daily"]
-    cw, un1 = _to_wide(_read_long(repo / d["cases"]), resolve)
-    dw, _ = _to_wide(_read_long(repo / d["deaths"]), resolve)
-    nat_c = _read_long(repo / d["national_cases"])
-    nat_d = _read_long(repo / d["national_deaths"])
+    cw, un1 = _to_wide(_read_long(figs / d["cases"]), resolve)
+    dw, _ = _to_wide(_read_long(figs / d["deaths"]), resolve)
+    nat_c = _read_long(figs / d["national_cases"])
+    nat_d = _read_long(figs / d["national_deaths"])
     national = (nat_c.groupby("date").v.max().rename("cases").to_frame()
                 .join(nat_d.groupby("date").v.max().rename("deaths"), how="outer").sort_index())
     return derive(hz, cw, dw, national, asof, un1, spec)

@@ -115,14 +115,14 @@
      "province": "Tshopo",
      "cases": 5,
      "new14": 1,
-     "days_since_last": 0
+     "days_since_last": 1
     },
     {
      "zone": "Mangobo",
      "province": "Tshopo",
      "cases": 4,
      "new14": 1,
-     "days_since_last": 6
+     "days_since_last": 7
     }
    ],
    "nearest_active": {
@@ -161,7 +161,7 @@
    "cases": 98,
    "deaths": 42,
    "new14": 6,
-   "days_since_last": 4.0,
+   "days_since_last": 5.0,
    "province_cases": 307,
    "province_active_zones": 6,
    "neighbours_active": [
@@ -199,7 +199,7 @@
     "province": "Haut-Uele",
     "km": 0,
     "cases": 98,
-    "days_since_last": 4
+    "days_since_last": 5
    },
    "category": "A",
    "rule_category": null,
@@ -260,7 +260,7 @@
     "province": "Haut-Uele",
     "km": 41,
     "cases": 1,
-    "days_since_last": 0
+    "days_since_last": 1
    },
    "category": "D",
    "rule_category": null,
@@ -306,7 +306,7 @@
  "map": "kaart_reiziger_d.png",
  "epicurve": "epicurve_20260919.png",
  "departure": "2026-11-28",
- "table": "     stop        van        tot  nachten             zone provincie cat        oordeel  gevallen  nieuw14d  dagen_sinds_laatste                                 actieve_buren     dichtstbij_actief                       FOD  CDC regel_cat\n Kinshasa 2026-11-28 2026-12-06        8          Barumbu  Kinshasa   F   geen bezwaar         0         0                  NaN                                             -           Bulu 871 km niet_essentieel_afgeraden    2         -\nKisangani 2026-12-06 2026-12-14        8 Makiso Kisangani    Tshopo   A        afraden        20        10                  0.0                      Kabondo (5), Mangobo (4) Makiso Kisangani 0 km         formeel_afgeraden    3         -\n    Isiro 2026-12-14 2026-12-22        8            Isiro Haut-Uele   A        afraden        98         6                  4.0 Wamba (99), Pawa (68), Viadana (3), Rungu (2)            Isiro 0 km niet_essentieel_afgeraden    3         -\n    Durba 2026-12-22 2027-03-01       69            Watsa Haut-Uele   D voorwaardelijk         0         0                  NaN     Mongbwalu (686), Damas (40), Mambasa (21)           Dungu 41 km niet_essentieel_afgeraden    3         -",
+ "table": "     stop        van        tot  nachten             zone provincie cat        oordeel  gevallen  nieuw14d  dagen_sinds_laatste                                 actieve_buren     dichtstbij_actief                       FOD  CDC regel_cat\n Kinshasa 2026-11-28 2026-12-06        8          Barumbu  Kinshasa   F   geen bezwaar         0         0                  NaN                                             -           Bulu 871 km niet_essentieel_afgeraden    2         -\nKisangani 2026-12-06 2026-12-14        8 Makiso Kisangani    Tshopo   A        afraden        20        10                  0.0                      Kabondo (5), Mangobo (4) Makiso Kisangani 0 km         formeel_afgeraden    3         -\n    Isiro 2026-12-14 2026-12-22        8            Isiro Haut-Uele   A        afraden        98         6                  5.0 Wamba (99), Pawa (68), Viadana (3), Rungu (2)            Isiro 0 km niet_essentieel_afgeraden    3         -\n    Durba 2026-12-22 2027-03-01       69            Watsa Haut-Uele   D voorwaardelijk         0         0                  NaN     Mongbwalu (686), Damas (40), Mambasa (21)           Dungu 41 km niet_essentieel_afgeraden    3         -",
  "overall_level": "afraden",
  "attachments": [
   "kaart_reiziger_d.png",

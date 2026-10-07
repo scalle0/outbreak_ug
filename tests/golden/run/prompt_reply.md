@@ -168,14 +168,14 @@ Voorwaarden uit profiel en land (voor de reiziger):
     "province": "Tshopo",
     "cases": 5,
     "new14": 1,
-    "days_since_last": 0
+    "days_since_last": 1
    },
    {
     "zone": "Mangobo",
     "province": "Tshopo",
     "cases": 4,
     "new14": 1,
-    "days_since_last": 6
+    "days_since_last": 7
    }
   ],
   "nearest_active": {

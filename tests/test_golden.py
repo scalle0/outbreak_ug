@@ -3,8 +3,10 @@
 Taken on c022d2e, before Ebola moved into `dienstreis/outbreaks/` (F-010), so that refactor can
 show it changed nothing: the risk table, the reply skeleton, the sources, the summary and the
 prompts of the three model steps must come out as they did. Data dates are frozen (asof), the
-advisories table is frozen (tests/golden/advisories.yaml) and the data cache is not refreshed
-during the run, so the files stay valid while the outbreak and the live advisories keep moving.
+advisories table is frozen (tests/golden/advisories.yaml), and so are the daily figures
+(tests/golden/inrb, up to 19/09 as INRB had them on 2026-10-07), so the files stay valid while the
+outbreak, its revised history and the live advisories keep moving. The goldens were rewritten once
+on those frozen figures: INRB had moved the last case of some zones a day earlier since they were taken.
 
 Line endings are normalised (git turns LF into CRLF on Windows checkouts); nothing else is.
 What depends on the day the test runs (`vandaag`, the age of the advisories table) or on the
@@ -86,7 +88,7 @@ def _norm_prompt(p: str) -> str:
 
 @pytest.fixture(scope="module")
 def frozen():
-    """Frozen advisories and a data cache that is read, never refreshed, for the whole module.
+    """Frozen advisories and frozen daily figures, for the whole module.
 
     The advisories are frozen through the 0.2 table (tests/golden/advisories.yaml, verified 2099), so
     this also keeps reading that old local file working; no local country registry is used.
@@ -97,6 +99,9 @@ def frozen():
         mp.setattr(countries, "LEGACY", GOLDEN / "advisories.yaml")
         mp.setattr(countries, "LOCAL", GOLDEN / "geen_lokaal_register")
         mp.setattr(data, "_stale", lambda *a, **k: False)
+        # the INRB figures as they stood on 2026-10-07, up to 19/09: INRB revises past rows, and the goldens
+        # pin the code, not the revisions (tests/golden/inrb; the zone outlines still come from the cache)
+        mp.setattr(data, "DAILY_FROM", GOLDEN / "inrb")
         # the fiche and its documents are curated text that changes on its own schedule (F-015); the
         # goldens pin the analysis and the prompts, so the web step sees no fiche here
         mp.setattr(fiche, "load", lambda spec: None)
