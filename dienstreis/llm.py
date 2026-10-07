@@ -110,8 +110,11 @@ class ClaudeCode(Backend):
     # nothing from the machine, only the prompt
     ISOLATION = ["--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
                  "--permission-prompts", "none", "--no-session-persistence"]
-    # a fiche opens some twenty documents once; an advice's web step checks a handful of pages
-    WEB_TURNS, WEB_SECONDS = {"fiche": 80}, {"fiche": 2400}
+    # a fiche opens some twenty documents once. An advice's web step checks the advisories per country and
+    # province, border measures, WHO, news, newer case figures and every key document of the fiche: it ran
+    # 450-550 s on 25 turns in September and ran out of them on 2026-10-07 (error_max_turns)
+    WEB_TURNS = {"fiche": 80, "web": 60, "web_consult": 60}
+    WEB_SECONDS = {"fiche": 2400, "web": 1800, "web_consult": 1800}
     # auth that would take precedence over the subscription login
     HIDDEN_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
     TRANSIENT = re.compile(r"overload|rate.?limit|too many requests|\b(429|500|502|503|529)\b|timed? ?out", re.I)
@@ -129,16 +132,20 @@ class ClaudeCode(Backend):
                "--output-format", "json", *self.ISOLATION]
         if web:   # only web tools, pre-approved so that print mode never waits for a permission prompt
             cmd += ["--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch",
-                    "--max-turns", str(self.WEB_TURNS.get(step, 25))]
+                    "--max-turns", str(self.WEB_TURNS.get(step, 60))]
         else:     # pure text step: no tools at all
             cmd += ["--tools", "", "--max-turns", "2"]
         if self.model:
             cmd += ["--model", self.model]
         env = {k: v for k, v in os.environ.items() if k not in self.HIDDEN_ENV}
+        limit = max(self.timeout, self.WEB_SECONDS.get(step, 0))
         for attempt in (1, 2):
             with tempfile.TemporaryDirectory(prefix="dienstreis-llm-") as neutral:
-                r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                                   timeout=max(self.timeout, self.WEB_SECONDS.get(step, 0)), cwd=neutral, env=env)
+                try:
+                    r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+                                       timeout=limit, cwd=neutral, env=env)
+                except subprocess.TimeoutExpired:   # not retried: a second try would take as long
+                    raise LLMError(f"claude -p gaf geen antwoord binnen {limit} s (stap {step})") from None
             out = self._envelope(r.stdout)
             if r.returncode == 0 and not out.get("is_error"):
                 return out.get("result", "") if out else r.stdout

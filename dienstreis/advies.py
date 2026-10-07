@@ -454,7 +454,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     if bad:
         print(f"  QA faalt: {bad}; het advies wordt gemaakt maar de notities vermelden dit")
 
-    webd, web_accepted = {}, None
+    webd, web_accepted, web_failed = {}, None, None
     if web:
         _say("Reisadviezen (FOD, CDC), grensmaatregelen, WHO en nieuws op het web")
         provs = sorted({s["province"] for s in summary["stops"] if s.get("province")})
@@ -485,11 +485,19 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         fiches = {sp.id: fiche.for_prompt(sp) for sp in specs if sp.id != outbreak.NONE}
         if fiches:
             web_in["fiches"] = fiches
-        webd = llm.ask_json(be, "web" if kind == "reisadvies" else "web_consult", web_in,
-                            required=["advisories", "news", "who"] if kind == "reisadvies" else ["guidance", "news"],
-                            web=True, specs=specs)
-        web_accepted = maybe_apply_web(webd, apply_web, ids[0], specs, proef=proef)
-        (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        # a failed web step does not cost the confirmed itinerary and the analysis: the advice goes on
+        # without it and says so, like a source that could not be reached
+        try:
+            webd = llm.ask_json(be, "web" if kind == "reisadvies" else "web_consult", web_in,
+                                required=["advisories", "news", "who"] if kind == "reisadvies" else ["guidance", "news"],
+                                web=True, specs=specs)
+        except llm.LLMError as e:
+            web_failed = str(e)
+            print(f"  let op: de webstap faalde ({web_failed}); het advies gaat verder zonder")
+        if webd:
+            web_accepted = maybe_apply_web(webd, apply_web, ids[0], specs, proef=proef)
+            (outp / "web.json").write_text(json.dumps(webd, ensure_ascii=False, indent=1, default=str),
+                                           encoding="utf-8")
 
     _say("Mail schrijven")
     stops_view = [_stop_view(s) for s in summary["stops"]]
@@ -506,7 +514,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
               "context": _context_text(), "geschiedenis": _history(trip),
               "eerdere_adviezen": archive.for_trip(trip, summary),
               "overrules": summary.get("overrides", []), "regel_oordeel_zonder_overrule": summary.get("rule_overall"),
-              "web": webd or "(niet gevraagd)"}
+              "web": webd or ("(niet beschikbaar)" if web_failed else "(niet gevraagd)")}
     if len(ids) > 1:            # the strictest outbreak is above; every other one in the same shape
         inputs["andere_uitbraken"] = [
             {"id": i, "naam": o["name"], "regel_oordeel": o["overall"], "epi": _epi_view(o["epi"]),
@@ -544,6 +552,11 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     warnings += table_notes
     warnings += [f"{label} was niet bereikbaar tijdens deze run; die kruiscontrole ontbreekt. "
                  f"Kijk de bron na voor verzending." for label, _ in unreachable]
+    if web_failed:
+        what = ("de FOD- en CDC-reisadviezen, grensmaatregelen, WHO, nieuws en nieuwere richtlijnen"
+                if kind == "reisadvies" else "nieuwere richtlijnen, WHO en nieuws")
+        warnings.append(f"De webstap faalde ({web_failed}): {what} zijn in dit advies niet live nagekeken. "
+                        f"Kijk ze na voor verzending, of draai het advies opnieuw.")
     rebuild = f'dienstreis dossier "{outp}"'
     blocking = (["Controle faalt nog: " + "; ".join(r["issues"]) + f". Pas reply.txt aan en draai `{rebuild}`."]
                 if r["issues"] else [])
@@ -581,7 +594,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         "unmatched": unmatched, "model": r.get("dossier") or {}, "suggestions": list(r.get("suggestions") or []),
         "checks": {"issues": r["issues"], "notes": r["notes"]}, "warnings": warnings, "numbers": numbers,
         "review_on": str(review or ""), "attachments_sent": [Path(a).name for a in attach],
-        "web_accepted": web_accepted, "earlier": earlier, "history": history,
+        "web_accepted": web_accepted, "web_failed": web_failed, "earlier": earlier, "history": history,
         "context_lines": _context_lines(trip, summary), "advice_dir": str(advice_dir or ""), "proef": proef}
     (outp / dossier.DATA).write_text(json.dumps(dos_data, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     html_path = dossier.build(outp)

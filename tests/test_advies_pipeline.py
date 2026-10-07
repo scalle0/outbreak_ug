@@ -207,6 +207,25 @@ def test_no_web_skips_it(env):
     assert "web" not in fake.prompts
 
 
+def test_a_failed_web_step_does_not_stop_the_advice(env):
+    """2026-10-07: `claude -p` ran out of turns in the web step and the whole advice was lost."""
+    tmp, req = env
+
+    def web(prompt):
+        raise llm.LLMError("claude -p faalde (1): error_max_turns")
+
+    fake = llm.Fake({"stops": STOPS, "web": web, "reply": {"reply": GOOD, "suggestions": []}})
+    res = advies.run_advies(str(req), out=str(tmp / "out"), yes=True, asof="2026-09-19",
+                            open_browser=False, llm_backend=fake)
+    out = Path(res["out"])
+    assert (out / "reply.txt").exists() and not (out / "web.json").exists()
+    assert "(niet beschikbaar)" in fake.prompts["reply"][0]
+    sugg = (out / "sugg.txt").read_text(encoding="utf-8")
+    assert "De webstap faalde (claude -p faalde (1): error_max_turns)" in sugg and "niet live nagekeken" in sugg
+    page = (out / "dossier.html").read_text(encoding="utf-8")
+    assert "De webstap faalde" in page and "--no-web" not in page
+
+
 def test_trace_marks_the_repair_round(env):
     """A repair round and a retry on unusable JSON must be distinguishable afterwards."""
     tmp, req = env

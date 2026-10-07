@@ -745,7 +745,9 @@ def _assessment(run: dict) -> str:
 def _web(run: dict) -> str:
     w, d = run["web"] or {}, run["data"]
     if not w:
-        return _section("web", "Nieuws en webbevindingen", '<p class="muted">De webstap draaide niet (--no-web).</p>')
+        why = (f"De webstap faalde ({_e(d['web_failed'])}): niets is live nagekeken." if d.get("web_failed")
+               else "De webstap draaide niet (--no-web).")
+        return _section("web", "Nieuws en webbevindingen", f'<p class="muted">{why}</p>')
     body = ""
     who = w.get("who") or {}
     if who:

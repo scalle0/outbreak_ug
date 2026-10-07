@@ -69,3 +69,30 @@ def test_a_busy_api_gets_one_more_try(claude):
     answers += [(1, json.dumps({"is_error": True, "result": "API Error: 529 Overloaded"}), "")] * 2
     with pytest.raises(llm.LLMError, match="Overloaded"):
         llm.ClaudeCode().complete("p", step="reply")
+
+
+def test_an_advices_web_step_gets_room_for_all_its_checks(claude, monkeypatch):
+    """2026-10-07: the web step ran out of its 25 turns once it also checked case figures and documents."""
+    calls, answers = claude
+    cmds = []
+    run = llm.subprocess.run
+    monkeypatch.setattr(llm.subprocess, "run", lambda cmd, **kw: (cmds.append(cmd), run(cmd, **kw))[1])
+    for step in ("web", "web_consult", "reply"):
+        answers.append(_ok("{}"))
+        llm.ClaudeCode().complete("p", step=step, web=step != "reply")
+    turns = [c[c.index("--max-turns") + 1] for c in cmds]
+    assert turns == ["60", "60", "2"]
+    assert [kw["timeout"] for kw in calls] == [1800, 1800, 900]
+
+
+def test_no_answer_in_time_is_an_llm_error_and_not_retried(claude, monkeypatch):
+    calls = []
+
+    def slow(cmd, **kw):
+        calls.append(kw)
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+
+    monkeypatch.setattr(llm.subprocess, "run", slow)
+    with pytest.raises(llm.LLMError, match="geen antwoord binnen 1800 s"):
+        llm.ClaudeCode().complete("p", step="web", web=True)
+    assert len(calls) == 1
