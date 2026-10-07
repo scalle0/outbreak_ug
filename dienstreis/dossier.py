@@ -537,7 +537,9 @@ def _qa_items(q: dict) -> list[str]:
         mark(q["zone_sum_matches_national"], "som van de zones klopt met het nationale totaal"
              if q["zone_sum_matches_national"] else "som van de zones wijkt af van het nationale totaal")
     e = q.get("ecdc") or {}
-    if q.get("ecdc_matches") is not None:
+    if e.get("check"):
+        mark(e["check"]["matches"] is not False, e["check"]["text"])
+    elif q.get("ecdc_matches") is not None:
         mark(q["ecdc_matches"], f"ECDC-controle: {_n(e.get('cases'))} gevallen, data tot {mail.nl_months(str(e.get('data_until')))}"
              + ("" if q["ecdc_matches"] else " (wijkt af)"))
     w = q.get("who") or {}

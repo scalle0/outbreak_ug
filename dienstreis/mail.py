@@ -9,6 +9,7 @@ what is about the country (FOD pages, the pretravel line) from the country regis
 from __future__ import annotations
 
 import re
+from datetime import date, datetime
 
 from . import countries, outbreak
 from .risk import StopRisk, overrides, rule_overall, spec_of
@@ -38,6 +39,52 @@ def nl_months(s: str) -> str:
     """English month names, as the ECDC page writes its dates, in Dutch: '19 September' -> '19 september'."""
     return re.sub(rf"\b({'|'.join(EN_MONTHS)})\b", lambda m: MONTHS[EN_MONTHS.index(m.group(1).lower())],
                   s, flags=re.I)
+
+
+def _ecdc_day(s: str | None, near: date) -> date | None:
+    """'4 October', as the ECDC page writes it, as a date: the year that puts it closest to `near`."""
+    m = re.fullmatch(r"\s*(\d{1,2}) (\w+)\s*", s or "")
+    if not m or m.group(2).lower() not in EN_MONTHS:
+        return None
+    day, month = int(m.group(1)), EN_MONTHS.index(m.group(2).lower()) + 1
+    try:
+        return min((date(y, month, day) for y in (near.year - 1, near.year, near.year + 1)),
+                   key=lambda x: abs((x - near).days))
+    except ValueError:
+        return None
+
+
+def ecdc_check(ecdc: dict, epi: dict | None, asof) -> dict:
+    """The ECDC total next to the national one, compared only when both run to the same day.
+
+    ECDC usually runs a few days ahead of the national figures the analysis reads: a different total
+    is then the cases of those days, not a disagreement (proefrun 2026-10-07: ECDC 8 603 to 4/10,
+    INSP 8 442 to 2/10, reported as a failed check). The verdict goes in `check`: `matches` is False
+    only for two different totals on the same day.
+    """
+    if not (ecdc.get("ok") and epi):
+        return ecdc
+    asof = asof.date() if isinstance(asof, datetime) else asof        # a pandas Timestamp is a datetime
+    cases, total = ecdc.get("cases"), epi["last_total"]
+    day = _ecdc_day(ecdc.get("data_until"), asof)
+    ahead = (day - asof).days if day else 0
+    if day is None or ahead == 0:
+        status, matches = ("gelijk", True) if cases == total else ("wijkt_af", False)
+    else:
+        status, matches = ("ecdc_nieuwer" if ahead > 0 else "ecdc_ouder"), None
+    until = d(day) if day else nl_months(str(ecdc.get("data_until")))
+    text = {
+        "gelijk": f"ECDC telt evenveel gevallen als de nationale cijfers: {n(cases)} tot {until}.",
+        "wijkt_af": f"ECDC telt {n(cases)} gevallen tot {until}, de nationale cijfers {n(total)} tot dezelfde dag: "
+                    f"een verschil van {n(abs(cases - total))}. Kijk de cijfers na voor verzending.",
+        "ecdc_nieuwer": f"ECDC telt {n(cases)} gevallen tot {until}, de nationale cijfers {n(total)} tot {d(asof)}: "
+                        f"de zonecijfers lopen {ahead} dag{'en' if ahead > 1 else ''} achter op ECDC "
+                        f"({'+' if cases >= total else '-'}{n(abs(cases - total))} gevallen).",
+        "ecdc_ouder": f"ECDC loopt achter op de nationale cijfers: {n(cases)} gevallen tot {until}, nationaal "
+                      f"{n(total)} tot {d(asof)}. Niet vergeleken.",
+    }[status]
+    return {**ecdc, "data_until_date": day.isoformat() if day else None,
+            "check": {"status": status, "matches": matches, "days_ahead": ahead, "text": text}}
 
 
 def leg_paragraph(i: int, r: StopRisk) -> str:

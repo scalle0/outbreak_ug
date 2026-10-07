@@ -368,6 +368,26 @@ def _unreachable(summary: dict) -> list[tuple[str, str]]:
             for oid, o in parts.items() for k in o["qa"].get("sources_unreachable", [])]
 
 
+def _figure_checks(summary: dict) -> tuple[list[str], list[str]]:
+    """The checks on the figures, for every outbreak of the advice, in words: (failed, to know).
+    A failed one asks to look at the figures before sending; ECDC running ahead is only worth knowing."""
+    parts = summary.get("outbreaks") or {summary.get("outbreak"): {"qa": summary["qa"], "name": ""}}
+    several = len(parts) > 1
+    bad, notes = [], []
+    for oid, o in parts.items():
+        q, pre = o["qa"], (f"{o.get('name') or oid}: " if several else "")
+        if q.get("zone_sum_matches_national") is False:
+            bad.append(pre + "de som van de zones wijkt af van het nationale totaal. Kijk de cijfers na voor verzending.")
+        check = (q.get("ecdc") or {}).get("check")
+        if check and check["matches"] is False:
+            bad.append(pre + check["text"])
+        elif check and check["status"] != "gelijk":
+            notes.append(pre + check["text"])
+        elif not check and q.get("ecdc_matches") is False:       # an older summary, without the check
+            bad.append(pre + "het ECDC-totaal wijkt af van het nationale totaal. Kijk de cijfers na voor verzending.")
+    return bad, notes
+
+
 def _cached(summary: dict) -> list[tuple[str, dict]]:
     """Every source that was unreachable but stood in with its last live read: (label, what it said then)."""
     parts = summary.get("outbreaks") or {summary.get("outbreak"): {"qa": summary["qa"]}}
@@ -439,9 +459,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     else:
         print(f"Oordeel (regels): {summary['overall']}")
     qa = summary["qa"]
-    bad = [k for k in ("zone_sum_matches_national",) if qa.get(k) is False]
-    if qa.get("ecdc_matches") is False:
-        bad.append("ecdc_matches")
+    bad, figure_notes = _figure_checks(summary)
     if qa.get("advisories_unverified"):
         print(f"  let op: reisadviezen voor {', '.join(qa['advisories_unverified'])} nog nooit nagekeken; "
               f"de webstap zoekt ze op en stelt ze voor")
@@ -465,8 +483,10 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
         print(f"  let op: {x}")
     if qa.get("map_label_overlaps") or qa.get("map_labels_clipped"):
         print(f"  let op: kaartlabels overlappen ({qa['map_label_overlaps']}) of vallen weg ({qa.get('map_labels_clipped')}); bekijk de kaart")
-    if bad:
-        print(f"  QA faalt: {bad}; het advies wordt gemaakt maar de notities vermelden dit")
+    for x in bad:
+        print(f"  QA faalt: {x}")
+    for x in figure_notes:
+        print(f"  let op: {x}")
 
     webd, web_accepted, web_failed = {}, None, None
     if web:
@@ -557,7 +577,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     r["reply"] = mail.with_redirect(r["reply"], bool(trip.get("sent_to_ugent_address")))
 
     (outp / "reply.txt").write_text(r["reply"], encoding="utf-8")
-    warnings = [f"QA faalde: {bad}. Controleer de cijfers voor verzending."] if bad else []
+    warnings = [f"QA faalde: {x}" for x in bad] + figure_notes
     for x in unmatched:
         hint = (f" Er is een profiel in concept ({', '.join(concept[x])}): na bevestiging van de parameters "
                 f"kan het mee, of nu al met --uitbraak." if concept[x] else " Kijk of er een profiel nodig is.")

@@ -299,6 +299,10 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - Blijft WHO onbereikbaar, dan staat het item van de laatste geslaagde lezing in de plaats (`~/.cache/dienstreis/who_last.json`), gemarkeerd met `from_cache` en de dag van lezing. Het telt niet als onbereikbaar maar staat in `sources_cached`; de terminal, de notities en het QA-blok van het dossier zeggen welk item het is en van wanneer. De webstap zoekt sowieso of er een nieuwer DON is.
   - ECDC krijgt geen terugval: de ECDC-cijfers zijn een kruiscontrole van de dagcijfers, en cijfers van een vorige dag zouden die controle vervalsen.
   - Tests: vijf nieuwe in `test_sources.py`; de goldens krijgen enkel de nieuwe sleutel `sources_cached` (de 4 goldens die al faalden, falen nog op hetzelfde).
+- **ECDC-controle leesbaar (gevraagd en klaar 2026-10-07):** "what is meant by this? QA faalde: ['ecdc_matches']". De controle vergeleek het ECDC-totaal met het nationale totaal zonder naar de datum te kijken; ECDC liep twee dagen voor (8 603 tot 4/10 tegenover 8 442 tot 2/10), dus faalde ze.
+  - `mail.ecdc_check` vergelijkt enkel als beide tot dezelfde dag lopen. Loopt ECDC voor of achter, dan is dat geen fout maar een notitie met de cijfers, de data en het verschil in dagen en gevallen. Twee verschillende totalen op dezelfde dag blijven een gefaalde controle.
+  - De notities, de terminal en het QA-blok van het dossier geven een zin in plaats van `['ecdc_matches']`, ook voor de som van de zones, per uitbraak (`advies._figure_checks`).
+  - Tests: vijf in `test_sources.py`. De goldens veranderen niet: zonder live ECDC (`--asof`) is er geen controle.
 
 ## F-004 · Kaartgegevens apart van de dagcijfers verversen
 - **Gevraagd:** 2026-09-22 — "The maps we make: are these downloaded every time?"

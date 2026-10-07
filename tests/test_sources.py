@@ -170,3 +170,53 @@ def test_nothing_found_is_not_unreachable(monkeypatch, tmp_path):
     monkeypatch.setattr(data, "who_snapshot", lambda *a, **k: {"ok": False, "reason": "no item", "none_found": True})
     trip = {"traveller": "R", "stops": [{"place": "Addis Ababa", "from": _date(2026, 11, 1), "to": _date(2026, 11, 5)}]}
     assert pipeline.analyse(trip, tmp_path / "out")["qa"]["sources_unreachable"] == []
+
+
+# ---------------------------------------------------------------- ECDC next to the national figures
+def _ecdc(cases, until):
+    return {"ok": True, "cases": cases, "deaths": 1, "data_until": until}
+
+
+def test_ecdc_a_few_days_ahead_is_a_lag_not_a_failure():
+    """Proefrun 2026-10-07: ECDC 8 603 to 4/10 against INSP 8 442 to 2/10 was reported as 'QA faalde'."""
+    import pandas as pd
+    from dienstreis import mail
+    c = mail.ecdc_check(_ecdc(8603, "4 October"), {"last_total": 8442}, pd.Timestamp("2026-10-02"))["check"]
+    assert c["status"] == "ecdc_nieuwer" and c["matches"] is None and c["days_ahead"] == 2
+    assert c["text"] == ("ECDC telt 8 603 gevallen tot 4 oktober, de nationale cijfers 8 442 tot 2 oktober: "
+                         "de zonecijfers lopen 2 dagen achter op ECDC (+161 gevallen).")
+
+
+def test_ecdc_on_the_same_day_must_agree():
+    from datetime import date
+    from dienstreis import mail
+    same = mail.ecdc_check(_ecdc(8442, "2 October"), {"last_total": 8442}, date(2026, 10, 2))["check"]
+    assert same["status"] == "gelijk" and same["matches"] is True
+    off = mail.ecdc_check(_ecdc(8450, "2 October"), {"last_total": 8442}, date(2026, 10, 2))["check"]
+    assert off["status"] == "wijkt_af" and off["matches"] is False and "verschil van 8" in off["text"]
+
+
+def test_ecdc_behind_or_across_new_year_is_not_compared():
+    from datetime import date
+    from dienstreis import mail
+    behind = mail.ecdc_check(_ecdc(8000, "28 September"), {"last_total": 8442}, date(2026, 10, 2))["check"]
+    assert behind["status"] == "ecdc_ouder" and behind["matches"] is None
+    newyear = mail.ecdc_check(_ecdc(9100, "2 January"), {"last_total": 9000}, date(2026, 12, 30))
+    assert newyear["data_until_date"] == "2027-01-02" and newyear["check"]["days_ahead"] == 3
+
+
+def test_an_unreadable_ecdc_date_falls_back_on_the_totals():
+    from datetime import date
+    from dienstreis import mail
+    c = mail.ecdc_check(_ecdc(8603, "early October"), {"last_total": 8442}, date(2026, 10, 2))["check"]
+    assert c["status"] == "wijkt_af" and c["matches"] is False
+
+
+def test_the_notes_say_ecdc_runs_ahead_and_do_not_call_it_a_failure():
+    from dienstreis import advies
+    check = {"status": "ecdc_nieuwer", "matches": None, "days_ahead": 2, "text": "ECDC loopt 2 dagen voor."}
+    s = {"outbreak": "ebola_cod_2026", "qa": {"zone_sum_matches_national": True, "ecdc_matches": None,
+                                              "ecdc": {"ok": True, "check": check}}}
+    assert advies._figure_checks(s) == ([], ["ECDC loopt 2 dagen voor."])
+    s["qa"]["ecdc"]["check"] = {**check, "status": "wijkt_af", "matches": False, "text": "Verschil."}
+    assert advies._figure_checks(s) == (["Verschil."], [])

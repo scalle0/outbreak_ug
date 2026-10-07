@@ -50,9 +50,10 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
         mp = figures.itinerary_map(rs, ob, spec.figures["map_title"], sub,
                                    str(out / f"kaart_{tag}{sfx}.png")) if rs else None
 
-    ecdc, who = src["ecdc"], src["who"]
+    ecdc, who = mail.ecdc_check(src["ecdc"], epi, ob.asof if ob is not None else None), src["who"]
     qa = {"zone_sum_matches_national": ob.checks["zone_sum_matches_national"] if ob is not None else None,
-          "ecdc_matches": (ecdc.get("cases") == epi["last_total"]) if ecdc.get("ok") and epi else None,
+          # False only for two totals on the same day; ECDC a few days ahead is not a disagreement
+          "ecdc_matches": (ecdc.get("check") or {}).get("matches"),
           "ecdc": ecdc, "who": who, "who_days_old": who.get("days_old"),
           "sources_unreachable": [k for k, v in src.items() if not v.get("ok") and not v.get("none_found")
                                   and v.get("reason") not in ("asof run", data.NOT_CONFIGURED)],
