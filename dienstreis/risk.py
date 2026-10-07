@@ -27,6 +27,24 @@ VERDICT = {c: outbreak.default().verdict(c) for c in outbreak.CATEGORIES}
 LABEL = {c: outbreak.default().label(c) for c in outbreak.CATEGORIES}
 
 
+def definition(cat: str, spec) -> str:
+    """What puts a stop in this category, in words, with the profile's windows: the rules of assess_stop."""
+    unit = spec.unit or "zone"
+    active, clear = spec.windows.get("active"), spec.windows.get("clear")
+    if cat == "X" or active is None:
+        return ("Buiten het gebied van de cijfers: de grensmaatregelen van het land uit het register, "
+                "en het FOD- en CDC-advies, wegen.")
+    return {
+        "A": f"De {unit} van de halte had een geval in de laatste {active} dagen.",
+        "B": f"De {unit} had gevallen, het laatste {active + 1} tot {clear} dagen geleden.",
+        "C": f"De {unit} had gevallen, maar al meer dan {clear} dagen geen nieuw.",
+        "D": f"De {unit} had geen gevallen, maar grenst aan een {unit} met een geval in de laatste {active} dagen.",
+        "E": f"De {unit} had geen gevallen en grenst er niet aan, maar de provincie had een geval in de laatste "
+             f"{active} dagen.",
+        "F": f"Geen gevallen in de {unit}, geen actieve {unit} ernaast of in de provincie.",
+    }[cat]
+
+
 @dataclass
 class StopRisk:
     place: str

@@ -93,6 +93,16 @@ def test_every_section_is_there(run):
     assert "Uit de mail gelaten" in page and "go/no-go op 20/11" in page  # the model's assessment
 
 
+def test_the_categories_are_explained(run):
+    """2026-10-07: the verdict showed categories A to F without saying what they mean."""
+    html = _page(run).split('<section id="oordeel">')[1].split("</section>")[0]
+    assert "Wat de categorieën betekenen: " in html
+    assert "had een geval in de laatste 21 dagen" in html and "22 tot 42 dagen geleden" in html
+    assert "grenst aan een gezondheidszone met een geval" in html and "Buiten het gebied van de cijfers" in html
+    assert "<b>A</b>" in html and "<b>F</b>" in html and "<b>B</b>" not in html   # this advice: A and F
+    assert "De strengste halte bepaalt het oordeel voor de reis" in html
+
+
 def test_the_letter_is_there_to_copy(run):
     page = _page(run)
     m = re.search(r'<pre id="t" class="letter">(.*?)</pre>', page, re.S)

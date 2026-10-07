@@ -27,7 +27,7 @@ from pathlib import Path
 
 import yaml
 
-from . import countries, fiche, mail, outbreak
+from . import countries, fiche, mail, outbreak, risk
 
 DATA = "dossier.json"
 PAGE = "dossier.html"
@@ -486,10 +486,38 @@ def _verdict(run: dict) -> str:
         if rows:
             body += f"<h3>Per halte: {_e(p.get('name', oid))}</h3>" + _table(
                 ["Halte", "Zone", "Cat", "Betekenis", "Regel", "Overrule"], rows)
+    body += _categories(parts)
     review = d.get("review_on") or t.get("review_on")
     if review:
         body += f'<p>Go/no-go: <b class="mono">{_e(_date(review))}</b>, een week voor vertrek uit België.</p>'
     return _section("oordeel", "Oordeel", body)
+
+
+def _categories(parts: dict) -> str:
+    """What the categories mean, per outbreak: the rule, the verdict per stop and its weight for the trip.
+    The categories of this advice (by the rules and after an overrule) are in bold; a profile without
+    figures has only X and needs no legend."""
+    out = ""
+    for oid, p in parts.items():
+        sp = _spec(oid)
+        if not sp or not sp.windows.get("active"):
+            continue
+        seen = {x.get(k) for x in p.get("stops") or [] for k in ("category", "rule_category")}
+        rows = []
+        for c in outbreak.CATEGORIES:
+            if c not in sp.categories:
+                continue
+            lvl = sp.level(c)
+            cell = (lambda v: ("html", f"<b>{_e(v)}</b>")) if c in seen else (lambda v: v)
+            rows.append([cell(c), cell(risk.definition(c, sp)), cell(sp.verdict(c)),
+                         ("html", _level_badge(lvl, LEVEL.get(lvl, ("", lvl))[1]))])
+        out += (f"<h3>Wat de categorieën betekenen: {_e(sp.name)}</h3>"
+                + _table(["Cat", "Wanneer", "Oordeel per halte", "Weegt voor de reis als"], rows)
+                + f'<p class="muted">Dagen geteld vanaf de laatste datum in de cijfers. De strengste halte bepaalt '
+                  f"het oordeel voor de reis: afraden gaat voor voorwaardelijk, voorwaardelijk voor geen bezwaar. "
+                  f"FOD, CDC, verblijf bij familie of een lang verblijf veranderen de categorie niet; ze staan bij "
+                  f"de halte als aandachtspunt. Vetgedrukt: de categorieën in dit advies.</p>")
+    return out
 
 
 def _weeks(epi: dict) -> str:
