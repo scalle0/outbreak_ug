@@ -542,7 +542,8 @@ def _qa_items(q: dict) -> list[str]:
              + ("" if q["ecdc_matches"] else " (wijkt af)"))
     w = q.get("who") or {}
     if w.get("ok"):
-        mark(True, f"WHO: {w.get('item')} ({_date(w.get('date'))}, {w.get('days_old')} dagen oud)")
+        mark(not w.get("from_cache"), f"WHO: {w.get('item')} ({_date(w.get('date'))}, {w.get('days_old')} dagen oud)"
+             + (f"; WHO niet bereikbaar, laatst gelezen op {_date(w.get('read_on'))}" if w.get("from_cache") else ""))
     if q.get("table_last_date") or q.get("table_empty"):
         mark(not q.get("table_stale"), f"tabel: laatste datum {_date(q.get('table_last_date'))}, "
              f"{q.get('table_days_old')} dagen oud" + (" (te oud)" if q.get("table_stale") else ""))

@@ -290,6 +290,7 @@
   },
   "who_days_old": null,
   "sources_unreachable": [],
+  "sources_cached": [],
   "unmatched_zone_names": [],
   "advisories_unverified": [],
   "far_stops_in_inset": [

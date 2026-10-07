@@ -56,6 +56,7 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
           "ecdc": ecdc, "who": who, "who_days_old": who.get("days_old"),
           "sources_unreachable": [k for k, v in src.items() if not v.get("ok") and not v.get("none_found")
                                   and v.get("reason") not in ("asof run", data.NOT_CONFIGURED)],
+          "sources_cached": [k for k, v in src.items() if v.get("from_cache")],
           "unmatched_zone_names": ob.unmatched if ob is not None else [],
           "map_label_overlaps": mp["label_overlaps"] if mp else 0,
           "map_labels_clipped": mp.get("labels_clipped", 0) if mp else 0,
@@ -139,7 +140,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     age = max((a for a in ages.values() if a is not None), default=None)
     m = main["qa"]
     qa = {**{k: m[k] for k in ("zone_sum_matches_national", "ecdc_matches", "ecdc", "who", "who_days_old",
-                               "sources_unreachable", "unmatched_zone_names")},
+                               "sources_unreachable", "sources_cached", "unmatched_zone_names")},
           "advisories_verified_days_ago": age,
           "advisories_stale": bool(unverified) or age is None or age > countries.STALE_DAYS,
           "advisories_unverified": unverified,

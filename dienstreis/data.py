@@ -39,6 +39,8 @@ UA = "Mozilla/5.0 (compatible; dienstreis-advies)"
 NE_COUNTRIES = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/"
                 "geojson/ne_50m_admin_0_countries.geojson")
 CACHE = Path(os.environ.get("DIENSTREIS_CACHE", Path.home() / ".cache" / "dienstreis"))
+WHO_LAST = CACHE / "who_last.json"      # the last WHO item read per outbreak, for a run when WHO is unreachable
+RETRY_WAITS = (5, 15)                   # seconds before the second and third try of a source read every run
 
 NOT_CONFIGURED = "not configured for this outbreak"   # a source the profile does not name: not a failure
 LOCAL_OUTBREAKS = Path(os.environ.get("DIENSTREIS_OUTBREAKS", Path.home() / ".config" / "dienstreis" / "outbreaks"))
@@ -468,7 +470,7 @@ def ecdc_snapshot(timeout: int = 30, spec=None) -> dict:
         return {"ok": False, "reason": NOT_CONFIGURED}
     try:
         import html as _html
-        raw = requests.get(url, timeout=timeout).text
+        raw = _get(url, timeout=(10, timeout)).text
         text = _html.unescape(re.sub(r"<[^>]+>", " ", raw))
         text = re.sub(r"\s+", " ", text)
         m = re.search(r"total of " + _NUM + r" confirmed cases, including " + _NUM +
@@ -548,20 +550,61 @@ def display_geometry(zones: gpd.GeoDataFrame, repo: Path | None = None, toleranc
     return out, prov
 
 
-def who_snapshot(timeout: int = 40, top: int = 20, spec=None) -> dict:
+def _get(url: str, *, timeout=(10, 30), **kw) -> requests.Response:
+    """GET that tries again after a timeout, a dropped connection or a busy server (429, 5xx).
+
+    A source read on every run must not drop out of an advice for one slow answer (WHO, 2026-10-07:
+    read timeout). A 4xx other than 429 is an answer, not a hiccup, and is not retried.
+    """
+    for wait in (*RETRY_WAITS, None):
+        try:
+            r = requests.get(url, timeout=timeout, **kw)
+            if wait is None or not (r.status_code == 429 or r.status_code >= 500):
+                return r
+        except (requests.Timeout, requests.ConnectionError):
+            if wait is None:
+                raise
+        time.sleep(wait)
+    raise AssertionError("unreachable")
+
+
+def _who_last(spec_id: str, item: dict | None = None) -> dict | None:
+    """The last WHO item read for this outbreak: written after every live read, read when WHO is unreachable."""
+    try:
+        seen = json.loads(WHO_LAST.read_text(encoding="utf-8"))
+    except Exception:
+        seen = {}
+    if item is None:
+        return seen.get(spec_id)
+    seen[spec_id] = {**item, "read_on": date.today().isoformat()}
+    try:
+        WHO_LAST.parent.mkdir(parents=True, exist_ok=True)
+        WHO_LAST.write_text(json.dumps(seen, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError:
+        pass
+    return None
+
+
+def who_snapshot(timeout=(10, 30), top: int = 20, spec=None) -> dict:
     """Most recent WHO Disease Outbreak News item about this outbreak (title patterns in the profile).
 
     Read from the DON JSON API, not the page: the page is rendered client-side and a regex over its
-    HTML finds nothing. A headline and a date, not figures; the counts that carry the advice come
-    from INSP. Fails soft like the ECDC check, because a source being unreachable must make itself
-    visible in the QA block, never stop an advice.
+    HTML finds nothing. Only the three fields used are asked for: with the full text of every item
+    the answer was 600 kB and timed out (2026-10-07); now it is a few kB. A headline and a date, not
+    figures; the counts that carry the advice come from INSP.
+
+    Fails soft like the ECDC check, because a source being unreachable must make itself visible in
+    the QA block, never stop an advice. When WHO cannot be reached, the item of the last live read is
+    used, marked `from_cache` with the day it was read: the web step still looks for a newer one.
     """
-    who = (spec or outbreak.default()).sources.get("who") or {}
+    sp = spec or outbreak.default()
+    who = sp.sources.get("who") or {}
     if not who.get("title"):
         return {"ok": False, "reason": NOT_CONFIGURED, "url": WHO_DON_URL}
     try:
-        r = requests.get(WHO_DON_API, timeout=timeout, headers={"User-Agent": UA},
-                         params={"$orderby": "PublicationDateAndTime desc", "$top": str(top)})
+        r = _get(WHO_DON_API, timeout=timeout, headers={"User-Agent": UA},
+                 params={"$orderby": "PublicationDateAndTime desc", "$top": str(top),
+                         "$select": "Title,PublicationDateAndTime,ItemDefaultUrl"})
         r.raise_for_status()
         items = r.json().get("value", [])
         for it in items:
@@ -569,15 +612,23 @@ def who_snapshot(timeout: int = 40, top: int = 20, spec=None) -> dict:
             if all(re.search(p, title, re.I) for p in who["title"]):
                 day = str(it.get("PublicationDateAndTime") or "")[:10]
                 link = str(it.get("ItemDefaultUrl") or "").strip("/")
-                return {"ok": True, "date": day or None, "item": title,
-                        "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
-                               if link else WHO_DON_URL,
-                        "days_old": (date.today() - date.fromisoformat(day)).days if day else None}
+                found = {"ok": True, "date": day or None, "item": title,
+                         "url": f"https://www.who.int/emergencies/disease-outbreak-news/item/{link}"
+                                if link else WHO_DON_URL}
+                _who_last(sp.id, found)
+                return {**found, "days_old": _days_old(day)}
         # read fine, nothing about this outbreak: not the same as a source that could not be reached
         return {"ok": False, "reason": f"no {who.get('label', 'matching')} item in the last {len(items)} DON entries",
                 "url": WHO_DON_URL, "none_found": True}
     except Exception as e:   # network, API change or unparseable payload
+        last = _who_last(sp.id)
+        if last and last.get("ok"):
+            return {**last, "days_old": _days_old(last.get("date")), "from_cache": True, "reason": repr(e)}
         return {"ok": False, "reason": repr(e), "url": WHO_DON_URL}
+
+
+def _days_old(day: str | None) -> int | None:
+    return (date.today() - date.fromisoformat(day)).days if day else None
 
 
 def sources_snapshot(asof: str | None = None, spec=None) -> dict:

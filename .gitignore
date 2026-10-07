@@ -25,6 +25,7 @@ Thumbs.db
 *.ost
 !tests/fixtures/*.eml
 out_*/
+out_*.log
 stops*.yaml
 !examples/*.yaml
 reply*.txt

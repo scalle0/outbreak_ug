@@ -366,6 +366,14 @@ def _unreachable(summary: dict) -> list[tuple[str, str]]:
             for oid, o in parts.items() for k in o["qa"].get("sources_unreachable", [])]
 
 
+def _cached(summary: dict) -> list[tuple[str, dict]]:
+    """Every source that was unreachable but stood in with its last live read: (label, what it said then)."""
+    parts = summary.get("outbreaks") or {summary.get("outbreak"): {"qa": summary["qa"]}}
+    several = len(parts) > 1
+    return [(k.upper() + (f" ({oid})" if several else ""), o["qa"].get(k) or {})
+            for oid, o in parts.items() for k in o["qa"].get("sources_cached", [])]
+
+
 def run_advies(src: str, out: str | None = None, backend: str = "claude-code", model: str | None = None,
                yes: bool = False, web: bool = True, outlook: bool = False, asof: str | None = None,
                refresh: bool = False, open_browser: bool = True, llm_backend=None,
@@ -438,7 +446,9 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
               f"de webstap werkt ze bij, of pas het landenregister aan")
     who = qa.get("who") or {}
     if who.get("ok"):
-        print(f"  WHO: {who.get('item')} ({who.get('date')}, {who.get('days_old')} dagen oud)")
+        print(f"  WHO: {who.get('item')} ({who.get('date')}, {who.get('days_old')} dagen oud)"
+              + (f"; WHO niet bereikbaar, gelezen op {who.get('read_on')}" if who.get("from_cache") else ""))
+    cached = _cached(summary)
     unreachable = _unreachable(summary)
     for label, reason in unreachable:
         print(f"  let op: {label} niet bereikbaar ({reason}); die kruiscontrole ontbreekt in dit advies")
@@ -552,6 +562,11 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     warnings += table_notes
     warnings += [f"{label} was niet bereikbaar tijdens deze run; die kruiscontrole ontbreekt. "
                  f"Kijk de bron na voor verzending." for label, _ in unreachable]
+    warnings += [f"{label} was niet bereikbaar tijdens deze run ({v.get('reason')}); het item van de laatste "
+                 f"keer dat het wel lukte, gelezen op {v.get('read_on')}, staat in de plaats: {v.get('item')} "
+                 f"({v.get('date')}). " + ("De webstap keek na of er een nieuwer is." if web and not web_failed
+                                          else "Kijk na of er een nieuwer is.")
+                 for label, v in cached]
     if web_failed:
         what = ("de FOD- en CDC-reisadviezen, grensmaatregelen, WHO, nieuws en nieuwere richtlijnen"
                 if kind == "reisadvies" else "nieuwere richtlijnen, WHO en nieuws")

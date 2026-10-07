@@ -229,6 +229,7 @@ niet goedkeuren in huidige vorm (minstens een luik af te raden)
  },
  "who_days_old": null,
  "sources_unreachable": [],
+ "sources_cached": [],
  "unmatched_zone_names": [],
  "advisories_verified_days_ago": X,
  "advisories_stale": false,

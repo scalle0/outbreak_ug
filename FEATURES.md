@@ -288,6 +288,12 @@ Requests for this repo, newest first. Status: gevraagd · bezig · klaar · gewe
   - De WHO-pagina wordt niet gescrapet maar via de JSON-API gelezen: de pagina wordt client-side opgebouwd, een regex over de HTML vindt niets (nagegaan, leverde eerst "no DRC Ebola item" op).
   - FOD en CDC blijven in de webstap in plaats van deterministisch gescrapet te worden: het zijn lopende teksten, en het verschil tussen "formeel afgeraden om veiligheidsredenen" en "om gezondheidsredenen" bepaalt de formulering van het advies.
   - Een `--asof`-run haalt geen live bronnen op: de pagina's van vandaag horen niet bij de cijfers van vorige maand.
+- **Herstel (gevraagd en klaar 2026-10-07):** "make this more solid: WHO niet bereikbaar tijdens de run (ReadTimeout ... read timeout=40)". De WHO-API stuurde de volledige tekst van de 20 laatste DON's mee (614 kB), voor drie velden; er was geen tweede poging.
+  - De WHO-vraag vraagt enkel titel, datum en link (`$select`): 3,4 kB in plaats van 614 kB.
+  - WHO en ECDC krijgen drie pogingen (na 5 en 15 s) bij een time-out, een verbroken verbinding of een drukke server (429, 5xx); een andere 4xx is een antwoord en krijgt geen tweede poging (`data._get`).
+  - Blijft WHO onbereikbaar, dan staat het item van de laatste geslaagde lezing in de plaats (`~/.cache/dienstreis/who_last.json`), gemarkeerd met `from_cache` en de dag van lezing. Het telt niet als onbereikbaar maar staat in `sources_cached`; de terminal, de notities en het QA-blok van het dossier zeggen welk item het is en van wanneer. De webstap zoekt sowieso of er een nieuwer DON is.
+  - ECDC krijgt geen terugval: de ECDC-cijfers zijn een kruiscontrole van de dagcijfers, en cijfers van een vorige dag zouden die controle vervalsen.
+  - Tests: vijf nieuwe in `test_sources.py`; de goldens krijgen enkel de nieuwe sleutel `sources_cached` (de 4 goldens die al faalden, falen nog op hetzelfde).
 
 ## F-004 · Kaartgegevens apart van de dagcijfers verversen
 - **Gevraagd:** 2026-09-22 — "The maps we make: are these downloaded every time?"
