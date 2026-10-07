@@ -155,6 +155,8 @@ def validate(trip: dict, *, known_places, today: date | None = None) -> list[str
         for k, v in (("from", start), ("to", end)):
             if k == "to" and v is None and kind != "reisadvies":
                 continue                         # a stay that is still going on, with no end date yet
+            if v is None and kind == "vraag":
+                continue                         # a question about a place, not about a stay there
             if not isinstance(v, date):
                 issues.append(f"{tag}: datum '{k}' onleesbaar ({v!r}); verwacht JJJJ-MM-DD")
         if isinstance(start, date) and isinstance(end, date):

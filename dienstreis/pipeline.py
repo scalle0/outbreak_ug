@@ -43,7 +43,7 @@ def _assess_one(trip: dict, spec, out: Path, tag: str, refresh: bool, asof: str 
             curve = None                   # too few report dates for a curve
         first = min((r.start for r in rs if r.start), default=None)
         last = max((r.end for r in rs if r.end), default=None)
-        sub = (f"{trip.get('traveller', '')}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
+        sub = (f"{trip.get('traveller') or ''}, {mail.d(first)} {first.year if first else ''} tot {mail.d(last)} "
                f"{last.year if last else ''}. Nationaal: {mail.n(epi['last_total'])} gevallen, "
                f"{mail.n(epi['last_deaths'])} overlijdens (data tot {ob.asof:%d-%m-%Y})")
         # a question without a place has no itinerary to draw
@@ -97,7 +97,7 @@ def analyse(trip: dict, out: Path, refresh: bool = False, asof: str | None = Non
     out.mkdir(parents=True, exist_ok=True)
     specs = [spec] if spec else list(specs or route.outbreaks_for(trip))
     multi = len(specs) > 1
-    tag = _slug(trip.get("traveller", "trip"))
+    tag = _slug(trip.get("traveller") or "trip")
     parts = [_assess_one(trip, s, out, tag, refresh, asof, multi) for s in specs]
     order = {lv: i for i, lv in enumerate(outbreak.LEVELS)}
     parts.sort(key=lambda p: order.get(p["level"], len(order)))       # strictest first, stable
@@ -186,7 +186,7 @@ def outbreak_ids(summary: dict) -> list[str]:
 def log_row(trip: dict, summary: dict, review_on: str | None = None,
             advice_dir: str = "") -> None:
     from . import log
-    log.append({"advised_on": date.today().isoformat(), "traveller": trip.get("traveller", ""),
+    log.append({"advised_on": date.today().isoformat(), "traveller": trip.get("traveller") or "",
                 "departure": summary.get("departure", ""),
                 "stops": "; ".join(f"{s['place']}/{s.get('zone') or s.get('country')}" for s in summary["stops"]),
                 "categories": "".join(s["category"] for s in summary["stops"]), "overall": summary["overall"],

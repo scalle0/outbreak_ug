@@ -133,8 +133,10 @@ def confirm_trip(trip: dict, d: dict, out: Path, yes: bool, fixed_outbreaks: boo
     _print_trip(trip, d, issues)
     if yes:
         if issues:
-            raise SystemExit(f"Reisschema niet bruikbaar ({len(issues)} fout(en), zie hierboven). "
-                             f"Corrigeer {path} en draai `dienstreis run` of `dienstreis advies` opnieuw.")
+            # a new `advies` reads the mail again and writes stops.yaml anew: an edit to the file is lost
+            raise SystemExit(f"Reisschema niet bruikbaar ({len(issues)} fout(en), zie hierboven). Draai "
+                             f"`dienstreis advies` opnieuw zonder --yes en kies [b]ewerken, of corrigeer {path} "
+                             f"en draai `dienstreis run` voor enkel de analyse.")
         return trip
     while True:
         opts = "[b]ewerken / [s]toppen" if issues else "[j]a / [b]ewerken / [s]toppen"
@@ -402,7 +404,7 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     d = llm.ask_json(be, "stops", {"vandaag": date.today().isoformat(), "bekende_plaatsen": _known_places(),
                                    "aanvraag": req_in}, required=["traveller", "stops"])
     trip = _trip_from_llm(d, req)
-    outp = Path(out or f"out_{_slug(trip.get('traveller', 'trip'))}")
+    outp = Path(out or f"out_{_slug(trip.get('traveller') or 'trip')}")
     if outp != tmp_out:
         outp.mkdir(parents=True, exist_ok=True)
         for f in tmp_out.glob("*"):
@@ -418,7 +420,9 @@ def run_advies(src: str, out: str | None = None, backend: str = "claude-code", m
     today = date.fromisoformat(asof) if asof else None
     trip = confirm_trip(trip, d, outp, yes, fixed_outbreaks=bool(uitbraken), today=today)
     kind = trip.get("type") or "reisadvies"
-    if kind != "reisadvies" and not consented:    # the model called it a case: ask before the next steps
+    # the model called it a case: ask before the next steps. A general question is about no one; health
+    # words in it were already caught by the word list (proefrun 2026-10-07: a vaccination question stopped here)
+    if kind == "casus" and not consented:
         _consent([kind], be.name, yes, health_ok, already_sent=True)
 
     _say("Analyse (data, zones, kaart, curve)")

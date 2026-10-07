@@ -45,6 +45,13 @@ def test_a_case_or_question_needs_no_place_and_a_question_no_traveller():
     assert any("onbekend type" in i for i in _check({"type": "klacht", "traveller": "X", "stops": []}))
 
 
+def test_a_question_about_a_place_needs_no_dates():
+    """Proefrun 2026-10-07: a general question about internships in Kinshasa stopped on a missing date."""
+    stop = {"place": "Kinshasa", "from": None, "to": None}
+    assert _check({"type": "vraag", "stops": [stop]}) == []
+    assert any("'from' onleesbaar" in i for i in _check({"type": "casus", "traveller": "X", "stops": [stop]}))
+
+
 def test_health_data_in_a_mail_is_recognised():
     assert "quarantaine" in msg.health_signals(msg.parse_request(FIX))
     assert msg.health_signals(msg.parse_request(TRIPMAIL)) == []
@@ -92,6 +99,16 @@ def test_a_case_the_heuristic_missed_is_asked_about_before_the_next_steps(env):
                           asof="2026-09-19")
     assert list(fake.prompts) == ["stops"]
 
+
+
+def test_a_general_question_is_not_asked_about(env):
+    """Proefrun 2026-10-07: a question about mpox vaccination for students stopped on the health-data question."""
+    question = {"type": "vraag", "traveller": None, "situation": "Algemene vraag over mpox-vaccinatie.",
+                "stops": [{"place": "Kinshasa", "from": None, "to": None}], "questions_from_an": ["Vaccineren?"]}
+    fake = llm.Fake({"stops": question, "consult": {"reply": REPLY, "suggestions": []}})
+    advies.run_advies(str(TRIPMAIL), out=str(env / "out"), yes=True, open_browser=False, llm_backend=fake,
+                      asof="2026-09-19", web=False, proef=True)
+    assert "consult" in fake.prompts
 
 def test_a_case_takes_its_own_road(env):
     fake = llm.Fake({"stops": CASE, "web_consult": WEB, "consult": {"reply": REPLY, "suggestions": []}})

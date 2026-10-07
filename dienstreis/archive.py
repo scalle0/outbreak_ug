@@ -49,7 +49,7 @@ def save(trip: dict, summary: dict, reply: str, *, request: str = "",
     """Write one advice to the archive and return its folder."""
     root = Path(root or ARCHIVE)
     day = advised_on or date.today()
-    d = root / f"{day.isoformat()}_{_slug(trip.get('traveller', 'trip'))}"
+    d = root / f"{day.isoformat()}_{_slug(trip.get('traveller') or 'trip')}"
     n, base = 2, d
     while d.exists():                 # two advices for the same person on one day
         d, n = base.with_name(f"{base.name}_{n}"), n + 1
@@ -63,7 +63,7 @@ def save(trip: dict, summary: dict, reply: str, *, request: str = "",
         "countries": list(dict.fromkeys(s.get("country") for s in stops if s.get("country"))),
         "type": trip.get("type") or "reisadvies",
         "situation": trip.get("situation") or "",
-        "traveller": trip.get("traveller", ""),
+        "traveller": trip.get("traveller") or "",
         "note": trip.get("note", ""),
         "departure": summary.get("departure", ""),
         "asof": summary.get("asof", ""),
@@ -112,7 +112,7 @@ def all_advices(root: Path | None = None) -> list[dict]:
 def _matches(r: dict, term: str) -> bool:
     t = term.lower()
     hay = " ".join(str(x) for x in (
-        r.get("traveller", ""), r.get("note", ""), r.get("overall", ""),
+        r.get("traveller") or "", r.get("note", ""), r.get("overall", ""),
         " ".join(str(p) for p in r.get("places", [])),
         " ".join(str(z) for z in r.get("zones", [])),
         " ".join(str(p) for p in r.get("provinces", [])),
@@ -166,7 +166,7 @@ def for_trip(trip: dict, summary: dict, *, limit: int = 5, root: Path | None = N
     hits = []
     for r in all_advices(root):
         here = {str(x).lower() for x in r.get("places", []) + r.get("zones", []) + r.get("provinces", [])
-                + [r.get("traveller", "")]}
+                + [r.get("traveller") or ""]}
         if here & wanted:
             keys = ("advised_on", "traveller", "type", "outbreaks", "places", "zones", "overall",
                     "rule_overall", "overrides", "review_on", "reply") + (("dir",) if with_dir else ())

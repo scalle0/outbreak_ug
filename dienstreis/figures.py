@@ -86,10 +86,14 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     countries.plot(ax=ax, color="#eef3ee", edgecolor="#9aa89a", linewidth=0.7)
     zones.plot(ax=ax, color=zones.fc, edgecolor="#c9c4bb", linewidth=0.2)
     prov.plot(ax=ax, facecolor="none", edgecolor="#555555", linewidth=0.8)
+    # an empty layer cannot be plotted (geopandas takes its aspect from the bounds): a trip that stays
+    # outside the figures has no destination zone (proefrun 2026-10-07, Uganda)
     act = zones[zones.new14 > 0]
-    act.plot(ax=ax, facecolor="none", edgecolor="#000000", linewidth=1.1, hatch="....")
+    if not act.empty:
+        act.plot(ax=ax, facecolor="none", edgecolor="#000000", linewidth=1.1, hatch="....")
     dest = zones[zones.Nom.isin({r.zone for r in rs if r.zone})]
-    dest.plot(ax=ax, facecolor="none", edgecolor=BLUE, linewidth=2.4)
+    if not dest.empty:
+        dest.plot(ax=ax, facecolor="none", edgecolor=BLUE, linewidth=2.4)
 
     texts = []
     inside = [r for r in rs if r not in far]
@@ -117,7 +121,8 @@ def itinerary_map(rs, ob, title: str, subtitle: str, out: str, annotate_neighbou
     if all(r.category in "FX" for r in rs):   # trip far from the outbreak: say how far instead
         na = min((r.nearest_active for r in rs if r.nearest_active), key=lambda x: x["km"], default=None)
         if na:
-            ax.text(0.02, 0.97, f"Geen {cw['none']} in het getoonde gebied.\nDichtstbijzijnde zone met recente gevallen: "
+            # about the stops, not the frame: near the border the frame shows zones with cases (proefrun 2026-10-07)
+            ax.text(0.02, 0.97, f"Geen halte in een zone met {cw['none']}.\nDichtstbijzijnde zone met recente gevallen: "
                     f"{na['zone']} ({na['province']}), circa " + f"{round(na['km'], -1):,.0f}".replace(",", " ") + " km",
                     transform=ax.transAxes, va="top", fontsize=9, color="#333",
                     bbox=dict(boxstyle="round,pad=0.5", fc="white", ec="#999", lw=0.8), zorder=12)

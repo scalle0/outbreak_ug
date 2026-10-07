@@ -55,7 +55,7 @@ def cmd_run(a):
         for x in issues:
             print(f"  - {x}")
         sys.exit(1)
-    out = Path(a.out or f"out_{_slug(trip.get('traveller', 'trip'))}")
+    out = Path(a.out or f"out_{_slug(trip.get('traveller') or 'trip')}")
     print(f"Uitbraken: {', '.join(sp.id for sp in route.outbreaks_for(trip))}")
     s = analyse(trip, out, refresh=a.refresh, asof=a.asof, log_it=a.log)
     print(s["table"])
